@@ -1,0 +1,11 @@
+const assert=require('node:assert/strict');const fs=require('node:fs');const ts=require('typescript');const Module=require('module');const path=require('node:path');const file=path.resolve(__dirname,'../src/lib/lora-tags.ts');const compiled=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText;const m=new Module(file);m.filename=file;m.paths=module.paths;m._compile(compiled,file);const {parseTags,joinTags,appendTags,selectedTags}=m.exports;
+assert.deepEqual(parseTags(' Fox, fox, coat\nhello_world, Fox,, '),['Fox','fox','coat','hello_world']);
+const A={model_id:'a',trigger_words:['VesperFox'],recommended_tags:['orange fur']},B={model_id:'b',trigger_words:['Amber'],recommended_tags:['brown eyes','orange fur']};
+assert.deepEqual(joinTags([A,B]),['VesperFox','orange fur','Amber','brown eyes']);
+assert.deepEqual(selectedTags([{id:'a',enabled:false},{id:'b',enabled:true}],{a:A,b:B}),[B]);
+assert.deepEqual(selectedTags([{id:'a',enabled:true},{id:'b',enabled:true}],{a:A,b:B}),[A,B]);
+assert.deepEqual(selectedTags([], {a:A,b:B}),[]);
+let value=appendTags('landscape, orange fur',['VesperFox','orange fur','Amber']);assert.equal(value,'landscape, orange fur, VesperFox, Amber');assert.equal(appendTags(value,['VesperFox','orange fur','Amber']),value);
+assert.equal(appendTags('',['VesperFox']),'VesperFox');
+assert.equal(parseTags('  unusual:tag,  multi word, underscores_ok! ').length,3);
+console.log('PASS LoRA tag parser, per-model separation, enable toggles, deduplication, repeated insertion, empty prompt');

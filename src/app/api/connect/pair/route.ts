@@ -1,0 +1,2 @@
+import {NextResponse} from 'next/server';import {owner,denied,error} from '@/lib/connect/auth';import {init,db} from '@/lib/connect/db';import {token,digest} from '@/lib/connect/security';import {randomUUID} from 'node:crypto';
+export async function POST(){if(!await owner())return denied();try{await init();const code=token().slice(0,12).toUpperCase();await db().query("INSERT INTO pairing(id,code_hash,expires_at) VALUES($1,$2,now()+interval '10 minutes')",[randomUUID(),digest(code)]);return NextResponse.json({code,expires_in_seconds:600})}catch(e){return error(e)}}

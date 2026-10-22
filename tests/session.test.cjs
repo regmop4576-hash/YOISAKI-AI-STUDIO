@@ -1,0 +1,15 @@
+const assert=require('node:assert/strict');const fs=require('node:fs');const vm=require('node:vm');const ts=require('typescript');
+const src=fs.readFileSync('src/lib/connect/security.ts','utf8');
+const js=ts.transpileModule(src,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+const moduleObj={exports:{}};vm.runInNewContext(js,{module:moduleObj,exports:moduleObj.exports,require,Buffer,process,Date});
+const {sessionValue,validSession}=moduleObj.exports;
+process.env.SESSION_SECRET='s'.repeat(48);
+const cookie=sessionValue();assert.equal(validSession(cookie),true);
+assert.equal(validSession(''),false);
+assert.equal(validSession(cookie.replace('owner','other')),false);
+assert.equal(validSession(cookie.slice(0,-1)+(cookie.endsWith('0')?'1':'0')),false);
+const RealDate=Date;const fakeNow=Date.now()+3*86400000;
+vm.runInNewContext(js,{module:moduleObj,exports:moduleObj.exports,require,Buffer,process,Date:class extends RealDate {static now(){return fakeNow}}});
+assert.equal(moduleObj.exports.validSession(cookie),false);
+delete process.env.SESSION_SECRET;assert.throws(()=>sessionValue(),/SESSION_SECRET/);
+console.log('session auth regression: PASS');

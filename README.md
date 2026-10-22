@@ -62,3 +62,6 @@ Run `npm run typecheck` and `npm run build`, then open the local development sit
 ## Security and data
 
 Settings and small presets live in browser localStorage. Imported pictures are saved as Blobs in IndexedDB and do not leave the browser. Data is tied to the browser, profile, and origin; clearing site data will delete it. Do not upload untrusted oversized files or put backend credentials in the frontend.
+
+## v1.2 Connect (development-only)
+Server API requires private DATABASE_URL, OWNER_PASSWORD, SESSION_SECRET. See ../docs/DEPLOYMENT_REQUIREMENTS.md. Inference not implemented.

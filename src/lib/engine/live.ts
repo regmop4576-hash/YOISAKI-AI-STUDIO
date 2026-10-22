@@ -1,0 +1,3 @@
+export type LiveModel={id:string;name:string;kind:'checkpoint'|'lora'|'vae'|'controlnet';architecture:string;compatible:boolean|null};
+export type LiveEngine={id:string;state:string;provider:string;models:LiveModel[];telemetry?:{gpu_name?:string;vram_total_mb?:number;vram_available_mb?:number}};
+export async function api<T>(path:string,init?:RequestInit):Promise<T>{const res=await fetch('/api/connect/'+path,{cache:'no-store',...init,headers:{'Content-Type':'application/json',...init?.headers}});const body=await res.json();if(!res.ok)throw Error(body.error||'Ошибка подключения');return body as T}
