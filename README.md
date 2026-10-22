@@ -1,4 +1,18 @@
-# YOISAKI AI STUDIO 1.0.0
+# YOISAKI AI STUDIO v1.1.0
+
+Updated from the original 1.0 source, not rebuilt.
+
+## v1.1 changes
+- Russian default and English setting; translation dictionary in `src/lib/i18n.ts` with a legacy-component localization bridge. Technical vocabulary remains recognizable.
+- Improved handset layouts and compact pre-upload image editor.
+- Removed all sample model records and cleared stale checkpoint / LoRA references on persisted state hydration.
+- Preserved local gallery, settings and presets. Existing imported gallery images are not deleted.
+- React Konva is constrained to `~19.2.0` to avoid incompatible later minor lines.
+
+## Verification status
+Static TypeScript/TSX syntax transpilation passed. `npm install --offline` FAILED because registry packages are not cached. Full TypeScript verification, build, and interactive browser tests were **NOT** completed. Verify before replacing a live deployment. No lockfile is included because dependency resolution was unavailable. The legacy-component localization bridge does not guarantee coverage of every dynamically generated string; audit remaining copy before release.
+
+# YOISAKI AI STUDIO 1.1.0
 
 AMBER CORE is a **frontend-only**, mobile-first AI image workspace built with Next.js App Router, React, TypeScript, Tailwind CSS, Zustand, Lucide React and React Konva. No AI inference or GPU authentication is implemented. The original provided Y emblem is stored at `public/logo/y-original.png`; its optimized derivative is used in navigation.
 
