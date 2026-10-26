@@ -1,7 +1,6 @@
-node_modules
-.next
-out
+node_modules/
+build-meta.json
+__pycache__/
+validation/
 *.tsbuildinfo
-.env*
-!.env.example
 .DS_Store

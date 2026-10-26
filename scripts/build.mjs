@@ -1,0 +1,14 @@
+import {writeBuildIdentity} from './build-identity.mjs';
+import {WEBSITE_VERSION,STUDIO_EDITION} from '../server/release.mjs';
+import {compile} from 'tailwindcss';
+import {readFile} from 'node:fs/promises';
+import * as esbuild from 'esbuild';
+import {mkdir,cp,writeFile,rm} from 'node:fs/promises';
+import path from 'node:path';
+const out=path.resolve('dist');await rm(out,{recursive:true,force:true});await mkdir(out,{recursive:true});
+await cp('public',out,{recursive:true});
+const result=await esbuild.build({entryPoints:['src/main.tsx'],outdir:out+'/assets',bundle:true,conditions:['style','browser','import'],minify:true,splitting:true,format:'esm',target:['chrome110'],jsx:'automatic',define:{'process.env.NODE_ENV':'"production"'},metafile:true,plugins:[{name:'original-styles',setup(build){build.onLoad({filter:/globals\.css$/},async(args)=>{const css=await compile(await readFile(args.path,'utf8'),{base:path.dirname(args.path),loadStylesheet:async(id,base)=>{const file=id==='tailwindcss'?path.resolve('node_modules/tailwindcss/index.css'):path.resolve(base,id);return {path:file,base:path.dirname(file),content:await readFile(file,'utf8')}}});return {contents:css.build([]),loader:'css',resolveDir:path.dirname(args.path)}})}}],legalComments:'eof',loader:{'.webp':'file','.png':'file'}});
+await writeFile(out+'/index.html','<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0d0d0f"><title>YOISAKI AI STUDIO v'+WEBSITE_VERSION+' · '+STUDIO_EDITION+'</title><meta name="application-version" content="'+WEBSITE_VERSION+'"><link rel="icon" href="/logo/y-512.webp"><link rel="stylesheet" href="/assets/main.css"></head><body><div id="root"></div><script type="module" src="/assets/main.js"></script></body></html>');
+await writeFile('build-meta.json',JSON.stringify(result.metafile,null,2));
+await writeBuildIdentity();
+console.log('Production build ready: dist/ · '+WEBSITE_VERSION);

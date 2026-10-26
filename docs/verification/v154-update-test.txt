@@ -1,0 +1,10 @@
+Проверка целостности файлов: OK
+Приложение уже остановлено.
+Проверка целостности файлов: OK
+Установлено. Сборка готова, npm и компиляторы для запуска не нужны.
+Запуск: ./start.sh
+Обновлено. Пользовательские данные сохранены отдельно в домашней папке Termux.
+Предыдущая версия: /workspace/scratch/6c079805bdde/work/update154-smoke/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION.backup-20261024-191450
+Запуск: /workspace/scratch/6c079805bdde/work/update154-smoke/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/start.sh
+
+PASS: actual old update.sh upgraded isolated installation; persistent state/image byte-identical; backup exists. Linux, not physical Android.

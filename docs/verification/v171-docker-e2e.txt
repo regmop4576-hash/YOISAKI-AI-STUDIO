@@ -1,0 +1,151 @@
+# v1.7.1 Docker-mode end-to-end via the shipped scripts (sandbox without NVIDIA GPU)
+# Image: shipped Dockerfile dependency layers (full build #2) + final sources (validate/Dockerfile.patch), label org.yoisaki.source=a4db3c18712f6a2b
+# Override (validation only): no GPU reservation, CUDA test double, YOISAKI_GPU_PREFLIGHT=0; YOISAKI_TUNNEL=0 because api.trycloudflare.com does not resolve here
+# VALIDATION ONLY: sandbox without NVIDIA driver and with a TLS-intercepting proxy. Never shipped.
+services:
+  engine:
+    build:
+      dockerfile: <scratch>/validate/Dockerfile.validate
+      additional_contexts:
+        sandboxca: /root/.ccr
+    deploy: !reset {}
+    environment:
+      YOISAKI_GPU_PREFLIGHT: "0"
+    volumes:
+      - <scratch>/validate/sitecustomize.py:/opt/yoisaki/engine/sitecustomize.py:ro
+  tools:
+    deploy: !reset {}
+
+# before: model sha=3099b2cc1ba1301c outputs/user-file.png=keep
+
+$ ./start-cloudcompute.sh
+YOISAKI ENGINE · CloudCompute · режим: docker · данные: <scratch>/e2e-data
+⚠ Свободно 2 ГБ на диске данных: мало для моделей и кэша.
+✔ Образ yoisaki-engine:1.7.1-cloudcompute уже собран — пересборка не нужна.
+Жду готовности: проверка GPU → сервер → (прогрев) → туннель Cloudflare…
+
+Проверка: ./check-cloudcompute.sh   ·   Остановка: ./stop-cloudcompute.sh
+
+💰 Остановка движка НЕ останавливает оплату GPU-инстанса.
+   Остановите или удалите инстанс в панели CloudCompute. Остановленный инстанс продолжает
+   оплачивать хранение диска; удаление инстанса может безвозвратно удалить модели на его диске.
+[exit 0]
+wall time of ./start-cloudcompute.sh: 7.2 s (no GPU check, no model load, no tunnel)
+
+$ docker inspect yoisaki-engine
+user=1000:1000 readonly_rootfs=true restart=no cap_drop=[ALL] security_opt=[no-new-privileges:true] published_ports={}
+mount /data rw=true
+mount /data/models rw=false
+mount /opt/yoisaki/engine/sitecustomize.py rw=false
+
+$ docker exec yoisaki-engine: id; write to image rootfs; write to models; state folder
+uid=1000(yoisaki) gid=1000(yoisaki) groups=1000(yoisaki)
+touch: cannot touch '/opt/yoisaki/x': Read-only file system
+touch: cannot touch '/data/models/checkpoints/x': Read-only file system
+drwx------ 2 yoisaki yoisaki 4096 Oct 25 22:57 .
+drwxr-xr-x 5 root    root    4096 Oct 25 22:57 ..
+-rw------- 1 yoisaki yoisaki  381 Oct 25 22:57 launcher.json
+-rw-r--r-- 1 yoisaki yoisaki    0 Oct 25 22:57 launcher.lock
+-rw------- 1 yoisaki yoisaki   65 Oct 25 22:57 token
+$ wait for Docker HEALTHCHECK
+health=healthy
+$ docker logs yoisaki-engine   (64-hex strings in log: 0)
+2026-10-25 22:57:52 YOISAKI ENGINE · CloudCompute deployment 1.7.1 · данные: /data
+2026-10-25 22:57:52 Проверка GPU пропущена (YOISAKI_GPU_PREFLIGHT=0).
+2026-10-25 22:57:57 Сервер готов: YOISAKI ENGINE v1.7.0 · GPU TEST_DOUBLE_NOT_REAL_GPU · VRAM 15360/16384 МБ
+2026-10-25 22:57:57 Модели: checkpoints 1 · LoRA 0 · VAE 0 (/data/models)
+2026-10-25 22:57:57 Туннель отключён (YOISAKI_TUNNEL=0): движок доступен только локально на сервере.
+2026-10-25 22:57:57 YOISAKI ENGINE готов. Модель SDXL загружается при первой генерации (если не включён прогрев).
+
+$ ./start-cloudcompute.sh
+YOISAKI ENGINE · CloudCompute · режим: docker · данные: <scratch>/e2e-data
+⚠ Свободно 2 ГБ на диске данных: мало для моделей и кэша.
+✔ Движок уже запущен (контейнер yoisaki-engine).
+Туннель отключён (YOISAKI_TUNNEL=0): движок доступен только на сервере.
+
+Проверка: ./check-cloudcompute.sh   ·   Остановка: ./stop-cloudcompute.sh
+
+💰 Остановка движка НЕ останавливает оплату GPU-инстанса.
+   Остановите или удалите инстанс в панели CloudCompute. Остановленный инстанс продолжает
+   оплачивать хранение диска; удаление инстанса может безвозвратно удалить модели на его диске.
+[exit 0]
+
+$ ./check-cloudcompute.sh
+YOISAKI ENGINE · CloudCompute deployment 1.7.1 · протокол движка 1.7.0
+
+GPU:            не обнаружен (—)
+CUDA:           НЕДОСТУПНА · PyTorch 2.10.0+cu128 (CUDA 12.8)
+Ядра PyTorch:   НЕТ / не проверено · sm_70 sm_75 sm_80 sm_86 sm_90 sm_100 sm_120
+VRAM:           свободно — / всего — МБ
+nvidia-smi:     нет в этой среде
+RAM:            14.3 ГБ свободно / 15.7 ГБ всего
+Диск данных:    2.5 ГБ свободно / 252.0 ГБ
+Папка данных:   /data
+Модели:         /data/models · {'checkpoint': 1} · 0.0 ГБ
+Кэш HF:         /data/huggingface-cache · 0.0 ГБ
+Метка данных:   создана 2026-10-25 22:57
+Python 3.12.3 · torch 2.10.0 · torchvision 0.25.0 · diffusers 0.36.0 · transformers 4.57.3 · accelerate 1.12.0 · peft 0.18.0 · huggingface-hub 0.36.0 · safetensors 0.7.0 · fastapi 0.115.12 · uvicorn 0.34.2 · pydantic 2.11.4 · controlnet-aux 0.0.10 · opencv-python-headless 4.11.0.86 · timm 1.0.22 · Pillow 12.3.0 · gdown 6.4.2
+
+Движок:         READY · health: READY
+Модель в памяти: нет — загрузится при первой генерации
+Ссылка:         нет
+Последний запуск: server_ready 6.2 с
+
+ПРЕДУПРЕЖДЕНИЯ:
+  • CUDA недоступна: генерация невозможна. 
+  • Свободно 2.5 ГБ: меньше 20 ГБ. Загрузка моделей может не поместиться.
+[exit 0]
+
+$ ./fetch-models-cloudcompute.sh list
+checkpoint SDXL                    0.00 ГБ  test_sdxl.safetensors
+[exit 0]
+
+$ ./check-cloudcompute.sh logs
+===== server.log (последние 40 строк)
+===== docker logs yoisaki-engine
+2026-10-25 22:57:52 YOISAKI ENGINE · CloudCompute deployment 1.7.1 · данные: /data
+2026-10-25 22:57:52 Проверка GPU пропущена (YOISAKI_GPU_PREFLIGHT=0).
+2026-10-25 22:57:57 Сервер готов: YOISAKI ENGINE v1.7.0 · GPU TEST_DOUBLE_NOT_REAL_GPU · VRAM 15360/16384 МБ
+2026-10-25 22:57:57 Модели: checkpoints 1 · LoRA 0 · VAE 0 (/data/models)
+2026-10-25 22:57:57 Туннель отключён (YOISAKI_TUNNEL=0): движок доступен только локально на сервере.
+2026-10-25 22:57:57 YOISAKI ENGINE готов. Модель SDXL загружается при первой генерации (если не включён прогрев).
+[exit 0]
+
+$ ./stop-cloudcompute.sh
+Останавливаю контейнер yoisaki-engine (до 45 с на корректное завершение)…
+✔ YOISAKI ENGINE остановлен. Ссылка на сайте больше не работает.
+
+💰 Остановка движка НЕ останавливает оплату GPU-инстанса.
+   Остановите или удалите инстанс в панели CloudCompute. Остановленный инстанс продолжает
+   оплачивать хранение диска; удаление инстанса может безвозвратно удалить модели на его диске.
+[exit 0]
+
+# after stop: containers=0 image=1 token_file=0 phase=STOPPED
+# after: model sha=3099b2cc1ba1301c outputs/user-file.png=keep data-id={"id": "eadf66ca1a3491200263888540c53613", "created_unix": 1792969071}
+
+$ ./start-cloudcompute.sh
+YOISAKI ENGINE · CloudCompute · режим: docker · данные: <scratch>/e2e-data
+⚠ Свободно 2 ГБ на диске данных: мало для моделей и кэша.
+✔ Образ yoisaki-engine:1.7.1-cloudcompute уже собран — пересборка не нужна.
+Жду готовности: проверка GPU → сервер → (прогрев) → туннель Cloudflare…
+
+Проверка: ./check-cloudcompute.sh   ·   Остановка: ./stop-cloudcompute.sh
+
+💰 Остановка движка НЕ останавливает оплату GPU-инстанса.
+   Остановите или удалите инстанс в панели CloudCompute. Остановленный инстанс продолжает
+   оплачивать хранение диска; удаление инстанса может безвозвратно удалить модели на его диске.
+[exit 0]
+wall time of repeated start: 7.2 s
+
+$ cat diagnostics/startup-timings.jsonl
+{"run_id":"d0fe5082d189","deploy_version":"1.7.1","launcher_start_unix":1792969072.191356,"container_start_unix":1792969071.14,"server_ready_unix":1792969077.2991588,"server_ready_after_s":6.2}
+{"run_id":"fe2c7d399876","deploy_version":"1.7.1","launcher_start_unix":1792969086.4258094,"container_start_unix":1792969085.34,"server_ready_unix":1792969091.536871,"server_ready_after_s":6.2}
+
+$ ./stop-cloudcompute.sh
+Останавливаю контейнер yoisaki-engine (до 45 с на корректное завершение)…
+✔ YOISAKI ENGINE остановлен. Ссылка на сайте больше не работает.
+
+💰 Остановка движка НЕ останавливает оплату GPU-инстанса.
+   Остановите или удалите инстанс в панели CloudCompute. Остановленный инстанс продолжает
+   оплачивать хранение диска; удаление инстанса может безвозвратно удалить модели на его диске.
+[exit 0]

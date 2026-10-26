@@ -1,0 +1,13 @@
+{
+  "version": "1.7.1",
+  "source_sha256": "f7ef509333957299722ca92add4a048115ea370afad6488c2f291d09e3676a11",
+  "outputs": {
+    "dist/assets/Editor-BDZ35FTK.js": "851328baa0642fe32c9ef135dad600c5b4855f7704c5ebc9b5a75be74f2f3fcb",
+    "dist/assets/chunk-UNWFJVFP.js": "d67685592cc60c96bc2197216d4fabbedc22e4451d207380210138234f24a345",
+    "dist/assets/main.css": "fecedd492444491a54af0639da0e21fe550957c45109007e5601732669ec46ee",
+    "dist/assets/main.js": "f4327bf9c72c1903a267022959e9460d650c040a5681e2e858a01ccbe1c5787c",
+    "dist/index.html": "d8be4550521e72df719ef30924d79c1d96f7391c504e58a79712e73b4944ae49",
+    "dist/logo/y-512.webp": "a19cd29aff36be5b6a92d8fb5568f1920790a3aeb5815c21050fdffe5d221599",
+    "dist/logo/y-original.png": "5501cb9ac2542f0347fefa16d856c7c65558df5c63e2da6682884842f9f9ca57"
+  }
+}

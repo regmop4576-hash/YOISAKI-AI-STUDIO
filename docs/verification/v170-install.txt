@@ -1,0 +1,16 @@
+# v1.7.0 install/update test (Linux, isolated HOME, Node v22.22.0)
+Проверка целостности файлов: OK
+Production build ready: dist/
+Установлено. Локальная production-сборка готова.
+fresh /api/session: {"ok":true,"version":"1.7.0","storage_warning":""}
+v1.6.2 installed
+{"ok":true}
+Проверка целостности файлов: OK
+Проверка целостности файлов: OK
+Обновлено. Пользовательские данные сохранены отдельно в домашней папке Termux.
+Предыдущая версия: $HOME/app.backup-20261025-144557
+updated /api/session: {"ok":true,"version":"1.7.0","storage_warning":""}
+settings after update: {"value":{"state":{"settings":{"prompt":"kept prompt","mode":"img2img","denoise":0.35},"presets":[{"id":"p1","name":"kept preset","version":1,"settings":{"prompt":"x","width":1024,"loras":[]}}],"language":"Русский"},"version":2}}
+backup folder: app.backup-20261025-144557
+node --test in installed copy: # pass 40 # fail 0 
+embedded notebook equals the separate deliverable: yes
