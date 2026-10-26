@@ -1,0 +1,66 @@
+# Release ZIP: YOISAKI_AI_STUDIO_V1.7.1_CLOUDCOMPUTE_EDITION.zip  size 1730890 bytes  sha256 7776e9832b3f5bea5e6a6ed6deca093a553323ef42aa15ac5066244bdb27d651
+$ unzip -Z1 | wc -l; forbidden entries (__pycache__, .git, node_modules, dist, .venv, symlinks)
+190
+0
+0
+$ top-level folder (update.sh compatibility path)
+YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION
+
+# 1) engine/ and colab/ byte-identical to the v1.7.0 release ZIP
+engine/: identical (25 files)
+colab/: identical
+server/: identical
+src/: identical
+scripts/: identical
+public/: identical
+install.sh: identical
+start.sh: identical
+stop.sh: identical
+update.sh: identical
+diagnostics.sh: identical
+package.json: identical
+package-lock.json: identical
+tsconfig.json: identical
+$ diff -rq v1.7.0 v1.7.1 (files changed or added)
+Only in new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION: .dockerignore
+Files old/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/CHANGELOG_RU.md and new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/CHANGELOG_RU.md differ
+Only in new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION: Dockerfile
+Files old/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/README_RU.md and new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/README_RU.md differ
+Only in new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION: YOISAKI_V1.7.1_CLOUDCOMPUTE_REPORT.md
+Only in new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION: check-cloudcompute.sh
+Only in new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION: cloudcompute
+Only in new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION: docker-compose.yml
+Files old/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/docs/CHANGELOG_RU.md and new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/docs/CHANGELOG_RU.md differ
+Only in new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/docs: CLOUDCOMPUTE_INSTALL_ANDROID_RU.md
+Only in new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/docs/verification: v171-cloudcompute-research.txt
+Only in new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/docs/verification: v171-compose-config.txt
+Only in new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/docs/verification: v171-docker-build.txt
+Only in new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/docs/verification: v171-docker-e2e.txt
+Only in new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/docs/verification: v171-native-in-image.txt
+Only in new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/docs/verification: v171-node.txt
+Only in new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/docs/verification: v171-python-host.txt
+Only in new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/docs/verification: v171-python-image.txt
+Only in new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/docs/verification: v171-shellcheck.txt
+Only in new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION: fetch-models-cloudcompute.sh
+Files old/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/package-manifest.json and new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/package-manifest.json differ
+Only in new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION: start-cloudcompute.sh
+Only in new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION: stop-cloudcompute.sh
+Only in new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests: test_v171_cloudcompute.py
+
+# 2) fresh install from the new ZIP (Linux; Termux uses the same install.sh)
+Проверка целостности файлов: OK
+> node scripts/build.mjs
+Production build ready: dist/
+Установлено. Локальная production-сборка готова.
+Запуск: ./start.sh
+[exit 0] dist/index.html: present
+
+# 3) update.sh of an installed v1.7.0 with the new ZIP (the phone update path)
+v1.7.0 installed
+Production build ready: dist/
+Установлено. Локальная production-сборка готова.
+Запуск: ./start.sh
+Обновлено. Пользовательские данные сохранены отдельно в домашней папке Termux.
+Предыдущая версия: <scratch>/pkgcheck/upd/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION.backup-20261026-000053
+Запуск: <scratch>/pkgcheck/upd/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/start.sh
+[exit 0] version in updated app: 1.7.1 · start-cloudcompute.sh executable: yes

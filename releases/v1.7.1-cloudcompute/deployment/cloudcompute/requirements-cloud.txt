@@ -1,0 +1,8 @@
+# CloudCompute runtime only. Colab keeps its preinstalled CUDA torch (engine/bootstrap.py) and never reads this file.
+# torch 2.10.0 is the newest PyPI release whose default Linux x86_64 wheels use CUDA 12.8 (cu12):
+# native kernels for sm_75 (Tesla T4) ... sm_86 (RTX 3060/3090, A5000) ... sm_120 (RTX 50xx, e.g. 5060 Ti).
+# torch >= 2.11 PyPI wheels switch to CUDA 13 and need a newer host driver; not used on purpose.
+torch==2.10.0
+torchvision==0.25.0
+# Google Drive share-link downloads for fetch-models-cloudcompute.sh (not used by inference).
+gdown==6.4.2
