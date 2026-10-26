@@ -1,12 +1,12 @@
 {
-  "version": "1.7.1",
-  "source_sha256": "f7ef509333957299722ca92add4a048115ea370afad6488c2f291d09e3676a11",
+  "version": "1.7.2",
+  "source_sha256": "d31269ba4870cf17719b04cfba15520840f2f72b16437a943ee758ebe011b75a",
   "outputs": {
-    "dist/assets/Editor-BDZ35FTK.js": "851328baa0642fe32c9ef135dad600c5b4855f7704c5ebc9b5a75be74f2f3fcb",
-    "dist/assets/chunk-UNWFJVFP.js": "d67685592cc60c96bc2197216d4fabbedc22e4451d207380210138234f24a345",
-    "dist/assets/main.css": "fecedd492444491a54af0639da0e21fe550957c45109007e5601732669ec46ee",
-    "dist/assets/main.js": "f4327bf9c72c1903a267022959e9460d650c040a5681e2e858a01ccbe1c5787c",
-    "dist/index.html": "d8be4550521e72df719ef30924d79c1d96f7391c504e58a79712e73b4944ae49",
+    "dist/assets/Editor-C53HVYWA.js": "130968e19dae8f747b92fe9fdceed4c955240e46a3541158378c671b75394e4f",
+    "dist/assets/chunk-VPHKVEYS.js": "efbed5a872175aa0bef5aaf21357bbd3a18a14499e09e16e1e43d6d572217d27",
+    "dist/assets/main.css": "6837a1f0a0df65799bc9135a196019ad9483400eccb85fb783f152c1635cc5fa",
+    "dist/assets/main.js": "f0e9f2f23e37f83d475ffde884e2280bf129af68f33f8acf52192a1a316daa74",
+    "dist/index.html": "5ae978ead498ca9a009a2beaaef8fb1c093d3793fac57e57d6e74ddb9c1ce089",
     "dist/logo/y-512.webp": "a19cd29aff36be5b6a92d8fb5568f1920790a3aeb5815c21050fdffe5d221599",
     "dist/logo/y-original.png": "5501cb9ac2542f0347fefa16d856c7c65558df5c63e2da6682884842f9f9ca57"
   }

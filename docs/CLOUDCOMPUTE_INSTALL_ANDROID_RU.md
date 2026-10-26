@@ -1,3 +1,5 @@
+> **1.7.2:** синхронизация моделей из Google Drive, обновление пакета и полный порядок первого запуска — [YOISAKI_V1.7.2_CLOUDCOMPUTE_SETUP.md](../YOISAKI_V1.7.2_CLOUDCOMPUTE_SETUP.md). Разделы ниже (SSH, GPU, диск, режимы, остановка, оплата) остаются в силе; имя ZIP замените на `YOISAKI_AI_STUDIO_V1.7.2_GOOGLE_DRIVE_AUTO_SYNC.zip`. Ручной `fetch-models-cloudcompute.sh gdrive` с публичной ссылкой больше не обязателен.
+
 > Обновлено для UI FIX 1.7.1. Обновление телефона: ../YOISAKI_V1.7.1_TERMUX_UPDATE.md. Нижний раздел прежнего аудита — историческая запись.
 
 # YOISAKI ENGINE на CloudCompute — установка с Android-телефона

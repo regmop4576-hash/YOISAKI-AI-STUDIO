@@ -19,6 +19,8 @@ done
 
 yoisaki_load_config
 TIMEOUT=${YOISAKI_START_TIMEOUT:-900}
+# Drive sync writes verified files into models/: the engine container mounts it rw only when sync is on.
+if [[ ${YOISAKI_DRIVE_SYNC:-1} == 0 ]]; then export YOISAKI_MODELS_MOUNT=ro; else export YOISAKI_MODELS_MOUNT=rw; fi
 MODE=$(yoisaki_mode)
 STATE=$YOISAKI_DATA_ROOT/runtime/state
 
@@ -41,6 +43,17 @@ wait_for_link() {   # $1 = command that succeeds while the engine is alive
     if (( SECONDS - start > TIMEOUT )); then warn "Нет готовности за ${TIMEOUT} с."; return 1; fi
     sleep 2
   done
+}
+
+# YOISAKI_DRIVE_AUTOSYNC=1: download missing/changed models BEFORE the engine and tunnel start.
+autosync() {
+  [[ ${YOISAKI_DRIVE_AUTOSYNC:-0} == 1 && ${YOISAKI_DRIVE_SYNC:-1} != 0 ]] || return 0
+  if [[ ! -s $YOISAKI_DATA_ROOT/config/rclone/rclone.conf ]]; then
+    warn 'YOISAKI_DRIVE_AUTOSYNC=1, но Google Drive не подключён: ./drive-sync-cloudcompute.sh connect'
+    return 0
+  fi
+  say 'Синхронизация моделей с Google Drive перед запуском движка…'
+  bash "$YOISAKI_APP/drive-sync-cloudcompute.sh" sync || warn 'Синхронизация не завершена; движок запускается с уже установленными моделями.'
 }
 
 source_hash() {
@@ -67,6 +80,7 @@ start_docker() {
   else
     say "✔ Образ $YOISAKI_IMAGE уже собран — пересборка не нужна."
   fi
+  autosync
   rm -f -- "$STATE/link.txt" "$STATE/launcher.json"
   yoisaki_compose up -d --no-build engine
   docker_alive() { [[ $(yoisaki_container_state) == running ]]; }
@@ -102,6 +116,7 @@ start_native() {
   elif [[ $(id -u) == 0 ]]; then
     warn 'Движок будет работать от root (нет runuser/useradd или YOISAKI_RUN_AS_ROOT=1).'
   fi
+  autosync
   rm -f -- "$STATE/link.txt" "$STATE/launcher.json"
   [[ -f $YOISAKI_DATA_ROOT/logs/launcher.out ]] && mv -f "$YOISAKI_DATA_ROOT/logs/launcher.out" "$YOISAKI_DATA_ROOT/logs/launcher.out.1"
   # Detached from this SSH session: closing Termux does not stop the engine.

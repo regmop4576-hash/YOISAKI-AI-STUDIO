@@ -1,10 +1,10 @@
-# YOISAKI ENGINE · CloudCompute deployment 1.7.1. Use through ./start-cloudcompute.sh, which sets
+# YOISAKI ENGINE · CloudCompute deployment 1.7.2. Use through ./start-cloudcompute.sh, which sets
 # YOISAKI_DATA_ROOT / YOISAKI_UID / YOISAKI_GID / YOISAKI_SOURCE_HASH and builds the image only when needed.
 # No port is published: the website reaches the engine through the Cloudflare tunnel started inside.
 name: yoisaki
 
 x-engine: &engine
-  image: yoisaki-engine:1.7.1-cloudcompute
+  image: yoisaki-engine:1.7.2-cloudcompute
   user: "${YOISAKI_UID:-1000}:${YOISAKI_GID:-1000}"
   environment:
     YOISAKI_PORT: "${YOISAKI_PORT:-8765}"
@@ -14,6 +14,10 @@ x-engine: &engine
     YOISAKI_RAM_FIX: "${YOISAKI_RAM_FIX:-1}"
     YOISAKI_TUNNEL: "${YOISAKI_TUNNEL:-1}"
     YOISAKI_TUNNEL_RESTARTS: "${YOISAKI_TUNNEL_RESTARTS:-3}"
+    # 1.7.2 Google Drive model sync (read-only on Drive). The OAuth token stays in /data/config/rclone (0600).
+    YOISAKI_DRIVE_SYNC: "${YOISAKI_DRIVE_SYNC:-1}"
+    YOISAKI_DRIVE_REMOTE: "${YOISAKI_DRIVE_REMOTE:-yoisaki-gdrive}"
+    YOISAKI_DRIVE_PATH: "${YOISAKI_DRIVE_PATH:-YOISAKI_AI_STUDIO/models}"
     PYTORCH_CUDA_ALLOC_CONF:
     # Secrets are never written into this file.
     HF_TOKEN:
@@ -46,15 +50,17 @@ services:
     stop_grace_period: 45s
     volumes:
       - "${YOISAKI_DATA_ROOT:-/workspace/yoisaki-data}:/data"
-      # The engine only reads weights: models are mounted read-only.
-      - "${YOISAKI_DATA_ROOT:-/workspace/yoisaki-data}/models:/data/models:ro"
+      # Read-only unless Drive sync is enabled: start-cloudcompute.sh sets YOISAKI_MODELS_MOUNT=rw only then.
+      # Inference never writes weights; the sync service adds verified files atomically and never deletes any.
+      - "${YOISAKI_DATA_ROOT:-/workspace/yoisaki-data}/models:/data/models:${YOISAKI_MODELS_MOUNT:-ro}"
     logging:
       driver: json-file
       options:
         max-size: 10m
         max-file: "3"
 
-  # One-off helper (diagnostics, model downloads): ./check-cloudcompute.sh, ./fetch-models-cloudcompute.sh
+  # One-off helper (diagnostics, model downloads, Drive sync while the engine is stopped):
+  # ./check-cloudcompute.sh, ./fetch-models-cloudcompute.sh, ./drive-sync-cloudcompute.sh
   tools:
     <<: *engine
     profiles: [tools]

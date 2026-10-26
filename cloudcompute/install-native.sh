@@ -72,6 +72,20 @@ install_cloudflared() {
   say '✔ cloudflared установлен и проверен (SHA-256).'
 }
 
+# 1.7.2: rclone for the read-only Google Drive model sync (distribution package, verified by apt).
+install_rclone() {
+  if [[ -n ${YOISAKI_RCLONE:-} && -x ${YOISAKI_RCLONE} ]] || command -v rclone >/dev/null 2>&1; then
+    say "✔ rclone: $( { "${YOISAKI_RCLONE:-rclone}" version 2>/dev/null || true; } | head -n1)"
+    return
+  fi
+  if [[ $(id -u) == 0 ]] && command -v apt-get >/dev/null; then
+    say 'Установка rclone (apt)…'
+    apt-get update -qq && apt-get install -y -qq rclone >/dev/null && { say '✔ rclone установлен.'; return; }
+  fi
+  warn 'rclone не установлен: синхронизация с Google Drive недоступна (движок работает). Установите rclone (apt install rclone) от root.'
+}
+
 [[ $(uname -m) == x86_64 ]] || die 'Поддерживается только x86_64 (amd64).'
 install_venv
 install_cloudflared
+[[ ${YOISAKI_DRIVE_SYNC:-1} == 0 ]] || install_rclone

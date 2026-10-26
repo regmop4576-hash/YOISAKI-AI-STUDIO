@@ -56,7 +56,7 @@ test('serialized cleanup and concurrent completion do not lose unrelated changes
  assert.equal((await h.call('/api/history/'+running.id,'DELETE')).status,500);assert.equal(h.app.store.data.history.length,1);assert.equal(JSON.parse(await fs.readFile(h.app.store.file)).history.length,1);h.app.store.atomic=atomic;
  }finally{await h.app.close()}
 }));
-test('website and engine have independent versions and compatibility metadata',()=>temp(async dir=>{const h=await harness(dir);try{assert.equal(h.version.version,'1.7.1');const r=await h.connect();assert.equal(r.body.website_version,'1.7.1');assert.equal(r.body.info.engine_version,'1.7.0');assert.equal(r.body.compatibility,'COMPATIBLE');assert.equal((await h.call('/api/diagnostics')).body.version,'1.7.1')}finally{await h.app.close()}}));
+test('website and engine have independent versions and compatibility metadata',()=>temp(async dir=>{const h=await harness(dir);try{assert.equal(h.version.version,'1.7.2');const r=await h.connect();assert.equal(r.body.website_version,'1.7.2');assert.equal(r.body.info.engine_version,'1.7.0');assert.equal(r.body.compatibility,'COMPATIBLE');assert.equal((await h.call('/api/diagnostics')).body.version,'1.7.2')}finally{await h.app.close()}}));
 test('deletion is atomic when a selected job becomes active before cleanup commits',()=>temp(async dir=>{
  const h=await harness(dir);try{const row=record('COMPLETED');await h.app.store.change(d=>{d.history=[row]});
  let release;const gate=new Promise(r=>{release=r});const blocker=h.app.store.change(async d=>{await gate;d.history[0].status='RUNNING'});

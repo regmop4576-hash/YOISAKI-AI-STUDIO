@@ -2,7 +2,8 @@ import {providerConfig,providerName,endpoint} from './providers.mjs';
 import {validatePreprocess,validateControlImage,compactControlRequest} from './controlnet.mjs';
 import {compactSourceRequest} from './img2img.mjs';
 import {TERMINAL_STATUSES,HISTORY_LIMIT,isTerminal,matchesHistory} from './history.mjs';
-import {WEBSITE_VERSION,COMPATIBLE_ENGINE_FAMILY,engineCompatibility} from './release.mjs';
+import {WEBSITE_VERSION,STUDIO_EDITION,COMPATIBLE_ENGINE_FAMILY,engineCompatibility} from './release.mjs';
+import {SYNC_ACTIONS,validateSyncStatus,validateConnect} from './drive-sync.mjs';
 import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -88,7 +89,7 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
     providers={...providers,endpoints:{...providers.endpoints,[provider]:saved}};
     await store.change(d=>{d.preferences={...d.preferences,gpu:providers}});return send(res,status());
    }
-   if(route==='/api/version'&&method==='GET')return send(res,{studio_version:WEBSITE_VERSION,edition:'CLOUDCOMPUTE EDITION',compatible_engine:COMPATIBLE_ENGINE_FAMILY,engine_version:info?.engine_version??null,api_version:info?.api_version??null});
+   if(route==='/api/version'&&method==='GET')return send(res,{studio_version:WEBSITE_VERSION,edition:STUDIO_EDITION,compatible_engine:COMPATIBLE_ENGINE_FAMILY,engine_version:info?.engine_version??null,api_version:info?.api_version??null});
    if(route==='/api/gpu/connect'&&method==='POST'){
     const body=await jsonBody(req);const {url}=body;const provider=providerName(body.provider??providers.selected);
     if(provider!==providers.selected)fail('PROVIDER_CHANGED','Сначала выберите провайдера.',409);
@@ -104,6 +105,18 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
     if(/^1\.[5-7]\./.test(h.engine_version||''))for(const j of store.data.history.filter(j=>sameProvider(j,c)&&j.status==='COMPLETED'&&j.result?.image_keys?.every((_,i)=>store.data.gallery.some(g=>g.id===j.id+'_'+i))))acknowledgements.set(j.id,c);
     lastError='';lastCode='';note('CONNECTED');return send(res,status());
     }catch(e){if(version===epoch){state='ERROR';connection=null;info=null;lastError=publicError(e).error;lastCode=e.code||'LOCAL_ERROR';note(lastCode)}throw e}
+   }
+   const driveMatch=route.match(/^\/api\/gpu\/drive\/(status|check|sync|cancel|connect|disconnect)$/);
+   if(driveMatch){
+    const [remoteMethod,remoteRoute]=SYNC_ACTIONS[driveMatch[1]];
+    if(method!==remoteMethod)fail('METHOD_DENIED','Метод не поддерживается.',405);
+    if(!connection)fail('GPU_OFFLINE','GPU отключён. Подключите CloudCompute в разделе GPU.',409);
+    if(connection.provider!=='cloudcompute')fail('DRIVE_CLOUDCOMPUTE_ONLY','Google Drive Auto Sync доступна только для CloudCompute.',409);
+    // The connect body (OAuth token) is forwarded once and never stored, logged or echoed.
+    const body=driveMatch[1]==='connect'?validateConnect(await jsonBody(req)):remoteMethod==='POST'?'{}':undefined;
+    const c=connection;const result=await upstream(c,remoteRoute,{method:remoteMethod,body,timeout:30000});
+    if(connection!==c)fail('SUPERSEDED','Провайдер изменён.',409);
+    if(driveMatch[1]!=='status')note('DRIVE_'+driveMatch[1].toUpperCase());return send(res,validateSyncStatus(result));
    }
    if(route==='/api/gpu/disconnect'&&method==='POST'){await disconnectSession();return send(res,status())}
    if(route==='/api/gpu/status'&&method==='GET')return send(res,await refresh(u.searchParams.get('models')==='1'));

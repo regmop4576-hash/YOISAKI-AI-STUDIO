@@ -5,7 +5,7 @@
 YOISAKI_APP=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
 export YOISAKI_DATA_ROOT=${YOISAKI_DATA_ROOT:-/workspace/yoisaki-data}
 # shellcheck disable=SC2034  # constants used by the scripts that source this file
-YOISAKI_IMAGE=yoisaki-engine:1.7.1-cloudcompute
+YOISAKI_IMAGE=yoisaki-engine:1.7.2-cloudcompute
 YOISAKI_CONTAINER=yoisaki-engine
 # shellcheck disable=SC2034
 YOISAKI_RUN_USER=yoisaki
@@ -90,18 +90,20 @@ yoisaki_host_python() {
   if [[ -x $py ]]; then say "$py"; elif command -v python3 >/dev/null; then command -v python3; else say ''; fi
 }
 
-yoisaki_redact() { sed -E 's/[a-f0-9]{64}/[СКРЫТО]/g; s/(#token=|Bearer )[^[:space:]"]+/\1[СКРЫТО]/g'; }
+yoisaki_redact() { sed -E 's/[a-f0-9]{64}/[СКРЫТО]/g; s/(#token=|Bearer )[^[:space:]"]+/\1[СКРЫТО]/g; s/ya29\.[[:alnum:]._-]+|1\/\/[[:alnum:]._-]{20,}|GOCSPX-[[:alnum:]_-]+/[СКРЫТО]/g; s/"(access_token|refresh_token|client_secret)" *: *"[^"]*"/"\1":"[СКРЫТО]"/g'; }
 
 # Create only missing folders (same layout as Google Drive: models/{checkpoints,loras,vae,controlnet}).
 yoisaki_prepare_dirs() {
   local d
-  for d in models/checkpoints models/loras models/vae models/controlnet huggingface-cache outputs logs diagnostics \
-           runtime/state runtime/home runtime/bin config sdpose; do
+  for d in models/checkpoints models/loras models/vae models/controlnet models/.yoisaki-sync huggingface-cache outputs logs diagnostics \
+           runtime/state runtime/home runtime/bin runtime/sync config config/rclone sdpose; do
     mkdir -p "$YOISAKI_DATA_ROOT/$d" 2>/dev/null || [[ -d $YOISAKI_DATA_ROOT/$d ]] \
       || die "Нет прав на создание $YOISAKI_DATA_ROOT/$d (владелец папки данных: $(stat -c %U "$YOISAKI_DATA_ROOT" 2>/dev/null || echo '?'))."
   done
   # Only folders we own (a folder prepared by root for the engine user is left as it is).
-  for d in runtime/state config; do [[ -O $YOISAKI_DATA_ROOT/$d ]] && chmod 700 "$YOISAKI_DATA_ROOT/$d"; done
+  for d in runtime/state runtime/sync config/rclone models/.yoisaki-sync; do [[ -O $YOISAKI_DATA_ROOT/$d ]] && chmod 700 "$YOISAKI_DATA_ROOT/$d"; done
+  # config/: traverse-only for the engine user (reaches its own config/rclone); yoisaki.env stays 0600 and unlistable.
+  [[ -O $YOISAKI_DATA_ROOT/config ]] && chmod 711 "$YOISAKI_DATA_ROOT/config"
   [[ -w $YOISAKI_DATA_ROOT/runtime/state && -w $YOISAKI_DATA_ROOT/logs ]] \
     || die "Нет прав на запись в $YOISAKI_DATA_ROOT/runtime/state или logs. Запустите от владельца папки данных или от root."
   # Persistence probe, written once: if its date survives an instance stop/start, the disk is persistent.
@@ -113,11 +115,12 @@ yoisaki_prepare_dirs() {
 yoisaki_grant() {
   local owner=$1 d
   [[ $(id -u) == 0 ]] || return 0
-  for d in huggingface-cache outputs logs diagnostics runtime/state runtime/home; do
+  for d in huggingface-cache outputs logs diagnostics runtime/state runtime/home runtime/sync config/rclone models/.yoisaki-sync; do
     chown -R "$owner" "$YOISAKI_DATA_ROOT/$d"
   done
-  # Folders only (non-recursive): lets fetch-models add files; existing weights keep their owner.
-  chown "$owner" "$YOISAKI_DATA_ROOT/models"/{checkpoints,loras,vae,controlnet}
+  # Folders only (files keep their owner): lets fetch-models / Drive sync add files, also in subfolders.
+  chown "$owner" "$YOISAKI_DATA_ROOT/models"/controlnet
+  find "$YOISAKI_DATA_ROOT/models"/{checkpoints,loras,vae} -type d -exec chown "$owner" {} +
 }
 
 yoisaki_state_pid() {

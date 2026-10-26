@@ -5,6 +5,7 @@ import dns from 'node:dns/promises';
 import net from 'node:net';
 import {AppError,fail} from './errors.mjs';
 import {validHost,providerName,endpoint} from './providers.mjs';
+import {SYNC_ROUTES} from './drive-sync.mjs';
 export function parseTunnel(raw,provider='colab'){
  providerName(provider);
  let u;try{u=new URL(raw.trim())}catch{fail('INVALID_URL','Неверная ссылка. Вставьте полную ссылку из панели движка.')}
@@ -18,7 +19,7 @@ export function publicIP(ip){
  if(net.isIP(ip)===6){const normalized=ip.toLowerCase();return /^[23][0-9a-f]{0,3}:/.test(normalized)&&!(normalized.startsWith('2001:')&&(parseInt(normalized.split(':')[1]||'0',16)<0x200||parseInt(normalized.split(':')[1],16)===0xdb8))&&!normalized.startsWith('2002:')&&!normalized.includes('.')}
  return false;
 }
-export function allowedRoute(method,route){return method==='GET'&&['/health','/models'].includes(route)||method==='POST'&&(route==='/generate'||route==='/controlnet/preprocess'||/^\/jobs\/[a-f0-9-]{36}\/ack$/.test(route))||['GET','DELETE'].includes(method)&&/^\/jobs\/[a-f0-9-]{36}$/.test(route)||method==='GET'&&/^\/results\/[a-f0-9-]{36}\?index=[0-3]$/.test(route)}
+export function allowedRoute(method,route){return method==='GET'&&['/health','/models'].includes(route)||SYNC_ROUTES.includes(method+' '+route)||method==='POST'&&(route==='/generate'||route==='/controlnet/preprocess'||/^\/jobs\/[a-f0-9-]{36}\/ack$/.test(route))||['GET','DELETE'].includes(method)&&/^\/jobs\/[a-f0-9-]{36}$/.test(route)||method==='GET'&&/^\/results\/[a-f0-9-]{36}\?index=[0-3]$/.test(route)}
 export async function requestUpstream(connection,route,{method='GET',body,timeout=45000,binary=false,lookup=dns.lookup,transport=https.request}={}){
  if(!connection||!validHost(connection.hostname,connection.provider||'colab')||connection.origin!=='https://'+connection.hostname||!allowedRoute(method,route))fail('PROXY_DENIED','Запрос к этому endpoint запрещён.',403);
  let addresses;let timer;
@@ -35,6 +36,8 @@ export async function requestUpstream(connection,route,{method='GET',body,timeou
  if(status>=300&&status<400)return finish(new AppError('REDIRECT_REJECTED','Туннель перенаправляет запрос. Скопируйте новую прямую ссылку.',502));
  if(status===401||status===403)return finish(new AppError('AUTH_REJECTED','GPU отклонил токен. Скопируйте свежую полную ссылку из панели движка.',401));
  if(status>=400&&route==='/controlnet/preprocess'){let detail;try{detail=JSON.parse(data.toString()).detail}catch{}if(typeof detail==='string')return finish(new AppError('CONTROL_PREPROCESS_FAILED',detail.replace(/[a-f0-9]{64}/g,'[СКРЫТО]').slice(0,600),status));}
+ // v1.7.2: Drive sync keeps the engine's code and sanitised reason; 404 = the server has no sync service (Colab, CloudCompute 1.7.1).
+ if(status>=400&&route.startsWith('/sync/')){if(status===404)return finish(new AppError('DRIVE_SYNC_UNAVAILABLE','На этом GPU-сервере нет Google Drive Auto Sync. Обновите пакет CloudCompute до 1.7.2 и перезапустите движок.',409));let code='';try{code=String(JSON.parse(data.toString()).code||'')}catch{}const detail=engineDetail(data);return finish(new AppError(/^[A-Z_]{2,30}$/.test(code)?'DRIVE_'+code:'DRIVE_ERROR',detail||`Синхронизация: HTTP ${status}.`,status===409?409:status===422?400:502))}
  // AUD-009: keep the engine's own reason for rejected /generate requests (sanitised, no tokens/paths/traces).
  if(route==='/generate'&&[400,422,429,507].includes(status)){const detail=engineDetail(data);if(detail)return finish(new AppError(status===422||status===400?'INVALID_PARAMETERS':'UPSTREAM_HTTP','GPU отклонил задание: '+detail,status===429?409:502))}
  if(status>=400)return finish(new AppError(status===404?'JOB_NOT_FOUND':status===409?'GPU_BUSY':status===422?'INVALID_PARAMETERS':'UPSTREAM_HTTP',status===409?'GPU занят предыдущей задачей.':status===422?'GPU отклонил параметры генерации. Проверьте размеры, шаги и выбранные режимы.':`Туннель/движок ответил HTTP ${status}. Проверьте GPU-сервер и повторите запрос.`,status===409?409:502));

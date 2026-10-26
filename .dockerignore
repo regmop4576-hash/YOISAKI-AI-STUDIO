@@ -7,6 +7,7 @@
 !stop-cloudcompute.sh
 !check-cloudcompute.sh
 !fetch-models-cloudcompute.sh
+!drive-sync-cloudcompute.sh
 engine/.venv
 engine/.results
 engine/**/__pycache__

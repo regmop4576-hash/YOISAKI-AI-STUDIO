@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# YOISAKI ENGINE · CloudCompute deployment 1.7.1 (engine protocol 1.7.0, engine/ unchanged).
+# YOISAKI ENGINE · CloudCompute deployment 1.7.2 (engine protocol 1.7.0, engine/ unchanged).
 # Model weights are NEVER part of the image: they live on the persistent data volume (/data).
 #
 # CUDA 12.8 base: the minimum CUDA for RTX 50xx (sm_120); the PyTorch wheel brings its own CUDA 12.8
@@ -34,9 +34,16 @@ RUN curl -fsSL -o /usr/local/bin/cloudflared \
  && echo "${CLOUDFLARED_SHA256}  /usr/local/bin/cloudflared" | sha256sum -c - \
  && chmod 0755 /usr/local/bin/cloudflared
 
+# 1.7.2: rclone for the read-only Google Drive model sync (Ubuntu archive package, verified by apt signatures).
+# A separate layer AFTER the PyTorch layer: upgrading from 1.7.1 reuses the cached ~7 GB dependency layer.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends rclone \
+ && rm -rf /var/lib/apt/lists/* \
+ && rclone version | head -n1
+
 COPY engine/ /opt/yoisaki/engine/
 COPY cloudcompute/ /opt/yoisaki/cloudcompute/
-COPY start-cloudcompute.sh stop-cloudcompute.sh check-cloudcompute.sh fetch-models-cloudcompute.sh /opt/yoisaki/
+COPY start-cloudcompute.sh stop-cloudcompute.sh check-cloudcompute.sh fetch-models-cloudcompute.sh drive-sync-cloudcompute.sh /opt/yoisaki/
 
 # Same import check as the Colab installer + PyTorch kernels for sm_75..sm_120 (no GPU needed at build).
 RUN cd /opt/yoisaki/engine && /opt/yoisaki/venv/bin/python /opt/yoisaki/cloudcompute/import_check.py /opt/yoisaki/engine \
@@ -68,4 +75,4 @@ STOPSIGNAL SIGTERM
 ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["/opt/yoisaki/venv/bin/python", "/opt/yoisaki/cloudcompute/launcher.py", "run"]
 LABEL org.opencontainers.image.title="YOISAKI ENGINE CloudCompute" \
-      org.opencontainers.image.version="1.7.1"
+      org.opencontainers.image.version="1.7.2"

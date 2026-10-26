@@ -23,12 +23,13 @@ def run(args,cwd=None,ok=True):
 try:
  run(['bash','start.sh'],app)
  request=urllib.request.Request('http://127.0.0.1:3000/api/session',headers={'X-Yoisaki-Local':'1'})
- with urllib.request.urlopen(request) as response:assert json.load(response)['version']=='1.7.0'
- print('PASS baseline old server 1.7.0 on port 3000')
+ old_version=json.loads((app/'package.json').read_text())['version']
+ with urllib.request.urlopen(request) as response:assert json.load(response)['version']==old_version
+ print(f'PASS baseline old server {old_version} on port 3000')
  run(['bash',str(new/'update.sh'),str(archive),str(app)])
  with urllib.request.urlopen(request) as response:
-  assert json.load(response)['version']=='1.7.1';cookie=response.headers['Set-Cookie'].split(';')[0]
- with urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:3000/api/version',headers={'X-Yoisaki-Local':'1','Cookie':cookie})) as response:assert json.load(response)['studio_version']=='1.7.1'
+  assert json.load(response)['version']=='1.7.2';cookie=response.headers['Set-Cookie'].split(';')[0]
+ with urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:3000/api/version',headers={'X-Yoisaki-Local':'1','Cookie':cookie})) as response:assert json.load(response)['studio_version']=='1.7.2'
  actual=json.loads((data/'state.json').read_text());assert actual==state
  assert (data/'images'/image_id).read_bytes()==b'user-image-preservation-test'
  backups=list(base.glob('installed.backup-*'));assert len(backups)==1
@@ -48,9 +49,9 @@ try:
  # Non-destructive manual rollback exactly as documented.
  app.rename(base/'saved-new');shutil.copytree(backups[0],app)
  run(['bash','start.sh'],app)
- with urllib.request.urlopen(request) as response:assert json.load(response)['version']=='1.7.0'
+ with urllib.request.urlopen(request) as response:assert json.load(response)['version']==old_version
  assert (data/'images'/image_id).read_bytes()==b'user-image-preservation-test'
- print('PASS manual rollback to old 1.7.0, user data unchanged; Linux simulation, not Android hardware')
+ print(f'PASS manual rollback to old {old_version}, user data unchanged; Linux simulation, not Android hardware')
 finally:
  if app.exists():run(['bash','stop.sh'],app,False)
  shutil.rmtree(base)

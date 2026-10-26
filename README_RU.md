@@ -1,6 +1,13 @@
-# YOISAKI AI STUDIO v1.7.1 — CLOUDCOMPUTE EDITION
+# YOISAKI AI STUDIO v1.7.2 — GOOGLE DRIVE AUTO SYNC EDITION
 
-Студия 1.7.1 использует YOISAKI ENGINE 1.7.0 / API 1.7.0. Версии релиза и протокола независимы. Отдельные кнопки Google Colab / CloudCompute находятся на странице GPU. Старые движки отклоняются с понятной ошибкой. Выпуск 1.7.0 подключает настоящий Image-to-Image — см. `YOISAKI_V1.7.0_IMG2IMG_REPORT.md`. SDPose-OOD 1.6.2 (`YOISAKI_V1.6.2_SDPOSE_REPORT.md`) и исправления 1.6.1 (`YOISAKI_V1.6.1_STABILITY_REPORT.md`) сохранены.
+**Новое в 1.7.2:** страница «Модели» → раздел **GOOGLE DRIVE AUTO SYNC** (только CloudCompute). GPU-сервер сам скачивает модели из вашей приватной папки `Мой диск/YOISAKI_AI_STUDIO/models/{checkpoints,loras,vae}`: только чтение Drive, без публичных ссылок, с докачкой, проверкой файлов и атомарной установкой. Локальные модели при этом не удаляются. Инструкции:
+
+- `YOISAKI_V1.7.2_TERMUX_INSTALL.md` — обновление телефона;
+- `YOISAKI_V1.7.2_CLOUDCOMPUTE_SETUP.md` — сервер;
+- `YOISAKI_V1.7.2_GOOGLE_DRIVE_SETUP.md` — однократная авторизация;
+- `YOISAKI_V1.7.2_DEVELOPMENT_REPORT.md` и `YOISAKI_V1.7.2_TEST_RESULTS.md` — отчёты.
+
+Студия 1.7.2 использует YOISAKI ENGINE 1.7.0 / API 1.7.0 (протокол не менялся). Версии релиза и протокола независимы. Отдельные кнопки Google Colab / CloudCompute находятся на странице GPU. Старые движки отклоняются с понятной ошибкой. Выпуск 1.7.0 подключает настоящий Image-to-Image — см. `YOISAKI_V1.7.0_IMG2IMG_REPORT.md`. SDPose-OOD 1.6.2 (`YOISAKI_V1.6.2_SDPOSE_REPORT.md`) и исправления 1.6.1 (`YOISAKI_V1.6.1_STABILITY_REPORT.md`) сохранены.
 
 Сохранён локальный React/esbuild + Node.js проект из v1.5.4. Next.js отсутствует в активном runtime исходного архива; архитектура не заменялась. AMBER CORE, галерея, очередь, Regional Control, LoRA, sampler/scheduler сохранены.
 
@@ -10,7 +17,7 @@
 
 Архив содержит исходники и проверенную production-сборку dist, без node_modules. install.sh проверяет соответствие сборки исходникам, при необходимости выполняет npm ci и npm run build. Для пересборки нужен интернет.
 
-Для безопасного обновления используйте новый update.sh из нового архива с путём старой установки. Точная процедура, резервные копии и откат: `YOISAKI_V1.7.1_TERMUX_UPDATE.md`. Не распаковывайте поверх старого каталога.
+Для безопасного обновления используйте новый update.sh из нового архива с путём старой установки. Точная процедура, резервные копии и откат: `YOISAKI_V1.7.2_TERMUX_INSTALL.md`. Не распаковывайте поверх старого каталога.
 Внутренняя папка ZIP намеренно называется `YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION`: старый updater ищет именно этот путь. Это путь совместимости, а не версия приложения. Настройки и изображения остаются в прежнем отдельном каталоге данных.
 
 В Colab откройте `colab/YOISAKI_ENGINE_V1.7.0_IMG2IMG_EDITION.ipynb`, выберите T4, выполните подготовку и запустите движок через прежнюю панель. Вставьте новую ссылку туннеля в GPU.
@@ -44,7 +51,7 @@
 
 ## Проверки и ограничения
 
-Актуальные отчёты: `YOISAKI_V1.7.1_UI_FIX_REPORT.md` и `YOISAKI_V1.7.1_TEST_RESULTS.md`; история Img2Img: `YOISAKI_V1.7.0_IMG2IMG_REPORT.md` (SDPose-OOD — `YOISAKI_V1.6.2_SDPOSE_REPORT.md`, исправления 1.6.1 — `YOISAKI_V1.6.1_STABILITY_REPORT.md`, история ControlNet v1.6.0 — `YOISAKI_CONTROLNET_V1.6.0_CHANGELOG.md`). CPU/контрактные проверки не заменяют реальный GPU-прогон. RAM/VRAM T4, качество Illustrious, загрузка настоящих весов SDPose-OOD, настоящая Img2Img- и ControlNet-генерация на GPU в этой среде не проверены. Не гарантируется работа любого SDXL ControlNet с любым Illustrious checkpoint.
+Актуальные отчёты: `YOISAKI_V1.7.2_DEVELOPMENT_REPORT.md` и `YOISAKI_V1.7.2_TEST_RESULTS.md`; предыдущие — `YOISAKI_V1.7.1_UI_FIX_REPORT.md` и `YOISAKI_V1.7.1_TEST_RESULTS.md`; история Img2Img: `YOISAKI_V1.7.0_IMG2IMG_REPORT.md` (SDPose-OOD — `YOISAKI_V1.6.2_SDPOSE_REPORT.md`, исправления 1.6.1 — `YOISAKI_V1.6.1_STABILITY_REPORT.md`, история ControlNet v1.6.0 — `YOISAKI_CONTROLNET_V1.6.0_CHANGELOG.md`). CPU/контрактные проверки не заменяют реальный GPU-прогон. RAM/VRAM T4, качество Illustrious, загрузка настоящих весов SDPose-OOD, настоящая Img2Img- и ControlNet-генерация на GPU в этой среде не проверены. Не гарантируется работа любого SDXL ControlNet с любым Illustrious checkpoint.
 
 Исторические документы в docs/ и MEMORY_DIAGNOSTICS_REPORT_RU.md описывают прежние выпуски; актуальные версии и инструкции находятся здесь и в отчёте v1.7.1 UI FIX.
 

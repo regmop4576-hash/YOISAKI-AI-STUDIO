@@ -1,9 +1,11 @@
-"""YOISAKI ENGINE launcher for CloudCompute (deployment edition 1.7.1, engine protocol 1.7.0).
+"""YOISAKI ENGINE launcher for CloudCompute (deployment edition 1.7.2, engine protocol 1.7.0).
 
 Starts the UNCHANGED engine (engine/worker/serve.py) exactly like the Colab panel does: a fresh
 64-hex token in the worker environment only, the server on 127.0.0.1, then a Cloudflare quick tunnel
 whose https://*.trycloudflare.com/#token=... link the existing website already accepts.
 No port is published and no secret is written to a log.
+1.7.2: with YOISAKI_DRIVE_SYNC=1 (default) the same app is started through cloudcompute/serve_cloud.py, which only
+adds the authenticated Google Drive sync routes (/sync/*); the engine code itself is not modified.
 
 Stdlib only: the same file serves the Docker HEALTHCHECK and the check/stop scripts.
 Subcommands: run (default), healthcheck, link, status.
@@ -27,7 +29,7 @@ APP = Path(__file__).resolve().parents[1]
 VERSION = (Path(__file__).with_name('VERSION').read_text().strip() if Path(__file__).with_name('VERSION').is_file() else 'unknown')
 TUNNEL_RE = re.compile(r'https://[a-z0-9-]+\.trycloudflare\.com')
 # Writable subfolders of the data root. models/ is only read by the engine.
-WRITABLE = ('huggingface-cache', 'outputs', 'logs', 'diagnostics', 'runtime/state', 'runtime/home')
+WRITABLE = ('huggingface-cache', 'outputs', 'logs', 'diagnostics', 'runtime/state', 'runtime/home', 'runtime/sync')
 MODEL_FOLDERS = ('checkpoints', 'loras', 'vae', 'controlnet')
 
 
@@ -57,6 +59,7 @@ class Config:
         self.server_timeout = float(e.get('YOISAKI_SERVER_TIMEOUT', '180'))
         self.tunnel_timeout = float(e.get('YOISAKI_TUNNEL_TIMEOUT', '90'))
         self.tunnel_restarts = int(e.get('YOISAKI_TUNNEL_RESTARTS', '3'))
+        self.drive_sync = e.get('YOISAKI_DRIVE_SYNC', '1') != '0'
         self.models = self.data / 'models'
         self.state = self.data / 'runtime/state'
         self.logs = self.data / 'logs'
@@ -76,6 +79,7 @@ def prepare(cfg):
     for sub in WRITABLE:
         (cfg.data / sub).mkdir(parents=True, exist_ok=True)
     os.chmod(cfg.state, 0o700)
+    os.chmod(cfg.data / 'runtime/sync', 0o700)
     marker = cfg.data / '.yoisaki-data-id'
     if not marker.exists():
         # Persistence probe: if this date survives an instance stop/start, the disk is persistent.
@@ -210,7 +214,9 @@ class Launcher:
         self.token = secrets.token_hex(32)
         f = rotate(self.cfg.logs / 'server.log')
         self.handles.append(f)
-        self.server = subprocess.Popen([self.cfg.python, '-m', 'worker.serve'], cwd=self.cfg.engine,
+        # Same engine app either way; serve_cloud.py only adds the authenticated /sync/* routes.
+        command = [self.cfg.python, str(Path(__file__).with_name('serve_cloud.py'))] if self.cfg.drive_sync else [self.cfg.python, '-m', 'worker.serve']
+        self.server = subprocess.Popen(command, cwd=self.cfg.engine,
                                        env=child_env(self.cfg, self.token), stdout=f, stderr=subprocess.STDOUT,
                                        stdin=subprocess.DEVNULL, start_new_session=True)
         # The token file lets the healthcheck/check scripts query the local server; 0600 in a 0700 folder.
@@ -241,7 +247,8 @@ class Launcher:
         count = lambda kind: sum(m['kind'] == kind and m.get('compatible') is not False for m in models)
         log(f"Модели: checkpoints {count('checkpoint')} · LoRA {count('lora')} · VAE {count('vae')} ({self.cfg.models})")
         if not count('checkpoint'):
-            log('ВНИМАНИЕ: нет совместимого SDXL checkpoint. Загрузите его: ./fetch-models-cloudcompute.sh (движок продолжит работу).')
+            log('ВНИМАНИЕ: нет совместимого SDXL checkpoint. Синхронизируйте Google Drive (сайт → Модели → GOOGLE DRIVE AUTO SYNC '
+                'или ./drive-sync-cloudcompute.sh sync) либо ./fetch-models-cloudcompute.sh (движок продолжит работу).')
 
     def warmup(self):
         """Optional: one tiny real generation so the checkpoint is loaded before the link is shown."""

@@ -180,6 +180,28 @@ def model_load_seconds(cfg):
     return round(after['time_unix'] - before['time_unix'], 1) if before else None
 
 
+def drive_sync_summary(cfg):
+    """1.7.2 sync state for the report: never opens the token, only whether a remote section exists."""
+    try:
+        from drive_sync import SyncConfig, config_state
+        sync = SyncConfig()
+    except (ImportError, LaunchError) as exc:
+        return {'error': str(exc)}
+    configured, kind = config_state(sync)
+    rclone = shutil.which(sync.rclone) or (sync.rclone if Path(sync.rclone).is_file() else None)
+    try:
+        version = subprocess.run([rclone, 'version'], capture_output=True, text=True, timeout=20).stdout.split('\n')[0] if rclone else None
+    except (OSError, subprocess.SubprocessError):
+        version = None
+    try:
+        status = json.loads((sync.state / 'status.json').read_text())
+    except (OSError, ValueError):
+        status = {}
+    job = status.get('job') or {}
+    return {'enabled': sync.enabled, 'rclone': version, 'configured': configured, 'remote_type': kind, 'source': sync.source,
+            'last_success_unix': status.get('last_success_unix'), 'last_job': {k: job.get(k) for k in ('type', 'state', 'error_code')} if job else None}
+
+
 def report(cfg):
     data = {'deploy_version': VERSION, 'engine_version': engine_version(cfg), 'time_unix': time.time()}
     data['gpu'] = gpu_info()
@@ -202,6 +224,7 @@ def report(cfg):
     data['engine_state'] = local_status(cfg)
     data['last_startup'] = last_jsonl(cfg.diagnostics / 'startup-timings.jsonl')
     data['last_model_load_seconds'] = model_load_seconds(cfg)
+    data['drive_sync'] = drive_sync_summary(cfg)
     return data
 
 
@@ -252,6 +275,13 @@ def text(data):
         f"Модель в памяти: {'да' if state.get('model_loaded') else 'нет — загрузится при первой генерации' if health else '—'}",
         f"Ссылка:         {'готова (./check-cloudcompute.sh link)' if state.get('link_ready') else 'нет'}",
     ]
+    sync = data.get('drive_sync') or {}
+    if 'error' not in sync:
+        last = sync.get('last_job') or {}
+        lines.append(f"Google Drive:   {'подключён' if sync.get('configured') else 'не подключён'} · rclone {sync.get('rclone') or 'НЕ НАЙДЕН'}"
+                     f" · последняя операция: {last.get('type', '—')} {last.get('state', '')}".rstrip()
+                     + (f" · успех {time.strftime('%Y-%m-%d %H:%M', time.localtime(sync['last_success_unix']))}" if sync.get('last_success_unix') else '')
+                     + ('' if sync.get('enabled', True) else ' · ОТКЛЮЧЕНА'))
     if timings:
         lines.append('Последний запуск: ' + ' · '.join(f'{k[:-8]} {v} с' for k, v in timings.items() if k.endswith('_after_s')))
     if data.get('last_model_load_seconds') is not None:

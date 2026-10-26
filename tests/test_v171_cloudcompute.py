@@ -295,7 +295,7 @@ def test_diagnostics_report_without_gpu(tmp_path, monkeypatch, capsys):
     safetensors(cfg.models / 'checkpoints/a.safetensors')
     assert diagnose.main(['diagnose.py', '--json']) == 0
     data = json.loads(capsys.readouterr().out)
-    assert data['engine_version'] == '1.7.0' and data['deploy_version'] == '1.7.1'
+    assert data['engine_version'] == '1.7.0' and data['deploy_version'] == '1.7.2'
     assert data['models'] == {'checkpoint': 1} and data['paths']['models'] == str(cfg.models)
     assert data['disk']['free_gb'] > 0 and data['memory']['ram_total_gb'] > 0
     assert any('CUDA недоступна' in w for w in diagnose.warnings(data))
@@ -361,8 +361,8 @@ def test_pins_are_consistent():
     req = (APP / 'cloudcompute/requirements-cloud.txt').read_text()
     assert 'torch==2.10.0' in req and 'torchvision==0.25.0' in req
     assert 'torch' not in re.sub(r'#.*', '', (APP / 'engine/requirements.txt').read_text()).split()  # Colab keeps its own torch
-    assert (APP / 'cloudcompute/VERSION').read_text().strip() == '1.7.1'
-    assert 'yoisaki-engine:1.7.1-cloudcompute' in lib and 'yoisaki-engine:1.7.1-cloudcompute' in (APP / 'docker-compose.yml').read_text()
+    assert (APP / 'cloudcompute/VERSION').read_text().strip() == '1.7.2'
+    assert 'yoisaki-engine:1.7.2-cloudcompute' in lib and 'yoisaki-engine:1.7.2-cloudcompute' in (APP / 'docker-compose.yml').read_text()
 
 def test_dockerfile_policies():
     docker = (APP / 'Dockerfile').read_text()
@@ -375,7 +375,8 @@ def test_dockerfile_policies():
 
 def test_compose_policies():
     compose = (APP / 'docker-compose.yml').read_text()
-    assert 'ports:' not in compose and 'restart: "no"' in compose and '/models:/data/models:ro' in compose
+    # 1.7.2: read-only by default; start-cloudcompute.sh mounts it rw only while Drive sync is enabled (test_v172_drive_sync.py).
+    assert 'ports:' not in compose and 'restart: "no"' in compose and '/models:/data/models:${YOISAKI_MODELS_MOUNT:-ro}' in compose
     assert 'read_only: true' in compose and 'no-new-privileges:true' in compose and 'cap_drop: [ALL]' in compose
     assert not re.search(r'(TOKEN|SECRET|PASSWORD)\s*:\s*\S', compose.replace('HF_TOKEN:\n', '').replace('CIVITAI_TOKEN:\n', ''))
 

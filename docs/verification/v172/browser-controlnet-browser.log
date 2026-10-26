@@ -1,0 +1,1 @@
+PASS mobile browser: 3 modes, SDPose-OOD selector/routing/invalidation/ready map, preview, missing map, mode/dimension invalidation, stale async response ignored, disabled plain request; synthetic upstream only.
