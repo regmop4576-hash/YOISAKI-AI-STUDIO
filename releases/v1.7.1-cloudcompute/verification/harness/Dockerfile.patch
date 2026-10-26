@@ -1,0 +1,11 @@
+# VALIDATION ONLY: same COPY + check steps as the shipped Dockerfile, on top of the build-2 image whose
+# dependency layers are identical (Dockerfile, requirements and engine/ unchanged since build 2).
+FROM yoisaki-engine:deps-build2
+USER 0
+COPY engine/ /opt/yoisaki/engine/
+COPY cloudcompute/ /opt/yoisaki/cloudcompute/
+COPY start-cloudcompute.sh stop-cloudcompute.sh check-cloudcompute.sh fetch-models-cloudcompute.sh /opt/yoisaki/
+RUN cd /opt/yoisaki/engine && /opt/yoisaki/venv/bin/python /opt/yoisaki/cloudcompute/import_check.py /opt/yoisaki/engine \
+ && find /opt/yoisaki -name __pycache__ -prune -exec rm -rf {} + \
+ && chmod -R a+rX,go-w /opt/yoisaki
+USER 1000:1000

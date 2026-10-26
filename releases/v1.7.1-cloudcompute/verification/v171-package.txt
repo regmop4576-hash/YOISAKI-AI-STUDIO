@@ -1,6 +1,6 @@
-# Release ZIP: YOISAKI_AI_STUDIO_V1.7.1_CLOUDCOMPUTE_EDITION.zip  size 1730890 bytes  sha256 7776e9832b3f5bea5e6a6ed6deca093a553323ef42aa15ac5066244bdb27d651
+# Release ZIP: YOISAKI_AI_STUDIO_V1.7.1_CLOUDCOMPUTE_EDITION.zip  size 1734149 bytes  sha256 f9e3aa4513656e3fc39c364da2674dab09b2abda51344db9366f124621db75e9
 $ unzip -Z1 | wc -l; forbidden entries (__pycache__, .git, node_modules, dist, .venv, symlinks)
-190
+192
 0
 0
 $ top-level folder (update.sh compatibility path)
@@ -37,6 +37,8 @@ Only in new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/docs/verification: v171-compo
 Only in new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/docs/verification: v171-docker-build.txt
 Only in new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/docs/verification: v171-docker-e2e.txt
 Only in new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/docs/verification: v171-native-in-image.txt
+Only in new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/docs/verification: v171-native-install.txt
+Only in new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/docs/verification: v171-native-root.txt
 Only in new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/docs/verification: v171-node.txt
 Only in new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/docs/verification: v171-python-host.txt
 Only in new/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/docs/verification: v171-python-image.txt
@@ -61,6 +63,6 @@ Production build ready: dist/
 Установлено. Локальная production-сборка готова.
 Запуск: ./start.sh
 Обновлено. Пользовательские данные сохранены отдельно в домашней папке Termux.
-Предыдущая версия: <scratch>/pkgcheck/upd/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION.backup-20261026-000053
-Запуск: <scratch>/pkgcheck/upd/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/start.sh
+Предыдущая версия: <scratch>/pkgcheck2/upd/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION.backup-20261026-002426
+Запуск: <scratch>/pkgcheck2/upd/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/start.sh
 [exit 0] version in updated app: 1.7.1 · start-cloudcompute.sh executable: yes

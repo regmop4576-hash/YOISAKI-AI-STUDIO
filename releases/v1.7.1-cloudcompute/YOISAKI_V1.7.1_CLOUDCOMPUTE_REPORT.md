@@ -250,9 +250,9 @@ $YOISAKI_DATA_ROOT (по умолчанию /workspace/yoisaki-data)
 | 5 | `docker compose config` — `v171-compose-config.txt` | PASS; `ports` нет. |
 | 6 | **Docker-режим через поставляемые скрипты** — `v171-docker-e2e.txt` | PASS. Подробности ниже. |
 | 7 | **Режим native внутри образа** (сценарий «свой образ»), uid 1000 — `v171-native-in-image.txt` | PASS. Подробности ниже. |
-| 8 | Режим native на хосте: `install-native.sh` и запуск от root → `runuser yoisaki` — `v171-native-install.txt` | см. журнал. Установка идёт из PyPI на скорости сети песочницы. |
+| 8 | Режим native на хосте — `v171-native-install.txt`, `v171-native-root.txt` | **Частично.** Полная установка venv **не завершена**: сеть песочницы упала до 0,1–240 КБ/с. Проверено: выбор Python 3.12, создание venv, возобновление после прерванного pip. Те же команды pip и пины полностью прошли в Docker-сборке. Ветка «root → пользователь `yoisaki`» проверена на заглушке интерпретатора (сервер без `fastapi` не стартует, это ожидаемо): пользователь создан; права только на рабочие папки; данные под `/root` отклонены с понятной ошибкой; launcher работает от `yoisaki`; ошибка сервера видна в выводе; `stop` не оставляет процессов. |
 | 9 | Сайт: `npm ci`, `tsc --noEmit`, production-сборка, `node --test` — `v171-node.txt` | PASS 40/40, как в v1.7.0. |
-| 10 | Пакет: манифест, `verify-package.mjs`, ZIP — `v171-package.txt` | см. журнал. |
+| 10 | Пакет: манифест, `verify-package.mjs`, `install.sh`, `update.sh` поверх v1.7.0 — `v171-package.txt` в папке выпуска рядом с ZIP (журнал содержит SHA-256 самого ZIP, поэтому лежит вне архива) | PASS. `engine/`, `colab/`, `server/`, `src/`, `scripts/` и скрипты сайта побайтно совпадают с v1.7.0. |
 
 **Docker-режим через поставляемые скрипты (п. 6):**
 
@@ -332,7 +332,8 @@ $YOISAKI_DATA_ROOT (по умолчанию /workspace/yoisaki-data)
 3. Text2Img и Img2Img с настоящим Illustrious XL, затем LoRA, Regional, ControlNet (OpenPose Classic, SDPose-OOD, Canny, Depth). Пиковая RAM и VRAM по `memory.jsonl`.
 4. Какой режим выбирается на реальном инстансе (docker или native) и работает ли `--gpus` / NVIDIA reservation в compose.
 5. Сохраняется ли папка данных при остановке и запуске инстанса (метка `.yoisaki-data-id`) и где на CloudCompute лежит постоянный диск.
-6. Время этапов: контейнер → проверка GPU → сервер → туннель, а также загрузка checkpoint и прогрев. **Цифр в этом отчёте нет, потому что они не измерялись.** После первого запуска они будут в `diagnostics/startup-timings.jsonl` и в `./check-cloudcompute.sh`.
+6. Полная native-установка (`install-native.sh`) и её повторный запуск без действий, а также native-запуск от root с настоящим venv.
+7. Время этапов: контейнер → проверка GPU → сервер → туннель, а также загрузка checkpoint и прогрев. **Цифр в этом отчёте нет, потому что они не измерялись.** После первого запуска они будут в `diagnostics/startup-timings.jsonl` и в `./check-cloudcompute.sh`.
 
 **Известные ограничения:**
 

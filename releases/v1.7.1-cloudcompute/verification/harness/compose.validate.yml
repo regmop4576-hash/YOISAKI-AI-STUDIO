@@ -1,0 +1,14 @@
+# VALIDATION ONLY: sandbox without NVIDIA driver and with a TLS-intercepting proxy. Never shipped.
+services:
+  engine:
+    build:
+      dockerfile: <scratch>/validate/Dockerfile.validate
+      additional_contexts:
+        sandboxca: /root/.ccr
+    deploy: !reset {}
+    environment:
+      YOISAKI_GPU_PREFLIGHT: "0"
+    volumes:
+      - <scratch>/validate/sitecustomize.py:/opt/yoisaki/engine/sitecustomize.py:ro
+  tools:
+    deploy: !reset {}
