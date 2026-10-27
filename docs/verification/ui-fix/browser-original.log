@@ -1,0 +1,1 @@
+PASS: real browser/local API connection, tag edit, request, synthetic result, preview, download, gallery and reload. NOT GPU inference.

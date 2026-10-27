@@ -1,0 +1,153 @@
+# v1.7.5 ZERO-TERMINAL CLOUDCOMPUTE EDITION
+
+Студия 1.7.5, CloudCompute deployment 1.7.5. Движок и API — 1.7.0: `engine/` и Colab-блокнот побайтно не изменены. Инструкция: `docs/CLOUDCOMPUTE_ZERO_TERMINAL_RU.md`, отчёт: `YOISAKI_V1.7.5_REPORT_RU.md`.
+
+- **CloudCompute в пять кнопок:** Выбрать GPU → Создать GPU-сервер → Инициализировать движок → Подключить → Синхронизировать модели.
+- **Выбор GPU** из `GET /offers`:
+  - GPU, VRAM, цена в час, диск, CUDA;
+  - оценка стоимости;
+  - хранение диска отдельной строкой;
+  - проверка совместимости;
+  - Offer ID подставляется сам.
+- **Безопасная оплата:**
+  - отметка «Понимаю…» и окно с ценой;
+  - сервер перепроверяет предложение, цену и публичность образа;
+  - точный предел цены, без автоповтора;
+  - второй сервер — только с отдельным подтверждением.
+- **Автоинициализация** через `onstart`:
+  - токен движка выдаётся на каждый сервер;
+  - в образе работает `cloudcompute/autostart-image.sh` (uid 1000, ограниченные перезапуски);
+  - лаунчер публикует подписанные этапы;
+  - сайт подключается сам.
+- **Google Drive после готовности GPU:** передача доступа только на чтение → проверка → загрузка только недостающих моделей → обновление списка.
+- **Готовый образ** `ghcr.io/regmop4576-hash/yoisaki-ai-studio/engine:1.7.5`:
+  - публичный;
+  - lock-файл с sha256 для 76 пакетов;
+  - workflow публикации версий без перезаписи и без `latest`.
+- **Расширенные настройки:** свой образ, прежняя форма Offer ID, ручная ссылка, подготовка существующего инстанса одной командой в веб-терминале панели.
+- **Не сделано (нет в API):** Start/Stop GPU-инстанса — через панель CloudCompute.
+
+# v1.7.3 ONE-CLICK CONNECT EDITION
+
+Студия 1.7.3, CloudCompute deployment 1.7.3. Движок и API — 1.7.0: `engine/` и Colab-блокнот побайтно не изменены. Инструкция: `YOISAKI_V1.7.3_ONE_CLICK_SETUP_RU.md`, отчёт: `YOISAKI_V1.7.3_REPORT_RU.md`.
+
+- **Модели (исправление Amber_Nova / Vesper_Nova):**
+  - генератор показывает все модели, несовместимые — неактивными с причиной;
+  - кнопка «Обновить модели»; обновление страницы перечитывает список;
+  - принудительное обновление больше не теряется;
+  - ошибка обновления не выдаёт старый список за актуальный;
+  - одна битая запись не отбрасывает весь каталог;
+  - метаданные safetensors не хранятся на телефоне;
+  - CloudCompute: `/inventory` с ревизией — новые файлы появляются сами.
+- **Подключение одной кнопкой:**
+  - «Запомнить на этом телефоне» (токен только в `secrets.json` 0600);
+  - «Подключить одной кнопкой» ждёт загрузки GPU до 15 минут и показывает шаги;
+  - диагностика по компонентам;
+  - «Вставить ссылку из буфера»;
+  - Cloudflare 530 распознаётся.
+- **CloudCompute:**
+  - мастер `setup-cloudcompute.sh`;
+  - постоянная ссылка (`YOISAKI_STABLE_LINK`, по умолчанию выключена) и `rotate-token`;
+  - Named Tunnel (`YOISAKI_TUNNEL_MODE=named`);
+  - автообнаружение адреса Quick Tunnel через ntfy.sh с HMAC-подписью;
+  - сбой туннеля больше не останавливает движок;
+  - `autostart-cloudcompute.sh` (systemd / cron);
+  - `check-cloudcompute.sh models`;
+  - установка с видимым прогрессом и без кэша pip;
+  - понятное сообщение вместо `KeyError` при ручном запуске `serve_cloud.py`.
+- **Google Drive:**
+  - вход в Google в браузере (OAuth Authorization Code + PKCE, свой Desktop-клиент пользователя, `drive.readonly`);
+  - выбор файлов для синхронизации.
+- **Не сделано (нет проверенного API):** запуск и остановка инстанса CloudCompute с сайта. Для этого добавлены объяснение оплаты, расчёт стоимости сеанса и предупреждение о простое.
+
+# v1.7.2 GOOGLE DRIVE AUTO SYNC EDITION
+
+Студия 1.7.2, CloudCompute deployment 1.7.2. Движок и API — 1.7.0, протокол не менялся. Полный отчёт: `YOISAKI_V1.7.2_DEVELOPMENT_REPORT.md`.
+
+- **Модели → GOOGLE DRIVE AUTO SYNC** (только CloudCompute):
+  - статус подключения, папка-источник, таблица моделей;
+  - кнопки «Подключить Google Drive», «Проверить модели», «Синхронизировать», «Отменить загрузку», «Обновить список»;
+  - реальный прогресс файла и общий, скорость, байты, свободное место, время последней успешной синхронизации.
+- **Сервер:** `cloudcompute/drive_sync.py` + rclone.
+  - Источник: `Мой диск/YOISAKI_AI_STUDIO/models`.
+  - Доступ: `drive.readonly`; выполняются только `lsjson` и `cat`.
+  - Проверка: формат `.safetensors` (pickle отклоняется), размер, безопасные имена, место на диске, контрольная сумма Drive, заголовок safetensors тем же кодом, что у каталога движка.
+  - Докачка `.part` с той же позиции, атомарный `rename` в каталог движка.
+  - Без удаления локальных моделей и без повторной загрузки неизменённых.
+- **Авторизация:** `rclone authorize` в Termux (только Android). Токен хранится только на GPU-сервере (0600) и нигде не отображается.
+- **Движок не изменён:** `engine/` и блокнот Colab побайтно прежние. Маршруты `/sync/*` с той же Bearer-авторизацией добавляет `cloudcompute/serve_cloud.py`. Каталог обновляется без перезапуска.
+- **Новые и изменённые файлы:**
+  - `drive-sync-cloudcompute.sh`;
+  - rclone в Docker-образе отдельным слоем; в native — через apt;
+  - `YOISAKI_DRIVE_*` в `yoisaki.env`;
+  - `models` в Docker монтируется на запись только при включённой синхронизации.
+- **Не проверено на реальном GPU и Google Drive** (см. `YOISAKI_V1.7.2_TEST_RESULTS.md`).
+
+# v1.7.1 CLOUDCOMPUTE UI FIX
+
+Раздельные провайдеры, сохранение адресов, изоляция токенов, единая версия студии, независимые метаданные движка/API, проверка сборки и безопасное обновление Termux. См. YOISAKI_V1.7.1_UI_FIX_REPORT.md.
+
+# Выпуск CloudCompute Deployment 1.7.1
+
+Сайт и протокол движка не меняются: v1.7.0. Добавлен дополнительный способ запустить тот же YOISAKI ENGINE на арендованном GPU CloudCompute.ru. Google Colab остаётся рабочим: блокнот и папка `engine/` не изменены ни на байт. Полный отчёт: `YOISAKI_V1.7.1_CLOUDCOMPUTE_REPORT.md`. Инструкция для Android: `docs/CLOUDCOMPUTE_INSTALL_ANDROID_RU.md`.
+
+- `start-cloudcompute.sh` / `stop-cloudcompute.sh` / `check-cloudcompute.sh` / `fetch-models-cloudcompute.sh` выполняются на сервере.
+  - Режим Docker (`Dockerfile`, `docker-compose.yml`) или native venv на постоянном диске.
+  - Повторный запуск не переустанавливает зависимости и не скачивает модели заново.
+- Подключение как в Colab: туннель Cloudflare, ссылка `https://*.trycloudflare.com/#token=…`. Сервер слушает только 127.0.0.1, токен новый при каждом запуске и не пишется в журналы.
+- PyTorch 2.10.0 + CUDA 12.8: ядра для T4 (sm_75), RTX 3060/3090/A5000 (sm_86) и RTX 5060 Ti (sm_120). Перед запуском проверяется совместимость GPU и выполняется пробное fp16-вычисление.
+- Данные в одной папке (по умолчанию `/workspace/yoisaki-data`). Структура `models/{checkpoints,loras,vae,controlnet}` та же, что на Google Drive. Кэш Hugging Face, результаты, журналы и диагностика лежат там же.
+- На реальном GPU CloudCompute не проверялось (см. отчёт).
+
+# Текущий выпуск: v1.7.0 Img2Img Edition
+
+Сайт и движок: v1.7.0. Подключён настоящий Image-to-Image; интерфейс AMBER CORE, Text2Img, ControlNet, SDPose-OOD, Regional Control, очередь, история и галерея сохранены. Полный отчёт: `YOISAKI_V1.7.0_IMG2IMG_REPORT.md`.
+
+- Вкладка IMG2IMG на странице «Генерация» и в «Редакторе» отправляет настоящие задания: исходник, Denoise, prompt/negative, seed, steps, CFG, sampler/scheduler, batch, активные LoRA, Regional Control, ControlNet.
+- Движок: `inference/img2img.py` — `StableDiffusionXLImg2ImgPipeline.from_pipe()` поверх уже загруженных компонентов (без второй копии весов, dtypes fp16 сохраняются); с ControlNet — `StableDiffusionXLControlNetImg2ImgPipeline` с прежним одноразовым жизненным циклом ControlNet; после задания возврат к базовому конвейеру.
+- Протокол: `mode/kind: 'img2img'`, `init_image` (data URL, уже вписанный в Width×Height), `denoising_strength` (0 < x ≤ 1, `int(steps×x) ≥ 1`); `/health` объявляет `capabilities.img2img`; сайт 1.7.0 принимает только движок 1.7.0. Запросы Text2Img не изменились.
+- Прогресс считает реально выполняемые шаги `int(steps × Denoise)`. История и галерея хранят SHA-256 исходника вместо base64.
+
+# Выпуск v1.6.2 SDPose Edition
+
+Сайт и движок: v1.6.2. Добавлен только препроцессор позы SDPose-OOD в существующий ControlNet; Canny, Depth, OpenPose Classic, очередь, галерея, LoRA и интерфейс AMBER CORE не менялись. Полный отчёт: `YOISAKI_V1.6.2_SDPOSE_REPORT.md`.
+
+- Панель ControlNet, тип OpenPose: «Препроцессор позы» — OpenPose Classic (по умолчанию) или SDPose-OOD (стилизованные, аниме, фурри, сложные позы). Карта — OpenPose-18 тела для того же OpenPose ControlNet.
+- Движок: `inference/sdpose.py` — SDPose-Body (`teemosliang/SDPose-Body`), fp16 на GPU только на время подготовки карты, затем полная выгрузка (ссылки, gc, `torch.cuda.empty_cache()`); без mmpose/mmcv и без CLIP text encoder.
+- Протокол: необязательное поле `preprocessor` (`openpose` | `sdpose`) в предобработке и в `controlnet_config`; `/health` объявляет `capabilities.sdpose`; сайт 1.6.2 принимает только движок 1.6.2.
+- Понятные ошибки: недоступные веса, нехватка RAM/VRAM, NaN, поза не найдена; остальные режимы продолжают работать.
+
+# Выпуск v1.6.1 ControlNet Stability Fix
+
+Сайт и движок: v1.6.1. Только исправления ошибок по независимому аудиту v1.6.0; архитектура, интерфейс AMBER CORE и зависимости не менялись. Полный отчёт: `YOISAKI_V1.6.1_STABILITY_REPORT.md`.
+
+- AUD-001: Strength/Start/End приводятся к float перед Diffusers (Strength 0/1/2 больше не вызывают TypeError).
+- AUD-019 (найдено при исправлении): `from_pipe()` больше не переводит общие fp16-модули SDXL и ControlNet в fp32.
+- AUD-004: Canny загружает официальный fp16-вариант safetensors.
+- AUD-003: ControlNet не копируется GPU→RAM перед освобождением (нужны замеры на T4).
+- AUD-002: история и галерея хранят SHA-256 карты вместо base64; миграция данных v1.6.0 без потерь; state.json не перезаписывается без изменений.
+- AUD-006: предобработка ControlNet возобновляется ответом PENDING, без обрыва по таймауту браузера/Cloudflare.
+- AUD-007: ограниченная очистка завершённых записей движка (более 100 заданий за сессию).
+- AUD-008 / AUD-012: бинарные карты Canny; надёжная отбраковка однородной глубины.
+- AUD-009 / AUD-015: понятные причины отказа GPU; синхронизированы версии, документация и устаревшие тесты.
+
+# Выпуск v1.6.0 ControlNet
+
+Отчёт: `YOISAKI_CONTROLNET_V1.6.0_CHANGELOG.md` в корне проекта.
+
+## История прежних выпусков
+
+# Изменения v1.5.4
+
+- `server/history.mjs` — общие terminal статусы и retention 50.
+- `server/storage.mjs` — постоянный pruning при загрузке и сериализованной записи, без изменения других данных.
+- `server/app.mjs` — individual/bulk history API, проверка CONNECTION_LOST перед удалением, history metadata для UI, отдельные сведения о версиях, совместимый reconnect ACK.
+- `server/release.mjs` — версия сайта и compatibility metadata.
+- `src/components/JobHistory.tsx` — компактная история, корзина, подтверждаемая очистка, сохранение активных задач.
+- `src/components/Generator.tsx` — подключение истории и защита от устаревших polling-ответов.
+- `src/lib/engine/direct.ts` — типы metadata сайта и совместимости.
+- `src/components/Shell.tsx`, `SettingsModal.tsx`, `src/app/engine/page.tsx` — только отдельные truthful версии сайта/движка.
+- `server/index.mjs`, `scripts/service.mjs`, package.json/package-lock.json — версия сайта 1.5.4.
+- Новые `tests/history.test.mjs`, `tests/history-browser.mjs`; пересобраны dist и integrity manifest; обновлена документация.
+
+Python engine/Colab 1.5.3, long prompts, LoRA, Regional algorithm, CPU Offload, RAM FIX, галерея, пресеты и настройки не менялись. Внешняя логика генерации не заменялась тестовыми изображениями.

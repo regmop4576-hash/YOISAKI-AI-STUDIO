@@ -1,0 +1,25 @@
+bash -n OK drive-sync-cloudcompute.sh
+bash -n OK check-cloudcompute.sh
+bash -n OK cloudcompute/install-native.sh
+bash -n OK cloudcompute/lib.sh
+bash -n OK diagnostics.sh
+bash -n OK fetch-models-cloudcompute.sh
+bash -n OK install.sh
+bash -n OK start-cloudcompute.sh
+bash -n OK start.sh
+bash -n OK stop-cloudcompute.sh
+bash -n OK stop.sh
+bash -n OK update.sh
+$ shellcheck -x (all CloudCompute scripts)
+
+In start-cloudcompute.sh line 28:
+command -v nvidia-smi >/dev/null && nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader 2>/dev/null | sed 's/^/GPU: /' || true
+                                 ^-- SC2015 (info): Note that A && B || C is not if-then-else. C may run when A is true.
+
+For more information:
+  https://www.shellcheck.net/wiki/SC2015 -- Note that A && B || C is not if-t...
+shellcheck rc=1
+$ py_compile
+py_compile OK
+$ node --check server
+node --check OK

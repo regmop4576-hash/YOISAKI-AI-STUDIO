@@ -1,0 +1,119 @@
+# Local image yoisaki-engine:1.7.5-verify (same Dockerfile/lock; cloudcompute/ of this commit mounted read-only). No GPU in this sandbox.
+size_bytes=13097739837 user=1000:1000 cmd=["/opt/yoisaki/cloudcompute/autostart-image.sh"] entrypoint=["/usr/bin/tini","--"] version=1.7.5
+
+## 1. Generated onstart as root (token = test value f×64), sh and bash, then as uid 1000
+uid=0 shell=sh onstart_rc=0
+engine.token owner=yoisaki mode=600
+Запуск YOISAKI ENGINE (автоматическая инициализация, данные: /data)…
+YOISAKI ENGINE · CloudCompute deployment 1.7.5 · данные: /data
+Проверка GPU и совместимости PyTorch/CUDA…
+Этап ENGINE_STARTING не опубликован: URLError.
+GPU: CUDA недоступна. Проверьте, что инстанс с GPU и контейнер запущен с доступом к GPU.
+
+Этап GPU_CHECK_FAILED не опубликован: URLError.
+ОШИБКА: GPU не прошёл проверку. Движок не запущен, чтобы не тратить оплачиваемое время. Подробности выше.
+Движок завершился (код 3). Повтор через 2 с (1/1).
+Запуск YOISAKI ENGINE (автоматическая инициализация, данные: /data)…
+YOISAKI ENGINE · CloudCompute deployment 1.7.5 · данные: /data
+Проверка GPU и совместимости PyTorch/CUDA…
+Этап ENGINE_STARTING не опубликован: URLError.
+GPU: CUDA недоступна. Проверьте, что инстанс с GPU и контейнер запущен с доступом к GPU.
+
+Этап GPU_CHECK_FAILED не опубликован: URLError.
+ОШИБКА: GPU не прошёл проверку. Движок не запущен, чтобы не тратить оплачиваемое время. Подробности выше.
+token_in_logs=0
+
+uid=0 shell=bash onstart_rc=0
+engine.token owner=yoisaki mode=600
+Запуск YOISAKI ENGINE (автоматическая инициализация, данные: /data)…
+YOISAKI ENGINE · CloudCompute deployment 1.7.5 · данные: /data
+Проверка GPU и совместимости PyTorch/CUDA…
+Этап ENGINE_STARTING не опубликован: URLError.
+GPU: CUDA недоступна. Проверьте, что инстанс с GPU и контейнер запущен с доступом к GPU.
+
+Этап GPU_CHECK_FAILED не опубликован: URLError.
+ОШИБКА: GPU не прошёл проверку. Движок не запущен, чтобы не тратить оплачиваемое время. Подробности выше.
+Движок завершился (код 3). Повтор через 2 с (1/1).
+Запуск YOISAKI ENGINE (автоматическая инициализация, данные: /data)…
+YOISAKI ENGINE · CloudCompute deployment 1.7.5 · данные: /data
+Проверка GPU и совместимости PyTorch/CUDA…
+Этап ENGINE_STARTING не опубликован: URLError.
+GPU: CUDA недоступна. Проверьте, что инстанс с GPU и контейнер запущен с доступом к GPU.
+
+Этап GPU_CHECK_FAILED не опубликован: URLError.
+ОШИБКА: GPU не прошёл проверку. Движок не запущен, чтобы не тратить оплачиваемое время. Подробности выше.
+token_in_logs=0
+
+uid=1000 shell=sh onstart_rc=0
+engine.token owner=yoisaki mode=600
+Запуск YOISAKI ENGINE (автоматическая инициализация, данные: /data)…
+YOISAKI ENGINE · CloudCompute deployment 1.7.5 · данные: /data
+Проверка GPU и совместимости PyTorch/CUDA…
+Этап ENGINE_STARTING не опубликован: URLError.
+GPU: CUDA недоступна. Проверьте, что инстанс с GPU и контейнер запущен с доступом к GPU.
+
+Этап GPU_CHECK_FAILED не опубликован: URLError.
+ОШИБКА: GPU не прошёл проверку. Движок не запущен, чтобы не тратить оплачиваемое время. Подробности выше.
+Движок завершился (код 3). Повтор через 2 с (1/1).
+Запуск YOISAKI ENGINE (автоматическая инициализация, данные: /data)…
+YOISAKI ENGINE · CloudCompute deployment 1.7.5 · данные: /data
+Проверка GPU и совместимости PyTorch/CUDA…
+Этап ENGINE_STARTING не опубликован: URLError.
+GPU: CUDA недоступна. Проверьте, что инстанс с GPU и контейнер запущен с доступом к GPU.
+
+Этап GPU_CHECK_FAILED не опубликован: URLError.
+ОШИБКА: GPU не прошёл проверку. Движок не запущен, чтобы не тратить оплачиваемое время. Подробности выше.
+token_in_logs=0
+
+uid=1000 shell=bash onstart_rc=0
+engine.token owner=yoisaki mode=600
+Запуск YOISAKI ENGINE (автоматическая инициализация, данные: /data)…
+YOISAKI ENGINE · CloudCompute deployment 1.7.5 · данные: /data
+Проверка GPU и совместимости PyTorch/CUDA…
+Этап ENGINE_STARTING не опубликован: URLError.
+GPU: CUDA недоступна. Проверьте, что инстанс с GPU и контейнер запущен с доступом к GPU.
+
+Этап GPU_CHECK_FAILED не опубликован: URLError.
+ОШИБКА: GPU не прошёл проверку. Движок не запущен, чтобы не тратить оплачиваемое время. Подробности выше.
+Движок завершился (код 3). Повтор через 2 с (1/1).
+Запуск YOISAKI ENGINE (автоматическая инициализация, данные: /data)…
+YOISAKI ENGINE · CloudCompute deployment 1.7.5 · данные: /data
+Проверка GPU и совместимости PyTorch/CUDA…
+Этап ENGINE_STARTING не опубликован: URLError.
+GPU: CUDA недоступна. Проверьте, что инстанс с GPU и контейнер запущен с доступом к GPU.
+
+Этап GPU_CHECK_FAILED не опубликован: URLError.
+ОШИБКА: GPU не прошёл проверку. Движок не запущен, чтобы не тратить оплачиваемое время. Подробности выше.
+token_in_logs=0
+
+## 2. Default image CMD without provisioning (1.7.4 behaviour)
+GPU: CUDA недоступна. Проверьте, что инстанс с GPU и контейнер запущен с доступом к GPU.
+
+ОШИБКА: GPU не прошёл проверку. Движок не запущен, чтобы не тратить оплачиваемое время. Подробности выше.
+container_exit=3
+
+## 3. Image contents
+torch 2.10.0+cu128 cuda 12.8 arch 
+diffusers 0.36.0 transformers 4.57.3 peft 0.18.0 accelerate 1.12.0 opencv 4.11.0
+No broken requirements found.
+cloudflared version 2026.9.3 (built 2026-09-24-16:07 UTC)
+rclone v1.60.1-DEV
+/usr/bin/setpriv
+/usr/bin/flock
+/usr/bin/tini
+secrets/models in image: 0
+check-cloudcompute.sh
+cloudcompute
+drive-sync-cloudcompute.sh
+engine
+fetch-models-cloudcompute.sh
+start-cloudcompute.sh
+stop-cloudcompute.sh
+venv
+
+## 4. Build-time check (docker build log, step import_check.py)
+No broken requirements found.
+requirements-lock.txt согласован с requirements-cloud.txt и engine/requirements.txt
+IMPORTS_OK
+torch 2.10.0+cu128 cuda 12.8 arch sm_70 sm_75 sm_80 sm_86 sm_90 sm_100 sm_120
+ARCH_OK

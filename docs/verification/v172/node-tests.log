@@ -1,0 +1,327 @@
+
+> yoisaki-ai-studio-local@1.7.2 test
+> node --test tests/*.test.mjs
+
+TAP version 13
+# Subtest: URL parser rejects missing token, unsafe host, path, credentials, query, IP and duplicate token
+ok 1 - URL parser rejects missing token, unsafe host, path, credentials, query, IP and duplicate token
+  ---
+  duration_ms: 2.64657
+  type: 'test'
+  ...
+# Subtest: IP policy rejects private, loopback, metadata, mapped IPv6 and reserved ranges
+ok 2 - IP policy rejects private, loopback, metadata, mapped IPv6 and reserved ranges
+  ---
+  duration_ms: 6.886368
+  type: 'test'
+  ...
+# Subtest: proxy blocks arbitrary paths and DNS rebinding into a private network
+ok 3 - proxy blocks arbitrary paths and DNS rebinding into a private network
+  ---
+  duration_ms: 1.308538
+  type: 'test'
+  ...
+# Subtest: strict health/model contracts distinguish worker readiness from response format
+ok 4 - strict health/model contracts distinguish worker readiness from response format
+  ---
+  duration_ms: 0.702534
+  type: 'test'
+  ...
+# Subtest: atomic persistence serializes writes and recovers damaged main file from backup
+ok 5 - atomic persistence serializes writes and recovers damaged main file from backup
+  ---
+  duration_ms: 73.220707
+  type: 'test'
+  ...
+# Subtest: loopback app rejects cross-site access, wrong Host, missing session and unrestricted proxy
+ok 6 - loopback app rejects cross-site access, wrong Host, missing session and unrestricted proxy
+  ---
+  duration_ms: 47.360335
+  type: 'test'
+  ...
+# Subtest: connection, authenticated contract, generation transport, file saving, gallery and restart (SYNTHETIC INFERENCE)
+ok 7 - connection, authenticated contract, generation transport, file saving, gallery and restart (SYNTHETIC INFERENCE)
+  ---
+  duration_ms: 189.049762
+  type: 'test'
+  ...
+# Subtest: expired token, outage and timeout report distinct failures; reconnect works
+ok 8 - expired token, outage and timeout report distinct failures; reconnect works
+  ---
+  duration_ms: 29.183657
+  type: 'test'
+  ...
+# Subtest: three ControlNet modes transport exact isolated settings and preserve batch/LoRA
+ok 9 - three ControlNet modes transport exact isolated settings and preserve batch/LoRA
+  ---
+  duration_ms: 4.902901
+  type: 'test'
+  ...
+# Subtest: missing map, stale type, invalid intervals, formats and combined modes rejected
+ok 10 - missing map, stale type, invalid intervals, formats and combined modes rejected
+  ---
+  duration_ms: 1.437546
+  type: 'test'
+  ...
+# Subtest: only v1.7.0 with ControlNet + SDPose + Img2Img capability is accepted
+ok 11 - only v1.7.0 with ControlNet + SDPose + Img2Img capability is accepted
+  ---
+  duration_ms: 0.65611
+  type: 'test'
+  ...
+# Subtest: individual terminal deletion persists through reload/restart/reconnect; Gallery and all user data preserved
+ok 12 - individual terminal deletion persists through reload/restart/reconnect; Gallery and all user data preserved
+  ---
+  duration_ms: 161.459184
+  type: 'test'
+  ...
+# Subtest: bulk scopes remove only confirmed selected records; queued/running/unknown are protected
+ok 13 - bulk scopes remove only confirmed selected records; queued/running/unknown are protected
+  ---
+  duration_ms: 105.626
+  type: 'test'
+  ...
+# Subtest: connection-lost cannot be silently forgotten; terminal remote reconciliation allows deletion
+ok 14 - connection-lost cannot be silently forgotten; terminal remote reconciliation allows deletion
+  ---
+  duration_ms: 89.948276
+  type: 'test'
+  ...
+# Subtest: unconfirmed completed result is saved to Gallery before history removal
+ok 15 - unconfirmed completed result is saved to Gallery before history removal
+  ---
+  duration_ms: 62.860208
+  type: 'test'
+  ...
+# Subtest: retention persists at 50 terminal jobs and keeps every nonterminal, ordered by timestamps
+ok 16 - retention persists at 50 terminal jobs and keeps every nonterminal, ordered by timestamps
+  ---
+  duration_ms: 13.034819
+  type: 'test'
+  ...
+# Subtest: serialized cleanup and concurrent completion do not lose unrelated changes; failure does not delete
+ok 17 - serialized cleanup and concurrent completion do not lose unrelated changes; failure does not delete
+  ---
+  duration_ms: 24.927718
+  type: 'test'
+  ...
+# Subtest: website and engine have independent versions and compatibility metadata
+ok 18 - website and engine have independent versions and compatibility metadata
+  ---
+  duration_ms: 23.20706
+  type: 'test'
+  ...
+# Subtest: deletion is atomic when a selected job becomes active before cleanup commits
+ok 19 - deletion is atomic when a selected job becomes active before cleanup commits
+  ---
+  duration_ms: 26.675369
+  type: 'test'
+  ...
+# Subtest: actual HTTPS carries Bearer, refuses redirects, classifies 401/malformed response/timeout
+ok 20 - actual HTTPS carries Bearer, refuses redirects, classifies 401/malformed response/timeout
+  ---
+  duration_ms: 468.655034
+  type: 'test'
+  ...
+# Subtest: full long positive/negative and exact multi-LoRA settings survive Termux validation
+ok 21 - full long positive/negative and exact multi-LoRA settings survive Termux validation
+  ---
+  duration_ms: 2.028017
+  type: 'test'
+  ...
+# Subtest: both providers: separate endpoints, explicit reconnect, no secrets on disk/export/status, persistent selection
+ok 22 - both providers: separate endpoints, explicit reconnect, no secrets on disk/export/status, persistent selection
+  ---
+  duration_ms: 186.145475
+  type: 'test'
+  ...
+# Subtest: late health from a disconnected provider cannot revive a session
+ok 23 - late health from a disconnected provider cannot revive a session
+  ---
+  duration_ms: 27.142874
+  type: 'test'
+  ...
+# Subtest: CloudCompute public HTTPS policy keeps DNS pinning and rejects private hosts / credentials / redirects
+ok 24 - CloudCompute public HTTPS policy keeps DNS pinning and rejects private hosts / credentials / redirects
+  ---
+  duration_ms: 1.914098
+  type: 'test'
+  ...
+# Subtest: API metadata is independent; legacy health and missing hardware supported without fabricated values
+ok 25 - API metadata is independent; legacy health and missing hardware supported without fabricated values
+  ---
+  duration_ms: 0.251449
+  type: 'test'
+  ...
+# Subtest: late refresh cannot adopt a different provider session
+ok 26 - late refresh cannot adopt a different provider session
+  ---
+  duration_ms: 78.214886
+  type: 'test'
+  ...
+# Subtest: history cancellation never forwards an old-provider job to the new engine
+ok 27 - history cancellation never forwards an old-provider job to the new engine
+  ---
+  duration_ms: 80.113262
+  type: 'test'
+  ...
+# Subtest: legacy versions and explicit capabilities are evaluated conservatively
+ok 28 - legacy versions and explicit capabilities are evaluated conservatively
+  ---
+  duration_ms: 1.28773
+  type: 'test'
+  ...
+# Subtest: health/status preserve capabilities, regional requests reach upstream only when supported, plain Text2Img unchanged
+ok 29 - health/status preserve capabilities, regional requests reach upstream only when supported, plain Text2Img unchanged
+  ---
+  duration_ms: 168.364564
+  type: 'test'
+  ...
+# Subtest: queue: three intentional submissions, idempotent retry, recovery and targeted cancel
+ok 30 - queue: three intentional submissions, idempotent retry, recovery and targeted cancel
+  ---
+  duration_ms: 312.90594
+  type: 'test'
+  ...
+# Subtest: regional contract transports masks and rejects duplicate global character adapter and T4 over-limit
+ok 31 - regional contract transports masks and rejects duplicate global character adapter and T4 over-limit
+  ---
+  duration_ms: 1.64677
+  type: 'test'
+  ...
+# Subtest: ACK only after durable gallery, retries without losing result or resubmitting
+ok 32 - ACK only after durable gallery, retries without losing result or resubmitting
+  ---
+  duration_ms: 180.718058
+  type: 'test'
+  ...
+# state.json=21097 B, .bak=21058 B, /api/history=10270 B, /api/gallery=10883 B (v1.6.0 audit: 58.8 MB / 58.8 MB / 33.6 MB / 25.2 MB)
+# Subtest: AUD-002: 12 ControlNet jobs with ~2 MB maps do not grow state/history/gallery with base64 copies
+ok 33 - AUD-002: 12 ControlNet jobs with ~2 MB maps do not grow state/history/gallery with base64 copies
+  ---
+  duration_ms: 1350.918625
+  type: 'test'
+  ...
+# Subtest: AUD-002: idempotent retry with the same request ID is not a conflict after compact storage
+ok 34 - AUD-002: idempotent retry with the same request ID is not a conflict after compact storage
+  ---
+  duration_ms: 181.125323
+  type: 'test'
+  ...
+# Subtest: AUD-002: existing v1.6.0 state.json migrates without data loss; original kept as backup
+ok 35 - AUD-002: existing v1.6.0 state.json migrates without data loss; original kept as backup
+  ---
+  duration_ms: 647.377195
+  type: 'test'
+  ...
+# Subtest: storage: an unchanged change() does not rewrite state.json or .bak
+ok 36 - storage: an unchanged change() does not rewrite state.json or .bak
+  ---
+  duration_ms: 37.044322
+  type: 'test'
+  ...
+# Subtest: AUD-006: PENDING preprocessing is passed through with a sub-100 s hop and resumed with the identical body
+ok 37 - AUD-006: PENDING preprocessing is passed through with a sub-100 s hop and resumed with the identical body
+  ---
+  duration_ms: 29.182214
+  type: 'test'
+  ...
+# Subtest: AUD-009: engine rejection reasons for /generate reach the user, sanitised
+ok 38 - AUD-009: engine rejection reasons for /generate reach the user, sanitised
+  ---
+  duration_ms: 3.957103
+  type: 'test'
+  ...
+# Subtest: preprocess validation: pose preprocessor only for OpenPose, classic is the default
+ok 39 - preprocess validation: pose preprocessor only for OpenPose, classic is the default
+  ---
+  duration_ms: 1.949642
+  type: 'test'
+  ...
+# Subtest: generation validation and history keep the preprocessor, never the map
+ok 40 - generation validation and history keep the preprocessor, never the map
+  ---
+  duration_ms: 0.817586
+  type: 'test'
+  ...
+# Subtest: only an engine declaring SDPose is compatible
+ok 41 - only an engine declaring SDPose is compatible
+  ---
+  duration_ms: 0.396156
+  type: 'test'
+  ...
+# Subtest: route: SDPose request reaches the engine, the echo is checked, failures are explained, Canny/Depth unchanged
+ok 42 - route: SDPose request reaches the engine, the echo is checked, failures are explained, Canny/Depth unchanged
+  ---
+  duration_ms: 157.776689
+  type: 'test'
+  ...
+# Subtest: validation: Img2Img fields are required and bounded; Text2Img requests stay byte-identical
+ok 43 - validation: Img2Img fields are required and bounded; Text2Img requests stay byte-identical
+  ---
+  duration_ms: 4.723669
+  type: 'test'
+  ...
+# Subtest: only an engine 1.7.0 declaring Img2Img is compatible
+ok 44 - only an engine 1.7.0 declaring Img2Img is compatible
+  ---
+  duration_ms: 0.516165
+  type: 'test'
+  ...
+# Subtest: history and gallery keep a digest of the source, never the base64 image
+ok 45 - history and gallery keep a digest of the source, never the base64 image
+  ---
+  duration_ms: 1.154115
+  type: 'test'
+  ...
+# Subtest: route: Img2Img reaches the engine with all parameters, result lands in the gallery and is acknowledged
+ok 46 - route: Img2Img reaches the engine with all parameters, result lands in the gallery and is acknowledged
+  ---
+  duration_ms: 174.864302
+  type: 'test'
+  ...
+# Subtest: proxy allowlist contains exactly the six sync routes
+ok 47 - proxy allowlist contains exactly the six sync routes
+  ---
+  duration_ms: 1.658356
+  type: 'test'
+  ...
+# Subtest: status projection drops unknown fields, redacts secrets and rejects malformed data
+ok 48 - status projection drops unknown fields, redacts secrets and rejects malformed data
+  ---
+  duration_ms: 1.85692
+  type: 'test'
+  ...
+# Subtest: connect body validation
+ok 49 - connect body validation
+  ---
+  duration_ms: 1.135373
+  type: 'test'
+  ...
+# Subtest: local API: CloudCompute only, method checks, exact upstream mapping, no token persistence or echo
+ok 50 - local API: CloudCompute only, method checks, exact upstream mapping, no token persistence or echo
+  ---
+  duration_ms: 155.171662
+  type: 'test'
+  ...
+# Subtest: local API passes engine sync errors through with their code
+ok 51 - local API passes engine sync errors through with their code
+  ---
+  duration_ms: 31.906864
+  type: 'test'
+  ...
+# Subtest: upstream maps sync HTTP errors: 404 = no sync service, engine code kept, secrets removed
+ok 52 - upstream maps sync HTTP errors: 404 = no sync service, engine code kept, secrets removed
+  ---
+  duration_ms: 6.302237
+  type: 'test'
+  ...
+1..52
+# tests 52
+# suites 0
+# pass 52
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3396.804618

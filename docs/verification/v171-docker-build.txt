@@ -1,0 +1,69 @@
+# Docker image build of the shipped Dockerfile (BuildKit, Docker Engine 29.9.2)
+# Sandbox note: outbound TLS is intercepted by the sandbox proxy, so the build used validate/Dockerfile.validate =
+# the shipped Dockerfile + these 3 lines after FROM (sandbox CA via --build-context). Nothing else differs:
+#   7a8,11
+#   > # --- VALIDATION ONLY (sandbox TLS-intercepting proxy CA); not part of the shipped Dockerfile ---
+#   > COPY --from=sandboxca ca-bundle.crt /etc/yoisaki-validate-ca.crt
+#   > ENV PIP_CERT=/etc/yoisaki-validate-ca.crt SSL_CERT_FILE=/etc/yoisaki-validate-ca.crt CURL_CA_BUNDLE=/etc/yoisaki-validate-ca.crt REQUESTS_CA_BUNDLE=/etc/yoisaki-validate-ca.crt
+#   > 
+#
+# Build #1 executed the apt, pip (step #14) and cloudflared (step #15) layers; it then stopped at the import
+# check because torch.cuda.get_arch_list() is empty without a GPU -> import_check.py now reads torch._C._cuda_getArchFlags().
+  #13 DONE 0.0s
+  #14 263.9 Successfully installed MarkupSafe-3.0.4 PySocks-1.7.1 beautifulsoup4-4.15.0 certifi-2026.10.23 charset_normalizer-3.5.2 cuda-bindings-12.9.4 cuda-pathfinder-1.8.4 filelock-4.2.4 fsspec-2026.9.0 gdown-6.4.2 idna-3.20 jinja2-3.1.6 mpmath-1.3.0 networkx-3.7 numpy-2.5.4 nvidia-cublas-cu12-12.8.4.1 nvidia-cuda-cupti-cu12-12.8.90 nvidia-cuda-nvrtc-cu12-12.8.93 nvidia-cuda-runtime-cu12-12.8.90 
+  #14 312.5 Successfully installed Pillow-12.3.0 accelerate-1.12.0 annotated-types-0.8.0 anyio-4.15.1 click-8.5.0 controlnet-aux-0.0.10 diffusers-0.36.0 einops-0.8.2 fastapi-0.115.12 h11-0.16.0 hf-xet-1.7.0 httpcore-1.0.9 httpx-0.28.1 huggingface-hub-0.36.0 imageio-2.38.1 importlib_metadata-10.1.0 lazy-loader-0.6 opencv-python-headless-4.11.0.86 packaging-26.3 peft-0.18.0 psutil-7.2.2 pydantic-2.11.
+  #14 314.5 No broken requirements found.
+  #14 DONE 315.4s
+  #15 1.068 /usr/local/bin/cloudflared: OK
+  #15 DONE 1.2s
+  #19 ERROR: process "/bin/sh -c cd /opt/yoisaki/engine && /opt/yoisaki/venv/bin/python /opt/yoisaki/cloudcompute/import_check.py /opt/yoisaki/engine  && find /opt/yoisaki -name __pycache__ -prune -exec rm -rf {} +  && chmod -R a+rX,go-w /opt/yoisaki" did not complete successfully: exit code: 1
+#
+# Build #2 (same Dockerfile; apt/pip/cloudflared layers CACHED from build #1, all later steps executed) — key lines:
+  #1 [internal] load build definition from Dockerfile.validate
+  #4 [internal] load metadata for docker.io/nvidia/cuda:12.8.1-base-ubuntu24.04@sha256:133c78a0575303be34164d0b90137a042172bdf60696af01a3c424ab402d86e2
+  #5 [context sandboxca] load .dockerignore
+  #6 [internal] load .dockerignore
+  #7 [stage-0  1/13] FROM docker.io/nvidia/cuda:12.8.1-base-ubuntu24.04@sha256:133c78a0575303be34164d0b90137a042172bdf60696af01a3c424ab402d86e2
+  #8 [context sandboxca] load from client
+  #9 [internal] load build context
+  #10 [stage-0  5/13] COPY cloudcompute/requirements-cloud.txt /opt/yoisaki/cloudcompute/requirements-cloud.txt
+  #11 [stage-0  2/13] COPY --from=sandboxca ca-bundle.crt /etc/yoisaki-validate-ca.crt
+  #12 [stage-0  4/13] COPY engine/requirements.txt /opt/yoisaki/engine/requirements.txt
+  #13 [stage-0  7/13] RUN curl -fsSL -o /usr/local/bin/cloudflared       "https://github.com/cloudflare/cloudflared/releases/download/2026.9.3/cloudflared-linux-amd64"  && echo "77e26d8d900e0b8469f416239d14b5f296525fdf79fee6f511ef55609e3fbac2  /usr/local/bin/cloudflared" | sha256sum -c -  && chmod 0755 /usr/local/bin/cloudflared
+  #14 [stage-0  6/13] RUN python3 -m venv /opt/yoisaki/venv  && /opt/yoisaki/venv/bin/pip install -r /opt/yoisaki/cloudcompute/requirements-cloud.txt  && /opt/yoisaki/venv/bin/pip install -c /opt/yoisaki/cloudcompute/requirements-cloud.txt -r /opt/yoisaki/engine/requirements.txt  && /opt/yoisaki/venv/bin/pip check
+  #15 [stage-0  3/13] RUN apt-get update  && apt-get install -y --no-install-recommends python3 python3-venv ca-certificates curl tini libglib2.0-0t64  && rm -rf /var/lib/apt/lists/*
+  #16 [stage-0  8/13] COPY engine/ /opt/yoisaki/engine/
+  #17 [stage-0  9/13] COPY cloudcompute/ /opt/yoisaki/cloudcompute/
+  #18 [stage-0 10/13] COPY start-cloudcompute.sh stop-cloudcompute.sh check-cloudcompute.sh fetch-models-cloudcompute.sh /opt/yoisaki/
+  #19 [stage-0 11/13] RUN cd /opt/yoisaki/engine && /opt/yoisaki/venv/bin/python /opt/yoisaki/cloudcompute/import_check.py /opt/yoisaki/engine  && find /opt/yoisaki -name __pycache__ -prune -exec rm -rf {} +  && chmod -R a+rX,go-w /opt/yoisaki
+  #19 6.865 IMPORTS_OK
+  #19 6.865 CUDA False
+  #19 6.865 torch 2.10.0+cu128 cuda 12.8 arch sm_70 sm_75 sm_80 sm_86 sm_90 sm_100 sm_120
+  #19 6.865 ARCH_OK
+  #19 DONE 62.6s
+  #20 [stage-0 12/13] RUN userdel -r ubuntu 2>/dev/null || true  && useradd --uid 1000 --create-home --shell /usr/sbin/nologin yoisaki
+  #21 [stage-0 13/13] WORKDIR /opt/yoisaki
+  #22 naming to docker.io/library/yoisaki-engine:1.7.1-cloudcompute done
+  #22 DONE 365.8s
+  build exit: exit 0
+
+# Later source-only changes (cloudcompute/*.py, *.sh; Dockerfile, requirements and engine/ unchanged) were applied with
+# validate/Dockerfile.patch (same COPY + import-check steps on top of build #2), because the sandbox network fell to ~1.5 MB/s:
+#   # VALIDATION ONLY: same COPY + check steps as the shipped Dockerfile, on top of the build-2 image whose
+#   # dependency layers are identical (Dockerfile, requirements and engine/ unchanged since build 2).
+#   FROM yoisaki-engine:deps-build2
+#   USER 0
+#   COPY engine/ /opt/yoisaki/engine/
+#   COPY cloudcompute/ /opt/yoisaki/cloudcompute/
+#   COPY start-cloudcompute.sh stop-cloudcompute.sh check-cloudcompute.sh fetch-models-cloudcompute.sh /opt/yoisaki/
+#   RUN cd /opt/yoisaki/engine && /opt/yoisaki/venv/bin/python /opt/yoisaki/cloudcompute/import_check.py /opt/yoisaki/engine \
+#    && find /opt/yoisaki -name __pycache__ -prune -exec rm -rf {} + \
+#    && chmod -R a+rX,go-w /opt/yoisaki
+#   USER 1000:1000
+  result: IMPORTS_OK · torch 2.10.0+cu128 cuda 12.8 arch sm_70 sm_75 sm_80 sm_86 sm_90 sm_100 sm_120 · ARCH_OK
+
+$ docker image ls yoisaki-engine:1.7.1-cloudcompute
+IMAGE                               ID             DISK USAGE   CONTENT SIZE   EXTRA
+yoisaki-engine:1.7.1-cloudcompute   89b67835e7ee         13GB         4.55GB        
+$ docker image inspect (user, healthcheck, entrypoint, cmd, volumes)
+user=1000:1000 entrypoint=["/usr/bin/tini","--"] cmd=["/opt/yoisaki/venv/bin/python","/opt/yoisaki/cloudcompute/launcher.py","run"] volumes={"/data":{}} healthcheck={"Test":["CMD","/opt/yoisaki/venv/bin/python","/opt/yoisaki/cloudcompute/launcher.py","healthcheck"],"Interval":30000000000,"Timeout":10000000000,"StartPeriod":300000000000,"Retries":3}
