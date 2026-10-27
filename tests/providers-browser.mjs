@@ -19,7 +19,7 @@ try{
   await page.setViewportSize({width,height:844});
   for(const p of ['Google Colab','CloudCompute']){await click(p);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);}
  }
- await page.getByRole('button',{name:'Настройки',exact:true}).click();await page.getByRole('dialog').waitFor();assert((await page.getByRole('dialog').innerText()).includes('AMBER CORE · v1.7.4 ONE-CLICK CONNECT EDITION'));
+ await page.getByRole('button',{name:'Настройки',exact:true}).click();await page.getByRole('dialog').waitFor();assert((await page.getByRole('dialog').innerText()).includes('AMBER CORE · v1.7.5 ZERO-TERMINAL CLOUDCOMPUTE EDITION'));
  await page.getByRole('dialog').locator('select').selectOption('English');await page.getByRole('button',{name:'Close',exact:true}).click();await page.getByLabel('CloudCompute server URL').waitFor();assert.equal(await page.getByRole('button',{name:'Connect',exact:true}).count(),1);assert.equal(await page.getByText('No data',{exact:false}).count()>0,true);
  await page.reload();await page.getByLabel('CloudCompute server URL').waitFor();assert.equal(await page.getByRole('button',{name:'CloudCompute',exact:true}).getAttribute('aria-pressed'),'true');
  await page.screenshot({path:'validation/gpu-cloudcompute-en.png',fullPage:true});

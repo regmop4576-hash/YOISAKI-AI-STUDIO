@@ -7,7 +7,7 @@ export const CLOUDCOMPUTE_BASE='https://app.cloudcompute.ru/api/v1';
 export const CC_KEY=/^cc-[A-Za-z0-9._~-]{8,500}$/;
 export function validateKey(value){if(typeof value!=='string'||!CC_KEY.test(value.trim()))fail('CC_INVALID_KEY','Введите API-ключ CloudCompute вида cc-…');return value.trim()}
 const id=v=>{if(!/^[A-Za-z0-9_-]{1,100}$/.test(String(v)))fail('CC_INVALID_ID','Некорректный ID инстанса.');return encodeURIComponent(v)};
-const safe=(v,n=255)=>typeof v==='string'?v.replace(/cc-[A-Za-z0-9._~-]+/g,'[СКРЫТО]').replace(/[\x00-\x1f]/g,' ').slice(0,n):typeof v==='number'?String(v):'';
+const safe=(v,n=255)=>typeof v==='string'?v.replace(/cc-[A-Za-z0-9._~-]+/g,'[СКРЫТО]').replace(/[a-f0-9]{64}/g,'[СКРЫТО]').replace(/[\x00-\x1f]/g,' ').slice(0,n):typeof v==='number'?String(v):'';
 export function instanceView(v){
  if(!v||typeof v!=='object'||!['string','number'].includes(typeof v.id))fail('CC_RESPONSE_SCHEMA','CloudCompute вернул инстанс без ID. Формат успешных ответов не описан в OpenAPI; требуется обновление адаптера.',502);
  return {id:String(v.id),name:safe(v.name||v.label)||String(v.id),status:safe(v.status||v.actual_status||v.state)||'UNKNOWN',gpu:safe(v.gpu_name||v.gpu?.name),label:safe(v.label)};
@@ -32,9 +32,9 @@ export function validateCreate(b){
 }
 export class CloudComputeAPI{
  constructor(secrets,http=providerHttp){this.secrets=secrets;this.http=http}
- async request(method,path,body,key=this.secrets.cloudKey()){
+ async request(method,path,body,key=this.secrets.cloudKey(),{maxBytes}={}){
   if(!key)fail('CC_NOT_CONFIGURED','Сначала сохраните API-ключ CloudCompute.',409);
-  const {status,json}=await this.http(CLOUDCOMPUTE_BASE+path,{method,headers:{Authorization:'Bearer '+key,Accept:'application/json','Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});
+  const {status,json}=await this.http(CLOUDCOMPUTE_BASE+path,{method,headers:{Authorization:'Bearer '+key,Accept:'application/json','Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),...(maxBytes?{maxBytes}:{})});
   if(status<200||status>=300){const message=safe(json?.error?.message||json?.message,400).split(key).join('[СКРЫТО]');const labels={401:'API-ключ отклонён',403:'Недостаточно прав',404:'Инстанс или операция не найдены',422:'Параметры отклонены',429:'Лимит запросов'};fail('CC_HTTP_'+status,`CloudCompute HTTP ${status}: ${labels[status]||'Ошибка API'}${message?' — '+message:''}`,status>=400&&status<500?status:502)}
   return json;
  }
@@ -44,4 +44,8 @@ export class CloudComputeAPI{
  patch(value,body){return this.request('PATCH','/instances/'+id(value),validatePatch(body))}
  remove(value){return this.request('DELETE','/instances/'+id(value))}
  create(body){return this.request('POST','/instances',validateCreate(body))}
+ // v1.7.5: GET /offers (documented path; no query parameters are documented, so none are sent).
+ offers(){return this.request('GET','/offers',undefined,undefined,{maxBytes:16*1024*1024})}
+ // v1.7.5: a creation body built and validated by cloudcompute-deploy.mjs createBody() (adds onstart).
+ deploy(body){return this.request('POST','/instances',body)}
 }

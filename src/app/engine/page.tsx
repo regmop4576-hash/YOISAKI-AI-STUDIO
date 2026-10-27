@@ -80,7 +80,8 @@ export default function Page(){
     {gpu.autoconnect&&<p className="tiny muted">{t(`Попытка ${gpu.autoconnect.attempt} · адрес ${host(gpu.autoconnect.origin)} · ожидание ещё до ${remaining} мин.`,`Attempt ${gpu.autoconnect.attempt} · ${host(gpu.autoconnect.origin)} · waiting up to ${remaining} more min.`)}</p>}
     {waiting&&<button onClick={()=>void gpu.disconnect()}>{t('Отменить подключение','Cancel')}</button>}
    </div>}
-   <h2>{t('Подключение','Connect to')} {providerLabel}</h2>
+   <h2>{gpu.provider==='cloudcompute'?t('Подключение CloudCompute по ссылке (дополнительно)','CloudCompute connection by link (advanced)'):<>{t('Подключение','Connect to')} {providerLabel}</>}</h2>
+   {gpu.provider==='cloudcompute'&&<p className="tiny muted">{t('Для сервера, созданного шагами CLOUDCOMPUTE выше, адрес и токен подставляются автоматически. Ручная ссылка нужна только для серверов, запущенных иначе.','For a server created with the CLOUDCOMPUTE steps above the address and token are filled in automatically. A manual link is only needed for servers started otherwise.')}</p>}
    <label className="field">{label}<input type="url" autoComplete="off" spellCheck={false} value={value} disabled={gpu.changing||gpu.state==='CONNECTING'} onChange={e=>change(e.target.value)} placeholder="https://example.trycloudflare.com" aria-label={label}/></label>
    <label className="field">{t('Токен доступа','Access token')}<input type="password" autoComplete="off" spellCheck={false} value={token} disabled={gpu.changing||gpu.state==='CONNECTING'} onChange={e=>setToken(e.target.value)} aria-label={t('Токен доступа','Access token')}/></label>
    <button type="button" disabled={gpu.changing||gpu.state==='CONNECTING'} onClick={()=>void paste()}>{t('Вставить ссылку из буфера','Paste link from clipboard')}</button>
@@ -112,8 +113,8 @@ export default function Page(){
    <details onToggle={e=>{if((e.target as HTMLDetailsElement).open)void loadEvents()}}><summary className="tiny">{t('Технический журнал для разработчиков','Technical log for developers')}</summary><pre className="tiny" style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{events}</pre></details>
   </div>
   {gpu.provider==='cloudcompute'&&<div className="panel stack"><h2>{t('Инстанс и оплата CloudCompute','CloudCompute instance and billing')}</h2>
-   <p className="tiny">{t('Список, статусы, создание, переименование и удаление доступны через API выше. Запуск и остановку существующего GPU-инстанса выполняйте в панели CloudCompute.','Use the API section above to list, monitor, create, rename and delete instances. Start and stop existing GPU instances in the CloudCompute dashboard.')}</p>
-   <a href="https://cloudcompute.ru/" target="_blank" rel="noopener noreferrer">{t('Открыть сайт CloudCompute','Open CloudCompute')}</a>
+   <p className="tiny">{t('Список, статусы, создание, переименование и удаление доступны через API выше. Запуск и остановку существующего GPU-инстанса выполняйте в панели CloudCompute: в опубликованном API для GPU-инстансов этих команд нет.','Use the API section above to list, monitor, create, rename and delete instances. Start and stop existing GPU instances in the CloudCompute dashboard: the published API has no such commands for GPU instances.')}</p>
+   <div className="row"><a className="btn" href="https://app.cloudcompute.ru/" target="_blank" rel="noopener noreferrer">{t('Открыть панель CloudCompute','Open CloudCompute dashboard')}</a><a href="https://cloudcompute.ru/" target="_blank" rel="noopener noreferrer">{t('Открыть сайт CloudCompute','Open CloudCompute')}</a></div>
    <ul className="tiny" style={{margin:0,paddingLeft:18,display:'flex',flexDirection:'column',gap:6}}>
     <li><b>{t('«Отключиться» на сайте','«Disconnect» here')}</b>{t(': движок и инстанс продолжают работать, оплата GPU идёт.',': the engine and the instance keep running, the GPU is billed.')}</li>
     <li><b>{t('Остановить движок','Stop the engine')}</b> (./stop-cloudcompute.sh){t(': освобождает видеопамять, оплата GPU-инстанса продолжается.',': frees VRAM, the GPU instance is still billed.')}</li>

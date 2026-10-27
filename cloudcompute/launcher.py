@@ -17,6 +17,10 @@ Subcommands: run (default), healthcheck, link, status, rotate-token.
     config/engine/cloudflared.token) instead of a new *.trycloudflare.com name on every start;
   - a tunnel failure no longer stops the engine: the tunnel is retried with growing pauses (phase TUNNEL_RETRY);
   - YOISAKI_RENDEZVOUS=ntfy: the verified Quick Tunnel address is published signed (cloudcompute/rendezvous.py).
+
+1.7.5 (automatic initialization): with YOISAKI_RENDEZVOUS=ntfy and a persistent token the launcher also publishes
+signed initialization stages (ENGINE_STARTING, SERVER_READY, TUNNEL_RETRY, GPU_CHECK_FAILED, ENGINE_FAILED), so the
+website reports what the GPU really did instead of guessing. Best effort in a background thread; never fatal.
 """
 import fcntl
 import json
@@ -27,6 +31,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -226,6 +231,7 @@ class Launcher:
         self.handles = []
         self.lock = None
         self.stopping = False
+        self.failure_signalled = False
         self.timings = {'run_id': uuid.uuid4().hex[:12], 'deploy_version': VERSION, 'launcher_start_unix': time.time()}
         if os.environ.get('YOISAKI_IN_IMAGE') == '1':
             self.timings['container_start_unix'] = process_start_unix(1)
@@ -274,6 +280,10 @@ class Launcher:
         sys.stdout.write(result.stdout)
         if result.returncode:
             sys.stdout.write(result.stderr[-4000:])
+            self.failure_signalled = True
+            sent = self.signal('GPU_CHECK_FAILED')
+            if sent:
+                sent.join(12)  # the process exits right after: give the failure report a chance to leave
             raise LaunchError('GPU не прошёл проверку. Движок не запущен, чтобы не тратить оплачиваемое время. Подробности выше.')
         self.mark('gpu_check_done_unix')
 
@@ -400,6 +410,22 @@ class Launcher:
                               f'Service http://127.0.0.1:{self.cfg.port} и что DNS-запись создана.')
         raise LaunchError('Cloudflare не подтвердил соединение. Повторю попытку автоматически.')
 
+    def signal(self, stage):
+        """1.7.5: publish a signed initialization stage (same opt-in as announce(); the token itself is never sent)."""
+        if not self.cfg.rendezvous or not self.cfg.persistent_token:
+            return None
+        token = self.token or engine_token(self.cfg)
+
+        def send():
+            try:
+                from rendezvous import publish_status
+                publish_status(token, stage, host=self.cfg.rendezvous_host)
+            except Exception as exc:  # optional signal: the engine keeps running
+                log(f'Этап {stage} не опубликован: {type(exc).__name__}.')
+        worker = threading.Thread(target=send, name='yoisaki-stage', daemon=True)
+        worker.start()
+        return worker
+
     def announce(self):
         """YOISAKI_RENDEZVOUS=ntfy: publish the verified quick-tunnel address, signed with the engine token."""
         if not self.cfg.rendezvous or self.cfg.tunnel_mode == 'named':
@@ -438,8 +464,10 @@ class Launcher:
         self.acquire()
         try:
             self.save_state('STARTING')
+            self.signal('ENGINE_STARTING')
             self.gpu_check()
             self.start_server()
+            self.signal('SERVER_READY')
             self.report_models()
             self.save_state('WARMUP' if self.cfg.warmup else 'TUNNEL')
             self.warmup()
@@ -455,9 +483,16 @@ class Launcher:
                 log('YOISAKI ENGINE готов. Модель SDXL загружается при первой генерации (если не включён прогрев).')
             else:
                 self.save_state('TUNNEL_RETRY', timings=row)
+                self.signal('TUNNEL_RETRY')
                 log('Движок работает, туннель переподключается автоматически.')
             self.supervise()
             return 0
+        except LaunchError:
+            if not self.failure_signalled and not self.stopping:
+                sent = self.signal('ENGINE_FAILED')
+                if sent:
+                    sent.join(12)
+            raise
         finally:
             self.save_state('STOPPING')
             self.shutdown()

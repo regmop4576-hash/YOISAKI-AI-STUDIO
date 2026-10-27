@@ -43,3 +43,25 @@ export async function discover(token,{fetchText=get,now}={}){
  const body=await fetchText('/'+topicFor(token)+'/json?poll=1&since=24h');
  return pickLatest(body,token,now)?.url||null;
 }
+// v1.7.5 signed initialization stages of an automatically provisioned instance (cloudcompute/rendezvous.py STAGES).
+// Same freshness and signature rules as addresses; unknown stages and forged records are ignored.
+export const STAGES=['IMAGE_READY','ENGINE_STARTING','SERVER_READY','TUNNEL_RETRY','GPU_CHECK_FAILED','ENGINE_FAILED'];
+export const signStatus=(token,stage,ts)=>mac(token,`yoisaki-rendezvous-status-v1\n${stage}\n${ts}`);
+export function pickStages(body,token,now=Date.now()/1000){
+ const out=[];
+ for(const line of String(body).split('\n')){
+  let event,record;
+  try{event=JSON.parse(line);if(event?.event!=='message'||typeof event.message!=='string')continue;record=JSON.parse(event.message)}catch{continue}
+  if(record?.v!==1||record.kind!=='status'||!STAGES.includes(record.stage)||!Number.isInteger(record.ts)||!/^[a-f0-9]{64}$/.test(record.sig||''))continue;
+  if(record.ts<now-MAX_AGE||record.ts>now+MAX_SKEW)continue;
+  if(!timingSafeEqual(Buffer.from(signStatus(token,record.stage,record.ts),'hex'),Buffer.from(record.sig,'hex')))continue;
+  out.push({stage:record.stage,ts:record.ts});
+ }
+ return out.sort((a,b)=>a.ts-b.ts);
+}
+// One poll for both: the newest verified address and the verified stage history (oldest first).
+export async function progress(token,{fetchText=get,now}={}){
+ const body=await fetchText('/'+topicFor(token)+'/json?poll=1&since=24h');
+ const latest=pickLatest(body,token,now);
+ return {url:latest?.url||null,url_ts:latest?.ts||null,stages:pickStages(body,token,now)};
+}

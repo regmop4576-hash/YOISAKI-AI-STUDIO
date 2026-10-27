@@ -21,3 +21,7 @@ yoisaki.env
 !cloudcompute/yoisaki.env.example
 engine/.venv/
 engine/.results/
+build-meta.json
+validation/
+screenshots/
+mobile-results.json
