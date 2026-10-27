@@ -3,7 +3,7 @@
 One-way and read-only:
   source  <remote>:<YOISAKI_DRIVE_PATH>   default yoisaki-gdrive:YOISAKI_AI_STUDIO/models (My Drive)
           or (1.7.3) the folder the user chose on the website: rclone root_folder_id = <Drive folder ID>
-  target  $YOISAKI_DATA_ROOT/models/{checkpoints,loras,vae,controlnet} = the engine's own catalogue (no second model folder)
+  target  $YOISAKI_DATA_ROOT/models/{checkpoints,loras,vae}   = the engine's own catalogue (no second model folder)
 
 Only `rclone lsjson` and `rclone cat` are ever executed (argv lists, no shell): nothing is written, moved or
 deleted on Google Drive, and no local model is deleted. Files are downloaded into models/.yoisaki-sync/*.part
@@ -33,10 +33,10 @@ sys.path.insert(0, str(HERE))
 from launcher import Config, LaunchError, write_private  # noqa: E402
 from fetch_models import NAME_RE, FetchError, validate  # noqa: E402
 
-KIND_FOLDERS = {'checkpoints': 'checkpoint', 'loras': 'lora', 'vae': 'vae', 'controlnet': 'controlnet'}
+# controlnet/ is deliberately not synced: the engine's ControlNet uses its fixed prefetched models (fetch_models.py prefetch).
+KIND_FOLDERS = {'checkpoints': 'checkpoint', 'loras': 'lora', 'vae': 'vae'}
 # Plausible size windows; anything outside is reported, never downloaded.
-LIMITS = {'checkpoint': (256 * 2**20, 32 * 2**30), 'lora': (16 * 2**10, 4 * 2**30), 'vae': (1 * 2**20, 2 * 2**30),
-          'controlnet': (1 * 2**20, 8 * 2**30)}
+LIMITS = {'checkpoint': (256 * 2**20, 32 * 2**30), 'lora': (16 * 2**10, 4 * 2**30), 'vae': (1 * 2**20, 2 * 2**30)}
 PICKLE = ('.ckpt', '.pt', '.pth', '.bin', '.pkl', '.pickle')
 SEGMENT_RE = re.compile(r'^[\w .()+\-\[\]]{1,120}$')
 REMOTE_RE = re.compile(r'^[A-Za-z0-9_][A-Za-z0-9_-]{0,63}$')

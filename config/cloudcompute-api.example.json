@@ -1,0 +1,13 @@
+{
+  "_comment": "TEMPLATE, NOT VERIFIED. Every value below is a placeholder. Fill it ONLY from https://cloudcompute.ru/docs/api, set verified_against, then copy to <data folder>/cloudcompute-api.json (default ~/.local/share/yoisaki-ai-studio/). See CLOUDCOMPUTE_API_SETUP_RU.md.",
+  "version": 1,
+  "verified_against": "",
+  "operations": {
+    "list":  {"method": "GET",  "path": "/PATH-FROM-DOCS",          "items": "FIELD-WITH-ARRAY"},
+    "get":   {"method": "GET",  "path": "/PATH-FROM-DOCS/{id}",     "item": "FIELD-WITH-OBJECT"},
+    "start": {"method": "POST", "path": "/PATH-FROM-DOCS/{id}/START"},
+    "stop":  {"method": "POST", "path": "/PATH-FROM-DOCS/{id}/STOP"}
+  },
+  "fields": {"id": "id", "name": "name", "status": "status", "gpu": "gpu", "gpu_count": "gpu_count", "disk_gb": "disk", "price_per_hour": "price"},
+  "status_map": {"running": "RUNNING", "starting": "STARTING", "stopping": "STOPPING", "stopped": "STOPPED", "error": "ERROR"}
+}

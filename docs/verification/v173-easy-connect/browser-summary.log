@@ -1,0 +1,11 @@
+providers-browser exit=0
+browser-e2e exit=0
+ui-check exit=0
+drive-sync-browser exit=0
+history-browser exit=0
+img2img-browser exit=0
+controlnet-browser exit=0
+regional-compatibility-browser exit=0
+memory-ui exit=0
+easy-connect-browser exit=0
+mobile exit=0 (local server on 127.0.0.1:3000)

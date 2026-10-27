@@ -7,7 +7,9 @@ const HOST='www.googleapis.com';
 export const FOLDER_MIME='application/vnd.google-apps.folder';
 export const FOLDER_ID_RE=/^[A-Za-z0-9_-]{10,200}$/;
 // Same folder names and depth as cloudcompute/drive_sync.py (kind folder + up to two subfolders + file).
-export const KIND_FOLDERS={checkpoints:'checkpoint',loras:'lora',vae:'vae',controlnet:'controlnet'};
+export const KIND_FOLDERS={checkpoints:'checkpoint',loras:'lora',vae:'vae'};
+// Not synced on purpose: the engine's ControlNet uses its fixed prefetched models, not files of this folder.
+export const IGNORED_FOLDERS=['controlnet'];
 const MAX_DEPTH=4,MAX_FILES=2000,MAX_REQUESTS=60;
 const PICKLE=/\.(ckpt|pt|pth|bin|pkl|pickle)$/i;
 const name=v=>scrub(typeof v==='string'?v:'',200);
@@ -74,5 +76,5 @@ export async function previewFolder(access,id,opts){
   }
  };
  for(const f of top)if(f.folder&&KIND_FOLDERS[f.name]){found.push(f.name);await walk(f.id,KIND_FOLDERS[f.name],1)}
- return {folder_id:fid,kinds,kind_folders:found,missing_folders:Object.keys(KIND_FOLDERS).filter(k=>!found.includes(k)),loose_files:top.filter(f=>!f.folder&&/\.safetensors$/i.test(f.name)).length,truncated,checked_at:Date.now()};
+ return {folder_id:fid,kinds,kind_folders:found,missing_folders:Object.keys(KIND_FOLDERS).filter(k=>!found.includes(k)),ignored_folders:top.filter(f=>f.folder&&IGNORED_FOLDERS.includes(f.name)).map(f=>f.name),loose_files:top.filter(f=>!f.folder&&/\.safetensors$/i.test(f.name)).length,truncated,checked_at:Date.now()};
 }

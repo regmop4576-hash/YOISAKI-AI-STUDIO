@@ -29,17 +29,19 @@ const local=(route,body)=>fetch(base+route,{method:'POST',headers:{'X-Yoisaki-Lo
 const browser=await chromium.launch({headless:true,args:['--no-sandbox']});const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});const errors=[];page.on('pageerror',e=>errors.push(e.message));
 const button=name=>page.getByRole('button',{name,exact:true});const noOverflow=()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1);
 try{
- // Colab selected: the CloudCompute-only section is not shown at all.
- await page.goto(base+'/models');await page.getByText('Библиотека моделей').waitFor();assert.equal(await page.getByRole('heading',{name:'GOOGLE DRIVE AUTO SYNC',exact:true}).count(),0);
- await local('/api/gpu/provider',{provider:'cloudcompute'});await page.reload();await page.getByRole('heading',{name:'GOOGLE DRIVE AUTO SYNC',exact:true}).waitFor();
- await page.getByText('Подключите CloudCompute на странице GPU').waitFor();
+ // v1.7.3: the Drive account can be set up with any provider; the GPU sync part is CloudCompute-only.
+ await page.goto(base+'/models');await page.getByText('Библиотека моделей').waitFor();await page.getByRole('heading',{name:'GOOGLE DRIVE',exact:true}).waitFor();
+ await page.getByText('Google Drive Auto Sync работает только с CloudCompute',{exact:false}).waitFor();assert.equal(await button('Синхронизировать').count(),0);
+ await local('/api/gpu/provider',{provider:'cloudcompute'});await page.reload();await page.getByRole('heading',{name:'GOOGLE DRIVE',exact:true}).waitFor();
+ await page.getByText('подключите его на странице GPU',{exact:false}).waitFor();
  const connected=await local('/api/gpu/connect',{provider:'cloudcompute',url:'https://gpu.example.com/#token='+token});assert.equal(connected.state,'READY');
  await page.reload();await page.getByText('Не подключён',{exact:true}).first().waitFor();
- for(const name of ['Подключить Google Drive','Проверить модели','Синхронизировать','Отменить загрузку','Обновить список'])assert.equal(await button(name).count(),1,name);
+ for(const name of ['Проверить модели на сервере','Синхронизировать','Отменить загрузку','Обновить список'])assert.equal(await button(name).count(),1,name);
  assert(await button('Синхронизировать').isDisabled());assert(await button('Отменить загрузку').isDisabled());
  await page.getByText('YOISAKI_AI_STUDIO/models',{exact:true}).waitFor();await page.getByText('500 GB / 944 GB').waitFor();
  // One-time token paste: password field, cleared after sending, never stored by the studio.
- await button('Подключить Google Drive').click();await page.getByText('rclone authorize "drive" "eyJzY29wZSI6ImRyaXZlLnJlYWRvbmx5In0"').waitFor();
+ // The 1.7.2 Termux token paste stays available as an advanced fallback.
+ await page.getByText('Дополнительно: ручная авторизация через Termux',{exact:false}).click();await page.getByText('rclone authorize "drive" "eyJzY29wZSI6ImRyaXZlLnJlYWRvbmx5In0"').waitFor();
  assert.equal(await page.getByLabel('Токен rclone (JSON)').getAttribute('type'),'password');
  await page.getByLabel('Токен rclone (JSON)').fill(oauth);await button('Сохранить на сервере и проверить').click();
  await page.getByRole('cell',{name:/Illustrious XL/}).first().waitFor();assert.equal(sim.received.length,1);assert.equal(sim.received[0].token,oauth);
@@ -57,12 +59,13 @@ try{
  await page.screenshot({path:'validation/drive-sync-done-ru.png',fullPage:true});
  // English labels.
  await button('Настройки').first().click();await page.getByRole('dialog').locator('select').selectOption('English');await page.getByRole('button',{name:'Close',exact:true}).click();
- for(const name of ['Connect Google Drive','Check models','Synchronize','Cancel download','Refresh list'])assert.equal(await button(name).count(),1,name);
+ for(const name of ['Check models on the server','Synchronize','Cancel download','Refresh list'])assert.equal(await button(name).count(),1,name);
+ await page.getByText('Model synchronization',{exact:false}).first().waitFor();
  await page.screenshot({path:'validation/drive-sync-en.png',fullPage:true});
  // Secrets: not in the studio state, browser storage or page text.
  const state=await fs.readFile(path.join(dir,'state.json'),'utf8');const storage=JSON.stringify(await page.evaluate(()=>({...localStorage,...sessionStorage})));const text=await page.content();
  for(const leak of ['BROWSERTEST_ACCESS','BROWSERTEST_REFRESH',token])assert(!state.includes(leak)&&!storage.includes(leak)&&!text.includes(leak),leak);
- await local('/api/gpu/provider',{provider:'colab'});await page.reload();await page.getByText('Model library').or(page.getByText('Библиотека моделей')).first().waitFor();assert.equal(await page.getByRole('heading',{name:'GOOGLE DRIVE AUTO SYNC',exact:true}).count(),0);
+ await local('/api/gpu/provider',{provider:'colab'});await page.reload();await page.getByText('Model library').or(page.getByText('Библиотека моделей')).first().waitFor();assert.equal(await button('Synchronize').count(),0);
  assert.deepEqual(errors,[]);
- console.log('PASS: Drive sync section CloudCompute-only, connect form (password, cleared, forwarded once), check table, indeterminate→byte progress, speed, cancel state, completion, model inventory refresh, RU/EN, 360/390/430px no overflow, no secrets in storage. Synthetic sync state machine.');
+ console.log('PASS: Drive sync (GPU part) CloudCompute-only, connect form (password, cleared, forwarded once), check table, indeterminate→byte progress, speed, cancel state, completion, model inventory refresh, RU/EN, 360/390/430px no overflow, no secrets in storage. Synthetic sync state machine.');
 }catch(e){console.error('Page text at failure:\n'+(await page.locator('main').innerText().catch(()=>'')).slice(0,3000));throw e}finally{await browser.close();await app.close();await fs.rm(dir,{recursive:true,force:true})}

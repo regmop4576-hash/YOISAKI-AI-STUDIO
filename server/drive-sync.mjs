@@ -5,7 +5,7 @@ export const SYNC_ACTIONS={status:['GET','/sync/status'],check:['POST','/sync/ch
 export const SYNC_ROUTES=Object.values(SYNC_ACTIONS).map(([method,route])=>method+' '+route);
 const JOB_STATES=['RUNNING','COMPLETED','FAILED','CANCELLED','INTERRUPTED'];
 const ITEM_STATES=['PENDING','INSTALLED','MISSING','CHANGED','CONFLICT','REJECTED','DOWNLOADING','VERIFYING','FAILED'];
-const KINDS=['checkpoint','lora','vae','controlnet'];
+const KINDS=['checkpoint','lora','vae'];
 const bad=()=>fail('INVALID_RESPONSE','Некорректный ответ синхронизации Google Drive от GPU-сервера.',502);
 const clean=s=>s.replace(/[a-f0-9]{64}/g,'[СКРЫТО]').replace(/ya29\.[\w.-]+|1\/\/[\w.-]{20,}|GOCSPX-[\w-]+/g,'[СКРЫТО]');
 const str=(v,max,fallback='')=>v===undefined||v===null?fallback:typeof v==='string'&&v.length<=max?clean(v):bad();

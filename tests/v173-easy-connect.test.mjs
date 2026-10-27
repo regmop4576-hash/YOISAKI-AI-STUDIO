@@ -182,7 +182,7 @@ test('Drive API helpers (mocked Google): folders, display path, preview of neste
  assert.deepEqual(await folderInfo('ya29.t','fold000000B',opts),{id:'fold000000B',name:'models',path:'YOISAKI_AI_STUDIO/models',root:'my'});
  const p=await previewFolder('ya29.t','fold000000B',opts);
  assert.deepEqual(p.kinds.checkpoint,{files:1,bytes:6936000000,rejected:1});assert.equal(p.kinds.lora.files,2);  // nested loras/characters/ counted
- assert.deepEqual(p.missing_folders,['vae','controlnet']);assert.equal(p.loose_files,1);
+ assert.deepEqual(p.missing_folders,['vae']);assert.equal(p.loose_files,1);
  await assert.rejects(()=>listFolders('ya29.t',"x' or 1=1",opts),e=>e.code==='DRIVE_INVALID_FOLDER');
  await assert.rejects(()=>driveGet('ya29.t','about',{},{request:async()=>({status:403,json:{error:{errors:[{reason:'insufficientPermissions'}]}},text:''})}),e=>e.code==='DRIVE_PERMISSION');
  await assert.rejects(()=>driveGet('ya29.t','about',{},{request:async()=>({status:403,json:{error:{errors:[{reason:'accessNotConfigured'}]}},text:''})}),e=>e.code==='DRIVE_API_DISABLED');
@@ -190,7 +190,7 @@ test('Drive API helpers (mocked Google): folders, display path, preview of neste
 
 test('Drive Easy Connect without GPU: sign in → account → choose folder → preview; reconnect when expired; disconnect revokes',async()=>{
  const g=fakeGoogle({expireFirst:false});
- const h=await harness({options:{driveRequest:g.request,googlePost:g.post,env:{YOISAKI_GOOGLE_CLIENT_ID:'123456789-publicclient.apps.googleusercontent.com',YOISAKI_GOOGLE_CLIENT_SECRET:'GOCSPX-publicsecret'},
+ const h=await harness({options:{driveRequest:g.request,googlePost:g.post,env:{YOISAKI_GOOGLE_CLIENT_ID:'123456789-publicclient.apps.googleusercontent.com',YOISAKI_GOOGLE_CLIENT_SECRET:'GOCSPX-TESTONLY_public'},
   exchange:async(client,code,pending)=>{assert.equal(client.client_id,'123456789-publicclient.apps.googleusercontent.com');assert.equal(pending.client_id,client.client_id);return {access_token:'ya29.first',token_type:'Bearer',refresh_token:'1//phone-refresh',expiry:new Date(Date.now()+3600e3).toISOString()}}}});
  try{
   let v=(await h.call('/api/drive')).body;assert.equal(v.linked,false);assert.equal(v.public_client,true);assert.equal(v.gpu_online,false);
@@ -207,7 +207,7 @@ test('Drive Easy Connect without GPU: sign in → account → choose folder → 
   const secretsFile=path.join(h.dataDir,'secrets.json');const raw=JSON.parse(await fs.readFile(secretsFile,'utf8'));
   await h.close();raw.drive.refresh_token='1//revoked';await fs.writeFile(secretsFile,JSON.stringify(raw),{mode:0o600});
   // Restart of the local app on the same data folder (as after a phone reboot).
-  const h3=await createLocalApp({dataDir:h.dataDir,distDir:path.resolve('dist'),upstream:async()=>{throw Error('no gpu')},driveRequest:g.request,googlePost:g.post,env:{YOISAKI_GOOGLE_CLIENT_ID:'123456789-publicclient.apps.googleusercontent.com',YOISAKI_GOOGLE_CLIENT_SECRET:'GOCSPX-publicsecret'}});
+  const h3=await createLocalApp({dataDir:h.dataDir,distDir:path.resolve('dist'),upstream:async()=>{throw Error('no gpu')},driveRequest:g.request,googlePost:g.post,env:{YOISAKI_GOOGLE_CLIENT_ID:'123456789-publicclient.apps.googleusercontent.com',YOISAKI_GOOGLE_CLIENT_SECRET:'GOCSPX-TESTONLY_public'}});
   await new Promise(r=>h3.server.listen(0,'127.0.0.1',r));const base3='http://127.0.0.1:'+h3.server.address().port;const ck=(await fetch(base3+'/api/session',{headers:{'X-Yoisaki-Local':'1'}})).headers.get('set-cookie').split(';')[0];
   const c3=async(r,m='GET',b)=>{const x=await fetch(base3+r,{method:m,headers:{'X-Yoisaki-Local':'1',Cookie:ck,'Content-Type':'application/json'},body:b?JSON.stringify(b):undefined});return {status:x.status,body:await x.json()}};
   try{
@@ -226,7 +226,7 @@ test('Drive link reaches the GPU when CloudCompute connects: folder_id only for 
    if(p==='/sync/drive/connect'){forwarded=JSON.parse(o.body);return sync({configured:true,folder_select:folderSelect})}if(p==='/sync/start'){started++;return sync({configured:true})}throw new AppError('JOB_NOT_FOUND','404',404)};
   const h=await harness({upstream,options:{driveRequest:g.request,googlePost:g.post,exchange:async()=>({access_token:'ya29.first',token_type:'Bearer',refresh_token:'1//phone-refresh',expiry:new Date(Date.now()+3600e3).toISOString()})}});
   try{
-   await h.call('/api/drive/oauth','PUT',{client_id:'123456789-ownclientid.apps.googleusercontent.com',client_secret:'GOCSPX-ownsecret12'});
+   await h.call('/api/drive/oauth','PUT',{client_id:'123456789-ownclientid.apps.googleusercontent.com',client_secret:'GOCSPX-TESTONLY_own12'});
    const {url,client}=(await h.call('/api/drive/oauth/start','POST',{})).body;assert.equal(client,'own');
    await fetch(h.base+'/?state='+new URL(url).searchParams.get('state')+'&code=c',{headers:{'Sec-Fetch-Site':'cross-site'},redirect:'manual'});
    assert.equal((await h.call('/api/drive/folder','POST',{id:'fold000000B'})).body.folder.id,'fold000000B');
@@ -240,9 +240,18 @@ test('Drive link reaches the GPU when CloudCompute connects: folder_id only for 
  }
 });
 
-test('sync contract: ControlNet items and folder fields validated; bad folder IDs rejected',()=>{
- const st=validateSyncStatus(sync({folder_select:true,source_kind:'folder',items:[{path:'controlnet/canny.safetensors',name:'canny.safetensors',kind:'controlnet',size:5,state:'MISSING',reason:'',verification:''}]}));
- assert.equal(st.items[0].kind,'controlnet');assert.equal(st.folder_select,true);assert.equal(st.source_kind,'folder');
+test('sync contract: folder fields validated; bad folder IDs rejected; ControlNet files are not a sync kind',()=>{
+ const st=validateSyncStatus(sync({folder_select:true,source_kind:'folder'}));assert.equal(st.folder_select,true);assert.equal(st.source_kind,'folder');
+ assert.throws(()=>validateSyncStatus(sync({items:[{path:'controlnet/c.safetensors',name:'c.safetensors',kind:'controlnet',size:5,state:'MISSING',reason:'',verification:''}]})),e=>e.code==='INVALID_RESPONSE');
  assert.equal(JSON.parse(validateConnect({token:'{"access_token":"a","refresh_token":"b"}',folder_id:'fold000000B',folder_label:'a/b'})).folder_id,'fold000000B');
  for(const bad of ["x' or","short",'a/b'])assert.throws(()=>validateConnect({token:'{"access_token":"a","refresh_token":"b"}',folder_id:bad,folder_label:''}),e=>e.code==='DRIVE_INVALID_FOLDER');
+});
+
+test('secret audit: finds a real-looking key and credential files, passes the source tree and the build output',async()=>{
+ const {execFileSync}=await import('node:child_process');const run=dir=>{try{execFileSync(process.execPath,['scripts/secret-audit.mjs',dir],{stdio:'pipe'});return 0}catch(e){return e.status}};
+ const dir=await fs.mkdtemp(path.join(os.tmpdir(),'audit-'));
+ await fs.writeFile(path.join(dir,'a.js'),'const k="cc-'+'Zq8wLm3Rt7Yp2Kd9Vx4Bn6Hs"');assert.equal(run(dir),1);
+ await fs.rm(path.join(dir,'a.js'));await fs.writeFile(path.join(dir,'secrets.json'),'{}');assert.equal(run(dir),1);
+ await fs.rm(path.join(dir,'secrets.json'));await fs.writeFile(path.join(dir,'ok.js'),'const k="cc-[СКРЫТО]"');assert.equal(run(dir),0);
+ assert.equal(run('.'),0);assert.equal(run('dist'),0);
 });

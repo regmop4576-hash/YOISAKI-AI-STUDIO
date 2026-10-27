@@ -1,0 +1,5 @@
+{
+  "_comment": "Copy to config/google-oauth-client.json (ignored by Git). Maintainer-provisioned Google OAuth client of type 'Desktop app'. See PUBLIC_GITHUB_SETUP.md.",
+  "client_id": "000000000000-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com",
+  "client_secret": "REPLACE_ME"
+}

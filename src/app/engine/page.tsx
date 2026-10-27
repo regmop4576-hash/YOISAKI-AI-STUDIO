@@ -5,9 +5,11 @@ import {useDirect,type Provider,type Phase} from '@/lib/engine/direct';
 import {useStudio} from '@/stores/studio';
 import {STUDIO_VERSION} from '@/lib/release';
 import {localApi} from '@/lib/local-api';
+import {CloudComputeApi,type CloudView} from '@/components/CloudComputeApi';
 
 const ACTIVE:Phase[]=['STARTING','CONNECTING','AUTHENTICATING','LOADING'];
-const STEPS:Phase[]=['STARTING','CONNECTING','AUTHENTICATING','LOADING','READY'];
+type Step=Phase|'INSTANCE';
+const STEPS:Step[]=['STARTING','CONNECTING','AUTHENTICATING','LOADING','READY'];
 const TARIFF_KEY='yoisaki-gpu-tariff-rub-hour';
 function readTariff(){try{const v=Number(localStorage.getItem(TARIFF_KEY));return Number.isFinite(v)&&v>0?v:0}catch{return 0}}
 
@@ -18,7 +20,7 @@ export default function Page(){
  const [drafts,setDrafts]=useState(gpu.endpoints);
  const [remember,setRemember]=useState(gpu.provider==='cloudcompute');const [notice,setNotice]=useState('');
  const [tariff,setTariff]=useState(readTariff);const [lastJob,setLastJob]=useState(0);const [now,setNow]=useState(Date.now());
- const [events,setEvents]=useState('');
+ const [events,setEvents]=useState('');const [cc,setCc]=useState<CloudView|null>(null);
  useEffect(()=>{setValue(gpu.endpoints[gpu.provider]);setToken('');setDrafts(gpu.endpoints);setRemember(gpu.provider==='cloudcompute');setNotice('')},[gpu.provider]);
  const phase:Phase=gpu.phase||(gpu.state==='CONNECTING'?'CONNECTING':gpu.url?'READY':gpu.state==='ERROR'?'ERROR':'OFFLINE');
  const waiting=ACTIVE.includes(phase);
@@ -30,7 +32,12 @@ export default function Page(){
  const label=gpu.provider==='colab'?t('URL туннеля Colab','Colab tunnel URL'):t('URL сервера CloudCompute','CloudCompute server URL');
  const names:Record<string,string>={OFFLINE:t('ОТКЛЮЧЁН','OFFLINE'),CONNECTING:t('ПОДКЛЮЧЕНИЕ','CONNECTING'),READY:t('ПОДКЛЮЧЁН','CONNECTED'),BUSY:t('ЗАНЯТ','BUSY'),LOADING:t('ЗАГРУЗКА','LOADING'),ERROR:t('ОШИБКА','ERROR')};
  const phaseNames:Record<Phase,string>={OFFLINE:t('Не подключено','Offline'),STARTING:t('Ожидание запуска GPU','Waiting for the GPU'),CONNECTING:t('Подключение','Connecting'),AUTHENTICATING:t('Проверка доступа','Authenticating'),LOADING:t('Загрузка движка и моделей','Loading engine and models'),READY:t('Готово к генерации','Ready'),ERROR:t('Ошибка','Error')};
- const componentNames:Record<string,string>={frontend:t('Сайт (телефон)','Website (phone)'),tunnel:t('Туннель / адрес','Tunnel / address'),auth:t('Доступ (токен)','Access (token)'),engine:t('Движок и зависимости','Engine and dependencies'),gpu:'GPU / CUDA',models:t('Модели','Models')};
+ // v1.7.3: with the CloudCompute API the instance is its own first step; "waiting for the server" covers what runs on
+ // the instance before the engine answers (environment, dependencies, tunnel) — the site cannot observe those apart.
+ const flow=gpu.gpu_flow;const steps:Step[]=flow?.api?['INSTANCE',...STEPS]:STEPS;
+ const current:Step=flow?.api&&['INSTANCE_CHECK','INSTANCE_STARTING'].includes(flow.step)?'INSTANCE':phase;
+ const stepNames:Record<Step,string>={...phaseNames,INSTANCE:t('GPU-инстанс CloudCompute (API)','CloudCompute GPU instance (API)'),STARTING:flow?.api?t('Запуск сервера движка: окружение, зависимости, туннель','Engine server start: environment, dependencies, tunnel'):phaseNames.STARTING};
+ const componentNames:Record<string,string>={instance:t('GPU-инстанс (CloudCompute API)','GPU instance (CloudCompute API)'),frontend:t('Сайт (телефон)','Website (phone)'),tunnel:t('Туннель / адрес','Tunnel / address'),auth:t('Доступ (токен)','Access (token)'),engine:t('Движок и зависимости','Engine and dependencies'),gpu:'GPU / CUDA',models:t('Модели','Models')};
  const stateNames:Record<string,string>={READY:'READY',WAITING:t('ОЖИДАНИЕ','WAITING'),WARNING:t('ВНИМАНИЕ','WARNING'),ERROR:t('ОШИБКА','ERROR'),UNKNOWN:'—'};
  const noData=t('Нет данных','No data');
  const change=(raw:string)=>{
@@ -49,13 +56,23 @@ export default function Page(){
   setToken('');
   await gpu.selectProvider(provider,value||drafts[gpu.provider]).catch(()=>{});
  }
- const displayError=english?({AUTH_REJECTED:'The GPU rejected the token. Paste a fresh protected link.',INVALID_URL:'Use a public HTTPS server URL on port 443 without a path or query.',INVALID_TOKEN:'Paste the complete protected link or its 64-character token.',ENGINE_UPGRADE_REQUIRED:'This server requires YOISAKI ENGINE 1.7.0 with ControlNet, SDPose and Img2Img.',GPU_NOT_READY:'The engine responded, but the GPU is not ready.',DNS_ERROR:'Server name could not be resolved. Check the URL.',DNS_TIMEOUT:'DNS lookup timed out. Check your network.',PRIVATE_DESTINATION:'The server resolves to a private or reserved address. Use a public HTTPS endpoint.',TLS_ERROR:'The HTTPS certificate or secure connection is invalid.',TUNNEL_UNAVAILABLE:'The server or tunnel is unavailable.',TUNNEL_OFFLINE:'Cloudflare answers, but no GPU server is attached to the tunnel.',REDIRECT_REJECTED:'Redirects are blocked. Paste the direct HTTPS endpoint.',INVALID_RESPONSE:'The server returned an invalid engine response.',UPSTREAM_INTERRUPTED:'The GPU connection was interrupted.',PROVIDER_CHANGED:'Select the provider before connecting.',CONNECTION_TIMEOUT:'The GPU request timed out. Check the server and tunnel.',NOT_REMEMBERED:'No remembered server for this provider.'} as Record<string,string>)[gpu.code||'']||`Connection failed (${gpu.code||'NETWORK_ERROR'}). Check the selected server, URL and token; retry the connection.`:(gpu.phase==='ERROR'&&gpu.phase_message)||gpu.error;
+ const displayError=english?({AUTH_REJECTED:'The GPU rejected the token. Paste a fresh protected link.',INVALID_URL:'Use a public HTTPS server URL on port 443 without a path or query.',INVALID_TOKEN:'Paste the complete protected link or its 64-character token.',ENGINE_UPGRADE_REQUIRED:'This server requires YOISAKI ENGINE 1.7.0 with ControlNet, SDPose and Img2Img.',GPU_NOT_READY:'The engine responded, but the GPU is not ready.',DNS_ERROR:'Server name could not be resolved. Check the URL.',DNS_TIMEOUT:'DNS lookup timed out. Check your network.',PRIVATE_DESTINATION:'The server resolves to a private or reserved address. Use a public HTTPS endpoint.',TLS_ERROR:'The HTTPS certificate or secure connection is invalid.',TUNNEL_UNAVAILABLE:'The server or tunnel is unavailable.',TUNNEL_OFFLINE:'Cloudflare answers, but no GPU server is attached to the tunnel.',REDIRECT_REJECTED:'Redirects are blocked. Paste the direct HTTPS endpoint.',INVALID_RESPONSE:'The server returned an invalid engine response.',UPSTREAM_INTERRUPTED:'The GPU connection was interrupted.',PROVIDER_CHANGED:'Select the provider before connecting.',CONNECTION_TIMEOUT:'The GPU request timed out. Check the server and tunnel.',NOT_REMEMBERED:'No remembered engine link. Paste the engine link once and tick «Remember»: the CloudCompute API key gives access to the instance, not to the engine.',
+  CC_INSTANCE_STOPPED:'The CloudCompute instance is stopped. Confirm the start: GPU billing begins.',CC_INSTANCE_STOPPING:'The instance is stopping. Wait until it has stopped and press CONNECT GPU again.',CC_START_UNSUPPORTED:'The instance is stopped and starting it through the API is not described. Start it in the CloudCompute panel and press CONNECT GPU again.',
+  CC_INSTANCE_TIMEOUT:'The instance did not reach “running” in time. Check the CloudCompute panel.',CC_INSTANCE_ERROR:'CloudCompute reports an instance error. Open the CloudCompute panel.',CC_AUTH_REJECTED:'CloudCompute rejected the API key. Replace it in the CloudCompute API panel.',CC_NOT_FOUND:'The selected instance no longer exists in the CloudCompute account.',CC_NETWORK:'No connection to the CloudCompute API.',CC_UNAVAILABLE:'The CloudCompute API is temporarily unavailable.'} as Record<string,string>)[gpu.code||'']||`Connection failed (${gpu.code||'NETWORK_ERROR'}). Check the selected server, URL and token; retry the connection.`:(gpu.phase==='ERROR'&&gpu.phase_message)||gpu.error;
  const connectedAt=gpu.connected_at||0;
  const minutes=connectedAt?Math.max(0,Math.floor((now-connectedAt)/60000)):0;
  const idle=gpu.url&&connectedAt?Math.floor((now-Math.max(lastJob,connectedAt))/60000):0;
  const remaining=gpu.autoconnect?Math.max(0,Math.ceil((gpu.autoconnect.deadline-now)/60000)):0;
  useEffect(()=>{if(!gpu.autoconnect)return;const id=setInterval(()=>setNow(Date.now()),5000);return ()=>clearInterval(id)},[!!gpu.autoconnect]);
  const host=(origin:string)=>{try{return new URL(origin).hostname}catch{return origin}};
+ // CONNECT GPU: a stopped instance is started only after an explicit confirmation (billing starts).
+ const ccInstance=cc?.instances.find(i=>i.id===cc.instance_id)||null;
+ const confirmStart=()=>confirm(t(`Запустить GPU-инстанс${ccInstance?` «${ccInstance.name}»`:''} через CloudCompute API? С момента запуска начинается оплата GPU${ccInstance?.price_per_hour?` (≈ ${ccInstance.price_per_hour} ₽/ч)`:''}.`,`Start the GPU instance${ccInstance?` “${ccInstance.name}”`:''} through the CloudCompute API? GPU billing begins at start${ccInstance?.price_per_hour?` (≈ ${ccInstance.price_per_hour} RUB/h)`:''}.`));
+ async function connectGpu(start?:boolean){
+  setNotice('');let allow=!!start;
+  if(start===undefined&&cc?.contract.capabilities.start&&ccInstance?.status==='STOPPED'){if(!confirmStart())return;allow=true}
+  await gpu.connectGpu(allow).catch(()=>{});
+ }
  async function loadEvents(){try{setEvents(JSON.stringify(await localApi('/api/diagnostics'),null,1))}catch(e){setEvents((e as Error).message)}}
  return <div className="page stack" data-localized="true">
   <Head statusLabel={names[gpu.state]} title={t('GPU-движок','GPU engine')} detail={t('Выберите провайдера GPU','Choose a GPU provider')}/>
@@ -64,16 +81,22 @@ export default function Page(){
     {(['colab','cloudcompute'] as Provider[]).map(p=><button key={p} type="button" aria-pressed={gpu.provider===p} className={gpu.provider===p?'primary':''} disabled={gpu.changing||waiting} onClick={()=>void select(p)}>{p==='colab'?'Google Colab':'CloudCompute'}</button>)}
    </div>
    <p className="tiny muted">{gpu.provider==='colab'?t('Бесплатный GPU через Google Colab','Free GPU through Google Colab'):t('Облачный GPU через CloudCompute.ru','Cloud GPU through CloudCompute.ru')}</p>
+   {gpu.provider==='cloudcompute'&&<CloudComputeApi onChange={setCc}/>}
+   {gpu.provider==='cloudcompute'&&!saved&&<div className="card stack"><b>{t('ПОДКЛЮЧИТЬ GPU','CONNECT GPU')}</b><p className="tiny">{t('Первый раз: запустите движок на инстансе (./setup-cloudcompute.sh), вставьте ниже его защищённую ссылку и отметьте «Запомнить». Дальше — одна кнопка «ПОДКЛЮЧИТЬ GPU».','First time: start the engine on the instance (./setup-cloudcompute.sh), paste its protected link below and tick «Remember». After that — one CONNECT GPU button.')}</p></div>}
    {saved&&<div className="card stack" aria-label={t('Сохранённый сервер','Saved server')}>
     <b>{t('Сохранённый сервер','Saved server')}: {host(saved.origin)}</b>
-    <p className="tiny muted">{gpu.provider==='colab'?t('Ссылка Colab действует до конца его сеанса. После нового запуска Colab вставьте новую ссылку.','A Colab link lasts until its session ends. After a new Colab start paste the new link.'):t('Запустите инстанс в панели CloudCompute и нажмите кнопку: сайт подождёт загрузку сервера (до 15 минут).','Start the instance in the CloudCompute panel and press the button: the site waits for the server (up to 15 minutes).')}</p>
-    <button className="primary" disabled={gpu.changing||waiting||!!gpu.url} onClick={()=>{setNotice('');void gpu.connectSaved().catch(()=>{})}}>{t('Подключить одной кнопкой','One-click connect')}</button>
+    {gpu.provider==='colab'&&<p className="tiny muted">{t('Ссылка Colab действует до конца его сеанса. После нового запуска Colab вставьте новую ссылку.','A Colab link lasts until its session ends. After a new Colab start paste the new link.')}</p>}
+    {gpu.provider==='cloudcompute'?<button className="primary" style={{fontWeight:800,letterSpacing:'.04em'}} disabled={gpu.changing||waiting||!!gpu.url} onClick={()=>void connectGpu()}>{t('ПОДКЛЮЧИТЬ GPU','CONNECT GPU')}</button>
+     :<button className="primary" disabled={gpu.changing||waiting||!!gpu.url} onClick={()=>{setNotice('');void gpu.connectSaved().catch(()=>{})}}>{t('Подключить одной кнопкой','One-click connect')}</button>}
+    {gpu.provider==='cloudcompute'&&<p className="tiny muted">{cc?.instance_id&&cc.contract.capabilities.get?t('Сайт проверит выбранный инстанс через API (и запустит его только после вашего подтверждения), дождётся движка и загрузит модели.','The site checks the selected instance through the API (starting it only after your confirmation), waits for the engine and loads the models.'):t('Инстанс через API не проверяется: запустите его в панели CloudCompute — сайт подождёт загрузку движка (до 15 минут).','The instance is not checked through the API: start it in the CloudCompute panel — the site waits for the engine (up to 15 minutes).')}</p>}
     {gpu.provider==='cloudcompute'&&<label className="row tiny"><input type="checkbox" checked={saved.discover} disabled={waiting} onChange={e=>void gpu.updateSaved({discover:e.target.checked}).catch(x=>setNotice((x as Error).message))}/> {t(`Находить новый адрес Quick Tunnel автоматически (через ${gpu.rendezvous_host||'ntfy.sh'}; адрес подписан токеном, сам токен не передаётся). На сервере: ./setup-cloudcompute.sh → вариант 2.`,`Find the new Quick Tunnel address automatically (via ${gpu.rendezvous_host||'ntfy.sh'}; signed, the token is never sent). On the server: ./setup-cloudcompute.sh → option 2.`)}</label>}
     <button disabled={waiting} onClick={()=>{if(confirm(t('Забыть сохранённый сервер на этом телефоне?','Forget the saved server on this phone?')))void gpu.updateSaved({forget:true}).catch(x=>setNotice((x as Error).message))}}>{t('Забыть сервер','Forget server')}</button>
    </div>}
    {(waiting||phase==='ERROR'&&!!gpu.phase_message)&&<div className="card stack" role="status" aria-label={t('Ход подключения','Connection progress')}>
-    <b>{phaseNames[phase]}</b>
-    <ol className="tiny" style={{margin:0,paddingLeft:18}}>{STEPS.map(s=>{const i=STEPS.indexOf(s),cur=STEPS.indexOf(phase);return <li key={s} style={{opacity:i<=cur||phase==='ERROR'?1:.45,fontWeight:s===phase?700:400}}>{i<cur?'✔ ':s===phase?'… ':''}{phaseNames[s]}</li>})}</ol>
+    <b>{current==='INSTANCE'?stepNames.INSTANCE:phaseNames[phase]}</b>
+    <ol className="tiny" style={{margin:0,paddingLeft:18}}>{steps.map(s=>{const i=steps.indexOf(s),cur=steps.indexOf(current);return <li key={s} style={{opacity:i<=cur||phase==='ERROR'?1:.45,fontWeight:s===current?700:400}}>{i<cur?'✔ ':s===current?'… ':''}{stepNames[s]}</li>})}</ol>
+    {flow?.api&&flow.instance_status&&<p className="tiny muted">{t('Инстанс','Instance')} {flow.instance_name||flow.instance_id}: {flow.provider_status||flow.instance_status}</p>}
+    {phase==='ERROR'&&gpu.code==='CC_INSTANCE_STOPPED'&&<button className="primary" onClick={()=>{if(confirmStart())void connectGpu(true)}}>{t('Запустить инстанс и подключить','Start the instance and connect')}</button>}
     {gpu.phase_message&&<p className="tiny">{gpu.phase_message}</p>}
     {gpu.autoconnect&&<p className="tiny muted">{t(`Попытка ${gpu.autoconnect.attempt} · адрес ${host(gpu.autoconnect.origin)} · ожидание ещё до ${remaining} мин.`,`Attempt ${gpu.autoconnect.attempt} · ${host(gpu.autoconnect.origin)} · waiting up to ${remaining} more min.`)}</p>}
     {waiting&&<button onClick={()=>void gpu.disconnect()}>{t('Отменить подключение','Cancel')}</button>}
@@ -110,15 +133,15 @@ export default function Page(){
    <details onToggle={e=>{if((e.target as HTMLDetailsElement).open)void loadEvents()}}><summary className="tiny">{t('Технический журнал для разработчиков','Technical log for developers')}</summary><pre className="tiny" style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{events}</pre></details>
   </div>
   {gpu.provider==='cloudcompute'&&<div className="panel stack"><h2>{t('Инстанс и оплата CloudCompute','CloudCompute instance and billing')}</h2>
-   <p className="tiny">{t('Запуск, остановка и удаление инстанса выполняются в панели CloudCompute: в этой версии сайт не управляет инстансом, потому что официальный API CloudCompute не удалось проверить по документации.','Starting, stopping and deleting the instance is done in the CloudCompute panel: this version does not control the instance because the official CloudCompute API could not be verified.')}</p>
+   <p className="tiny">{cc?.contract.capabilities.start||cc?.contract.capabilities.stop?t('Запуск и остановка инстанса — в панели «CloudCompute API» выше (с подтверждением). Удаление — только в панели CloudCompute.','Start and stop the instance in the “CloudCompute API” panel above (with confirmation). Delete only in the CloudCompute panel.'):t('Запуск, остановка и удаление инстанса выполняются в панели CloudCompute: методы CloudCompute API ещё не сверены с официальной документацией, поэтому сайт ими не пользуется.','Starting, stopping and deleting the instance is done in the CloudCompute panel: the CloudCompute API methods have not been verified against the official documentation, so the site does not use them.')}</p>
    <a href="https://cloudcompute.ru/" target="_blank" rel="noopener noreferrer">{t('Открыть сайт CloudCompute','Open CloudCompute')}</a>
    <ul className="tiny" style={{margin:0,paddingLeft:18,display:'flex',flexDirection:'column',gap:6}}>
     <li><b>{t('«Отключиться» на сайте','«Disconnect» here')}</b>{t(': движок и инстанс продолжают работать, оплата GPU идёт.',': the engine and the instance keep running, the GPU is billed.')}</li>
     <li><b>{t('Остановить движок','Stop the engine')}</b> (./stop-cloudcompute.sh){t(': освобождает видеопамять, оплата GPU-инстанса продолжается.',': frees VRAM, the GPU instance is still billed.')}</li>
-    <li><b>{t('Остановить инстанс в панели','Stop the instance in the panel')}</b>{t(': оплата GPU прекращается, но хранение диска оплачивается — проверьте ставку в панели (у вас указывалось 24,94 ₽/ч). Модели на диске сохраняются, если диск постоянный.',': GPU billing stops, disk storage is still billed — check the rate in the panel. Models stay if the disk is persistent.')}</li>
+    <li><b>{t('Остановить инстанс в панели','Stop the instance in the panel')}</b>{t(': оплата GPU прекращается, но хранение диска оплачивается — проверьте ставку хранения в панели CloudCompute. Модели на диске сохраняются, если диск постоянный.',': GPU billing stops, disk storage is still billed — check the rate in the panel. Models stay if the disk is persistent.')}</li>
     <li><b>{t('Удалить инстанс','Delete the instance')}</b>{t(': оплата прекращается полностью, диск с моделями удаляется. Модели останутся в вашем Google Drive.',': billing stops completely, the disk with models is deleted. Models remain in your Google Drive.')}</li>
    </ul>
-   <label className="field">{t('Тариф GPU, ₽/час (для расчёта)','GPU rate, RUB/hour (for the estimate)')}<input inputMode="decimal" value={tariff||''} placeholder="24.94" onChange={e=>{const v=Number(e.target.value.replace(',','.'));const next=Number.isFinite(v)&&v>0?v:0;setTariff(next);try{localStorage.setItem(TARIFF_KEY,String(next))}catch{}}}/></label>
+   <label className="field">{t('Тариф GPU, ₽/час (для расчёта)','GPU rate, RUB/hour (for the estimate)')}<input inputMode="decimal" value={tariff||''} placeholder="0" onChange={e=>{const v=Number(e.target.value.replace(',','.'));const next=Number.isFinite(v)&&v>0?v:0;setTariff(next);try{localStorage.setItem(TARIFF_KEY,String(next))}catch{}}}/></label>
    {gpu.url?<p className="tiny">{t(`Подключено ${minutes} мин`,`Connected ${minutes} min`)}{tariff?t(` ≈ ${(minutes/60*tariff).toFixed(2)} ₽ — это минимум: оплата идёт с момента запуска инстанса, а не с подключения.`,` ≈ ${(minutes/60*tariff).toFixed(2)} RUB — a minimum: billing runs since the instance started.`):''}</p>:<p className="tiny muted">{t('Не подключено. Если инстанс запущен, он оплачивается, даже когда сайт отключён.','Not connected. A running instance is billed even when the site is disconnected.')}</p>}
    {gpu.url&&idle>=15&&<div className="notice" role="alert">{t(`GPU простаивает ${idle} мин${tariff?` (≈ ${(idle/60*tariff).toFixed(2)} ₽)`:''}. Если генерация больше не нужна, остановите или удалите инстанс в панели CloudCompute.`,`The GPU has been idle for ${idle} min. Stop or delete the instance in the CloudCompute panel if you are done.`)}</div>}
   </div>}

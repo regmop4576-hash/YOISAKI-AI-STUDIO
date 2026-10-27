@@ -1,0 +1,6 @@
+
+> yoisaki-ai-studio-local@1.7.3 build
+> node scripts/build.mjs
+
+Production build ready: dist/ · 1.7.3
+build exit=0

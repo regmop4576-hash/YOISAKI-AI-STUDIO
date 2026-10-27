@@ -73,6 +73,23 @@ start_docker() {
   fi
   local built
   built=$(docker image inspect -f '{{index .Config.Labels "org.yoisaki.source"}}' "$YOISAKI_IMAGE" 2>/dev/null || true)
+  # 1.7.3: optional prebuilt image (YOISAKI_PREBUILT_IMAGE, e.g. ghcr.io/<owner>/yoisaki-engine:1.7.3-cloudcompute).
+  # It is used ONLY when its org.yoisaki.source label equals the hash of these very engine/cloudcompute files;
+  # otherwise the local build below runs as before. Saves the ~7 GB PyTorch install on a fresh instance.
+  if [[ $REBUILD != 1 && $built != "$YOISAKI_SOURCE_HASH" && -n ${YOISAKI_PREBUILT_IMAGE:-} ]]; then
+    say "Загружаю готовый образ $YOISAKI_PREBUILT_IMAGE…"
+    if docker pull "$YOISAKI_PREBUILT_IMAGE"; then
+      local remote
+      remote=$(docker image inspect -f '{{index .Config.Labels "org.yoisaki.source"}}' "$YOISAKI_PREBUILT_IMAGE" 2>/dev/null || true)
+      if [[ $remote == "$YOISAKI_SOURCE_HASH" ]]; then
+        docker tag "$YOISAKI_PREBUILT_IMAGE" "$YOISAKI_IMAGE" && built=$remote && say '✔ Готовый образ соответствует файлам пакета — сборка не нужна.'
+      else
+        warn 'Готовый образ собран из других файлов движка (метка org.yoisaki.source не совпала) — собираю локально.'
+      fi
+    else
+      warn 'Не удалось скачать готовый образ — собираю локально.'
+    fi
+  fi
   if [[ $REBUILD == 1 || $built != "$YOISAKI_SOURCE_HASH" ]]; then
     if [[ -z $built ]]; then say 'Первая сборка образа: загрузка PyTorch и зависимостей (несколько ГБ, только один раз).'
     else say 'Файлы движка изменились: пересборка (слои зависимостей берутся из кэша).'; fi

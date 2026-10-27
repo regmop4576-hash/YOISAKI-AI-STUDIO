@@ -187,7 +187,8 @@ def test_source_has_one_subprocess_path_without_shell():
     assert 'shell=True' not in src and 'os.system' not in src and 'os.remove(self.cfg.models' not in src
     # Local deletion is limited to the sync's own temporary files and the server copy of the token.
     unlinks = re.findall(r'(\w+(?:\.\w+)*)\.unlink\(', src)
-    assert set(unlinks) <= {'part', 'meta', 'self.cfg.rclone_conf'}, unlinks
+    # 1.7.3: plus the sync's own folder-choice file (runtime/sync/source.json), never a model.
+    assert set(unlinks) <= {'part', 'meta', 'self.cfg.rclone_conf', 'self.cfg.source_file'}, unlinks
     assert 'rmtree' not in src and 'shutil.move' not in src
 
 

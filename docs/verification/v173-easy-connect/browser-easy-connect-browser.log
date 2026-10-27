@@ -1,0 +1,1 @@
+PASS: CloudCompute API key (password field, never shown again), instance list/select, CONNECT GPU with billing confirmation → instance start → engine READY; Google sign-in without GPU, account, folder picker, preview (nested LoRA, controlnet note), separate Drive/GPU/sync states, RU/EN, 360/390/430px no overflow, no secrets in page/storage/state. MOCKED services.

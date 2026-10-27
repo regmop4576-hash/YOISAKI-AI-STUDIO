@@ -1,6 +1,28 @@
+# Dependencies, build output, caches
 node_modules/
 dist/
 build-meta.json
 __pycache__/
-.pytest_cache/
 *.pyc
+.pytest_cache/
+validation/
+screenshots/
+mobile-results.json
+*.zip
+
+# Local secrets and per-installation data — NEVER commit (see PUBLIC_GITHUB_SETUP.md)
+.env
+.env.*
+!.env.example
+config/google-oauth-client.json
+cloudcompute-api.json
+secrets.json
+secrets.json.*
+state.json
+state.json.*
+rclone.conf
+*.token
+yoisaki.env
+!cloudcompute/yoisaki.env.example
+engine/.venv/
+engine/.results/
