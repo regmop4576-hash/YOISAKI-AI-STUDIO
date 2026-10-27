@@ -1,0 +1,15 @@
+# Website (unchanged) checks with the v1.7.1 package, Node v22.22.0
+$ npm ci --ignore-scripts && npx tsc --noEmit && node scripts/build.mjs && node --test tests/*.test.mjs
+npm notice To update run: npm install -g npm@12.2.1
+npm notice
+TSC_OK
+Production build ready: dist/
+1..40
+# tests 40
+# suites 0
+# pass 40
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2584.716516

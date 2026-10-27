@@ -1,0 +1,79 @@
+# YOISAKI ENGINE · CloudCompute deployment 1.7.3. Use through ./start-cloudcompute.sh, which sets
+# YOISAKI_DATA_ROOT / YOISAKI_UID / YOISAKI_GID / YOISAKI_SOURCE_HASH and builds the image only when needed.
+# No port is published: the website reaches the engine through the Cloudflare tunnel started inside.
+name: yoisaki
+
+x-engine: &engine
+  image: "${YOISAKI_IMAGE:-yoisaki-engine:1.7.4-cloudcompute}"
+  user: "${YOISAKI_UID:-1000}:${YOISAKI_GID:-1000}"
+  environment:
+    YOISAKI_PORT: "${YOISAKI_PORT:-8765}"
+    YOISAKI_HF_OFFLINE: "${YOISAKI_HF_OFFLINE:-0}"
+    # Null value = passed through from the shell only when set there (never an empty string).
+    YOISAKI_WARMUP_CHECKPOINT:
+    YOISAKI_RAM_FIX: "${YOISAKI_RAM_FIX:-1}"
+    YOISAKI_TUNNEL: "${YOISAKI_TUNNEL:-1}"
+    YOISAKI_TUNNEL_RESTARTS: "${YOISAKI_TUNNEL_RESTARTS:-3}"
+    # 1.7.3 one-click connection. The Named Tunnel credential is a file in /data/config/engine (0600), never set here.
+    YOISAKI_STABLE_LINK: "${YOISAKI_STABLE_LINK:-0}"
+    YOISAKI_TUNNEL_MODE: "${YOISAKI_TUNNEL_MODE:-quick}"
+    YOISAKI_PUBLIC_HOSTNAME: "${YOISAKI_PUBLIC_HOSTNAME:-}"
+    YOISAKI_TUNNEL_DNS_DELAY: "${YOISAKI_TUNNEL_DNS_DELAY:-5}"
+    YOISAKI_RENDEZVOUS: "${YOISAKI_RENDEZVOUS:-off}"
+    YOISAKI_RENDEZVOUS_HOST: "${YOISAKI_RENDEZVOUS_HOST:-ntfy.sh}"
+    # 1.7.2 Google Drive model sync (read-only on Drive). The OAuth token stays in /data/config/rclone (0600).
+    YOISAKI_DRIVE_SYNC: "${YOISAKI_DRIVE_SYNC:-1}"
+    YOISAKI_DRIVE_REMOTE: "${YOISAKI_DRIVE_REMOTE:-yoisaki-gdrive}"
+    YOISAKI_DRIVE_PATH: "${YOISAKI_DRIVE_PATH:-YOISAKI_AI_STUDIO/models}"
+    PYTORCH_CUDA_ALLOC_CONF:
+    # Secrets are never written into this file.
+    HF_TOKEN:
+    CIVITAI_TOKEN:
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: all
+            capabilities: [gpu]
+  security_opt:
+    - no-new-privileges:true
+  cap_drop: [ALL]
+  read_only: true
+  tmpfs:
+    - /tmp:size=1g
+
+services:
+  engine:
+    <<: *engine
+    container_name: yoisaki-engine
+    build:
+      context: .
+      dockerfile: Dockerfile
+      labels:
+        org.yoisaki.source: "${YOISAKI_SOURCE_HASH:-manual}"
+    # Never restarts by itself: after a stop (or an instance reboot) nothing runs until you start it.
+    restart: "no"
+    stop_grace_period: 45s
+    volumes:
+      - "${YOISAKI_DATA_ROOT:-/workspace/yoisaki-data}:/data"
+      # Read-only unless Drive sync is enabled: start-cloudcompute.sh sets YOISAKI_MODELS_MOUNT=rw only then.
+      # Inference never writes weights; the sync service adds verified files atomically and never deletes any.
+      - "${YOISAKI_DATA_ROOT:-/workspace/yoisaki-data}/models:/data/models:${YOISAKI_MODELS_MOUNT:-ro}"
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  # One-off helper (diagnostics, model downloads, Drive sync while the engine is stopped):
+  # ./check-cloudcompute.sh, ./fetch-models-cloudcompute.sh, ./drive-sync-cloudcompute.sh
+  tools:
+    <<: *engine
+    profiles: [tools]
+    entrypoint: ["/usr/bin/tini", "--", "/opt/yoisaki/venv/bin/python"]
+    command: ["/opt/yoisaki/cloudcompute/diagnose.py"]
+    healthcheck:
+      disable: true
+    volumes:
+      - "${YOISAKI_DATA_ROOT:-/workspace/yoisaki-data}:/data"

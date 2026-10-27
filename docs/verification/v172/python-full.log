@@ -1,0 +1,152 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.17, pytest-9.1.1, pluggy-1.7.0
+rootdir: <scratch>/work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION
+plugins: anyio-4.15.1
+collected 242 items
+
+tests/test_controlnet.py .......                                         [  2%]
+tests/test_controlnet_diffusers_cpu.py ...........                       [  7%]
+tests/test_diffusers_cpu.py .                                            [  7%]
+tests/test_engine.py ............                                        [ 12%]
+tests/test_engine_regional.py ..........                                 [ 16%]
+tests/test_memory.py .......                                             [ 19%]
+tests/test_prompt_fidelity.py ..........                                 [ 23%]
+tests/test_routing.py .....                                              [ 26%]
+tests/test_ui_release_metadata.py .                                      [ 26%]
+tests/test_v161_stability.py ....                                        [ 28%]
+tests/test_v162_sdpose.py .............                                  [ 33%]
+tests/test_v170_img2img.py .............                                 [ 38%]
+tests/test_v171_cloudcompute.py .....................................    [ 54%]
+tests/test_v171_independent_audit.py ...................                 [ 61%]
+tests/test_v172_drive_sync.py .......................................... [ 79%]
+..................................................                       [100%]
+
+=============================== warnings summary ===============================
+../../venv-full/lib/python3.13/site-packages/starlette/testclient.py:37
+  <scratch>/venv-full/lib/python3.13/site-packages/starlette/testclient.py:37: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = typing.Callable[[], typing.ContextManager[anyio.abc.BlockingPortal]]
+
+../../venv-full/lib/python3.13/site-packages/diffusers/models/transformers/transformer_kandinsky.py:168
+  <scratch>/venv-full/lib/python3.13/site-packages/diffusers/models/transformers/transformer_kandinsky.py:168: UserWarning: CUDA is not available or torch_xla is imported. Disabling autocast.
+    @torch.autocast(device_type="cuda", dtype=torch.float32)
+
+../../venv-full/lib/python3.13/site-packages/diffusers/models/transformers/transformer_kandinsky.py:272
+  <scratch>/venv-full/lib/python3.13/site-packages/diffusers/models/transformers/transformer_kandinsky.py:272: UserWarning: CUDA is not available or torch_xla is imported. Disabling autocast.
+    @torch.autocast(device_type="cuda", dtype=torch.float32)
+
+tests/test_controlnet_diffusers_cpu.py::RealDiffusersControlNet::test_aud001_invalid_values_rejected
+tests/test_v170_img2img.py::RealDiffusersImg2Img::test_controlnet_img2img_and_text2img_controlnet_unchanged
+  <scratch>/venv-full/lib/python3.13/site-packages/diffusers/pipelines/pipeline_utils.py:2186: FutureWarning: `enable_vae_slicing` is deprecated and will be removed in version 0.40.0. Calling `enable_vae_slicing()` on a `StableDiffusionXLPipeline` is deprecated and this method will be removed in a future version. Please use `pipe.vae.enable_slicing()`.
+    deprecate(
+
+tests/test_controlnet_diffusers_cpu.py: 18 warnings
+tests/test_diffusers_cpu.py: 1 warning
+tests/test_prompt_fidelity.py: 8 warnings
+tests/test_v162_sdpose.py: 1 warning
+tests/test_v170_img2img.py: 41 warnings
+  <scratch>/venv-full/lib/python3.13/site-packages/diffusers/schedulers/scheduling_euler_discrete.py:429: DeprecationWarning: __array__ implementation doesn't accept a copy keyword, so passing copy=False failed. __array__ must implement 'dtype' and 'copy' keyword arguments. To learn more, see the migration guide https://numpy.org/devdocs/numpy_2_0_migration_guide.html#adapting-to-changes-in-the-copy-keyword
+    sigmas = np.array(((1 - self.alphas_cumprod) / self.alphas_cumprod) ** 0.5)
+
+tests/test_diffusers_cpu.py::RealFrameworkTest::test_sdxl_peft_routing_all_samplers_and_cleanup
+tests/test_prompt_fidelity.py::test_short_native_parity
+tests/test_prompt_fidelity.py::test_long_tail_both_encoders_and_negative
+tests/test_prompt_fidelity.py::test_A_B_C_D_E_real_cpu_inference
+tests/test_prompt_fidelity.py::test_limit_rejects_without_truncating
+tests/test_prompt_fidelity.py::test_different_tokenizer_lengths
+tests/test_prompt_fidelity.py::test_generate_entrypoint_scheduler_reset_trace_and_profiler
+tests/test_prompt_fidelity.py::test_regional_long_prompt_real_pipeline
+tests/test_prompt_fidelity.py::test_native_truncation_with_real_sdxl_tokenizers
+  <scratch>/venv-full/lib/python3.13/site-packages/peft/tuners/tuners_utils.py:282: UserWarning: Already found a `peft_config` attribute in the model. This will lead to having multiple adapters in the model. Make sure to know what you are doing!
+    warnings.warn(
+
+tests/test_diffusers_cpu.py::RealFrameworkTest::test_sdxl_peft_routing_all_samplers_and_cleanup
+tests/test_prompt_fidelity.py::test_generate_entrypoint_scheduler_reset_trace_and_profiler
+tests/test_prompt_fidelity.py::test_generate_entrypoint_scheduler_reset_trace_and_profiler
+tests/test_v170_img2img.py::RealDiffusersImg2Img::test_seed_denoise_source_batch_and_samplers
+tests/test_v170_img2img.py::RealDiffusersImg2Img::test_seed_denoise_source_batch_and_samplers
+  <scratch>/venv-full/lib/python3.13/site-packages/diffusers/schedulers/scheduling_dpmsolver_multistep.py:408: DeprecationWarning: __array__ implementation doesn't accept a copy keyword, so passing copy=False failed. __array__ must implement 'dtype' and 'copy' keyword arguments. To learn more, see the migration guide https://numpy.org/devdocs/numpy_2_0_migration_guide.html#adapting-to-changes-in-the-copy-keyword
+    sigmas = np.array(((1 - self.alphas_cumprod) / self.alphas_cumprod) ** 0.5)
+
+tests/test_diffusers_cpu.py::RealFrameworkTest::test_sdxl_peft_routing_all_samplers_and_cleanup
+tests/test_v170_img2img.py::RealDiffusersImg2Img::test_seed_denoise_source_batch_and_samplers
+  <scratch>/venv-full/lib/python3.13/site-packages/diffusers/schedulers/scheduling_euler_ancestral_discrete.py:207: DeprecationWarning: __array__ implementation doesn't accept a copy keyword, so passing copy=False failed. __array__ must implement 'dtype' and 'copy' keyword arguments. To learn more, see the migration guide https://numpy.org/devdocs/numpy_2_0_migration_guide.html#adapting-to-changes-in-the-copy-keyword
+    sigmas = np.array(((1 - self.alphas_cumprod) / self.alphas_cumprod) ** 0.5)
+
+tests/test_diffusers_cpu.py::RealFrameworkTest::test_sdxl_peft_routing_all_samplers_and_cleanup
+tests/test_diffusers_cpu.py::RealFrameworkTest::test_sdxl_peft_routing_all_samplers_and_cleanup
+tests/test_v170_img2img.py::RealDiffusersImg2Img::test_seed_denoise_source_batch_and_samplers
+  <scratch>/venv-full/lib/python3.13/site-packages/diffusers/schedulers/scheduling_euler_ancestral_discrete.py:312: DeprecationWarning: __array__ implementation doesn't accept a copy keyword, so passing copy=False failed. __array__ must implement 'dtype' and 'copy' keyword arguments. To learn more, see the migration guide https://numpy.org/devdocs/numpy_2_0_migration_guide.html#adapting-to-changes-in-the-copy-keyword
+    sigmas = np.array(((1 - self.alphas_cumprod) / self.alphas_cumprod) ** 0.5)
+
+tests/test_v162_sdpose.py::Components::test_letterbox_keypoints_map_back_to_image
+tests/test_v162_sdpose.py::Components::test_letterbox_keypoints_map_back_to_image
+tests/test_v162_sdpose.py::Components::test_letterbox_keypoints_map_back_to_image
+  <scratch>/venv-full/lib/python3.13/site-packages/torch/jit/_script.py:1480: DeprecationWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+    warnings.warn(
+
+tests/test_v162_sdpose.py::Components::test_letterbox_keypoints_map_back_to_image
+  <scratch>/venv-full/lib/python3.13/site-packages/controlnet_aux/mediapipe_face/mediapipe_face_common.py:7: UserWarning: The module 'mediapipe' is not installed. The package will have limited functionality. Please install it using the command: pip install 'mediapipe'
+    warnings.warn(
+
+tests/test_v162_sdpose.py::Components::test_letterbox_keypoints_map_back_to_image
+  <scratch>/venv-full/lib/python3.13/site-packages/controlnet_aux/open_pose/body.py:7: DeprecationWarning: Please import `gaussian_filter` from the `scipy.ndimage` namespace; the `scipy.ndimage.filters` namespace is deprecated and will be removed in SciPy 2.0.0.
+    from scipy.ndimage.filters import gaussian_filter
+
+tests/test_v162_sdpose.py::Components::test_letterbox_keypoints_map_back_to_image
+  <scratch>/venv-full/lib/python3.13/site-packages/controlnet_aux/open_pose/hand.py:4: DeprecationWarning: Please import `gaussian_filter` from the `scipy.ndimage` namespace; the `scipy.ndimage.filters` namespace is deprecated and will be removed in SciPy 2.0.0.
+    from scipy.ndimage.filters import gaussian_filter
+
+tests/test_v162_sdpose.py::Components::test_letterbox_keypoints_map_back_to_image
+  <scratch>/venv-full/lib/python3.13/site-packages/timm/models/layers/__init__.py:48: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+    warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+
+tests/test_v162_sdpose.py::Components::test_letterbox_keypoints_map_back_to_image
+  <scratch>/venv-full/lib/python3.13/site-packages/timm/models/registry.py:4: FutureWarning: Importing from timm.models.registry is deprecated, please import via timm.models
+    warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.models", FutureWarning)
+
+tests/test_v162_sdpose.py::Components::test_letterbox_keypoints_map_back_to_image
+  <scratch>/venv-full/lib/python3.13/site-packages/controlnet_aux/segment_anything/modeling/tiny_vit_sam.py:654: UserWarning: Overwriting tiny_vit_5m_224 in registry with controlnet_aux.segment_anything.modeling.tiny_vit_sam.tiny_vit_5m_224. This is because the name being registered conflicts with an existing name. Please check if this is not expected.
+    return register_model(fn_wrapper)
+
+tests/test_v162_sdpose.py::Components::test_letterbox_keypoints_map_back_to_image
+  <scratch>/venv-full/lib/python3.13/site-packages/controlnet_aux/segment_anything/modeling/tiny_vit_sam.py:654: UserWarning: Overwriting tiny_vit_11m_224 in registry with controlnet_aux.segment_anything.modeling.tiny_vit_sam.tiny_vit_11m_224. This is because the name being registered conflicts with an existing name. Please check if this is not expected.
+    return register_model(fn_wrapper)
+
+tests/test_v162_sdpose.py::Components::test_letterbox_keypoints_map_back_to_image
+  <scratch>/venv-full/lib/python3.13/site-packages/controlnet_aux/segment_anything/modeling/tiny_vit_sam.py:654: UserWarning: Overwriting tiny_vit_21m_224 in registry with controlnet_aux.segment_anything.modeling.tiny_vit_sam.tiny_vit_21m_224. This is because the name being registered conflicts with an existing name. Please check if this is not expected.
+    return register_model(fn_wrapper)
+
+tests/test_v162_sdpose.py::Components::test_letterbox_keypoints_map_back_to_image
+  <scratch>/venv-full/lib/python3.13/site-packages/controlnet_aux/segment_anything/modeling/tiny_vit_sam.py:654: UserWarning: Overwriting tiny_vit_21m_384 in registry with controlnet_aux.segment_anything.modeling.tiny_vit_sam.tiny_vit_21m_384. This is because the name being registered conflicts with an existing name. Please check if this is not expected.
+    return register_model(fn_wrapper)
+
+tests/test_v162_sdpose.py::Components::test_letterbox_keypoints_map_back_to_image
+  <scratch>/venv-full/lib/python3.13/site-packages/controlnet_aux/segment_anything/modeling/tiny_vit_sam.py:654: UserWarning: Overwriting tiny_vit_21m_512 in registry with controlnet_aux.segment_anything.modeling.tiny_vit_sam.tiny_vit_21m_512. This is because the name being registered conflicts with an existing name. Please check if this is not expected.
+    return register_model(fn_wrapper)
+
+tests/test_v162_sdpose.py::Routing::test_repeated_runs_do_not_accumulate
+  <scratch>/work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_v162_sdpose.py:163: FutureWarning: `torch.distributed.reduce_op` is deprecated, please use `torch.distributed.ReduceOp` instead
+    live = [o for o in gc.get_objects() if isinstance(o, (UNet2DConditionModel, AutoencoderKL)) and getattr(o, 'config', None) is not None and o.config.get('_name_or_path', '').startswith(str(self.root))]
+
+tests/test_v170_img2img.py::RealDiffusersImg2Img::test_img2img_shares_loaded_components_and_returns_to_base
+  <scratch>/work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_v170_img2img.py:101: FutureWarning: `torch.distributed.reduce_op` is deprecated, please use `torch.distributed.ReduceOp` instead
+    units, vaes = (sum(isinstance(o, c) for o in gc.get_objects()) for c in (UNet2DConditionModel, AutoencoderKL))
+
+tests/test_v170_img2img.py::RealDiffusersImg2Img::test_img2img_shares_loaded_components_and_returns_to_base
+  <scratch>/work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_v170_img2img.py:107: FutureWarning: `torch.distributed.reduce_op` is deprecated, please use `torch.distributed.ReduceOp` instead
+    self.assertEqual(sum(isinstance(o, UNet2DConditionModel) for o in gc.get_objects()), units)
+
+tests/test_v170_img2img.py::RealDiffusersImg2Img::test_img2img_shares_loaded_components_and_returns_to_base
+  <scratch>/work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_v170_img2img.py:108: FutureWarning: `torch.distributed.reduce_op` is deprecated, please use `torch.distributed.ReduceOp` instead
+    self.assertEqual(sum(isinstance(o, AutoencoderKL) for o in gc.get_objects()), vaes)
+
+tests/test_v170_img2img.py::RealDiffusersImg2Img::test_repeated_runs_do_not_accumulate_objects
+  <scratch>/venv-full/lib/python3.13/site-packages/torch/__init__.py:1151: FutureWarning: `torch.distributed.reduce_op` is deprecated, please use `torch.distributed.ReduceOp` instead
+    return isinstance(obj, torch.Tensor)
+
+tests/test_v170_img2img.py::RealDiffusersImg2Img::test_repeated_runs_do_not_accumulate_objects
+  <scratch>/work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_v170_img2img.py:192: FutureWarning: `torch.distributed.reduce_op` is deprecated, please use `torch.distributed.ReduceOp` instead
+    return (sum(torch.is_tensor(o) for o in objs), sum(isinstance(o, DiffusionPipeline) for o in objs), sum(isinstance(o, torch.nn.Module) for o in objs))
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================ 242 passed, 112 warnings in 294.19s (0:04:54) =================

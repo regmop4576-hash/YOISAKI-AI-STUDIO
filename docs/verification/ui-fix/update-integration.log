@@ -1,0 +1,57 @@
+Проверка целостности файлов: OK
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+added 23 packages in 2s
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> yoisaki-ai-studio-local@1.7.0 build
+> node scripts/build.mjs
+
+Production build ready: dist/
+Установлено. Локальная production-сборка готова.
+Запуск: ./start.sh
+YOISAKI AI STUDIO v1.7.0 CONTROLNET
+Откройте: http://127.0.0.1:3000
+Остановка: ./stop.sh
+Не закрывайте принудительно Termux во время генерации.
+PASS baseline old server 1.7.0 on port 3000
+Проверка целостности файлов: OK
+Проверка целостности файлов: OK
+Установлено. Локальная production-сборка готова.
+Запуск: ./start.sh
+{"version":"1.7.1","source_sha256":"f7ef509333957299722ca92add4a048115ea370afad6488c2f291d09e3676a11"}
+Приложение остановлено. Данные сохранены.
+YOISAKI AI STUDIO v1.7.1 CLOUDCOMPUTE EDITION
+Откройте: http://127.0.0.1:3000
+Остановка: ./stop.sh
+Не закрывайте принудительно Termux во время генерации.
+Обновлено. Резервная копия кода: /tmp/yoisaki-update-4p4hmsuj/installed.backup-20261026-065311-122
+Резервная копия данных (если существовали): /tmp/yoisaki-update-4p4hmsuj/user-data.backup-20261026-065311-122
+Откройте http://127.0.0.1:3000/engine и проверьте версию 1.7.1.
+PASS update preserved gallery bytes, favorites, history, presets, settings, models, tags and custom content; code/data backups exist
+{"version":"1.7.1","source_sha256":"f7ef509333957299722ca92add4a048115ea370afad6488c2f291d09e3676a11"}
+YOISAKI 1.7.1
+Node: v24.22.1
+Платформа: linux/x64
+Termux: false
+Сервер: работает
+Сборка соответствует исходникам: f7ef509333957299722ca92add4a048115ea370afad6488c2f291d09e3676a11
+Версия запущенного сервера: 1.7.1
+Папка запущенного сервера: /tmp/yoisaki-update-4p4hmsuj/installed
+Хранилище: 695 байт
+YOISAKI AI STUDIO v1.7.0 CONTROLNET
+Откройте http://127.0.0.1:3000
+Для остановки: ./stop.sh
+YOISAKI AI STUDIO v1.7.1 CLOUDCOMPUTE EDITION
+Откройте http://127.0.0.1:3000
+Для остановки: ./stop.sh
+Приложение остановлено. Данные сохранены.
+Production build does not match installed sources. Run bash install.sh.
+Production assets differ. Run bash install.sh.
+PASS stale source and stale build rejected
+YOISAKI AI STUDIO v1.7.0 CONTROLNET
+Откройте: http://127.0.0.1:3000
+Остановка: ./stop.sh
+Не закрывайте принудительно Termux во время генерации.
+PASS manual rollback to old 1.7.0, user data unchanged; Linux simulation, not Android hardware
+Приложение остановлено. Данные сохранены.
