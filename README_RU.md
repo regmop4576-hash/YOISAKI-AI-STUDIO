@@ -1,8 +1,10 @@
-# YOISAKI AI STUDIO v1.7.5 — ZERO-TERMINAL CLOUDCOMPUTE
+# YOISAKI AI STUDIO v1.7.6 — GOOGLE DRIVE MODEL BROWSER & GPU SYNC MONITOR
 
-Обновление v1.7.4. GPU в CloudCompute арендуется и запускается с телефона в пять кнопок, без SSH, Python и Termux: выбор GPU с ценой → создание с подтверждением оплаты → автоматический запуск готового образа движка → автоматическое подключение → загрузка недостающих моделей из Google Drive.
+Обновление v1.7.4. GPU в CloudCompute арендуется и запускается с телефона в пять кнопок, без SSH, Python и Termux: выбор GPU с ценой → создание с подтверждением оплаты → автоматический запуск готового образа движка → автоматическое подключение → загрузка выбранных моделей из Google Drive (с 1.7.6).
 
-**Начните с [инструкции](docs/CLOUDCOMPUTE_ZERO_TERMINAL_RU.md) и [отчёта](YOISAKI_V1.7.5_REPORT_RU.md).** Образ: `ghcr.io/regmop4576-hash/yoisaki-ai-studio/engine:1.7.5`. Живое создание инстанса CloudCompute в разработке не выполнялось: первый запуск — приёмочный. Сайт и deployment: 1.7.5; протокол ENGINE: 1.7.0.
+**Новое в 1.7.6:** [модели Google Drive без GPU и монитор синхронизации](docs/MODEL_LIBRARY_ANDROID_RU.md), [отчёт](YOISAKI_V1.7.6_REPORT_RU.md). Образ движка прежний — `engine:1.7.5`.
+
+**Начните с [инструкции](docs/CLOUDCOMPUTE_ZERO_TERMINAL_RU.md) и [отчёта](YOISAKI_V1.7.5_REPORT_RU.md).** Образ: `ghcr.io/regmop4576-hash/yoisaki-ai-studio/engine:1.7.5`. Живое создание инстанса CloudCompute в разработке не выполнялось: первый запуск — приёмочный. Сайт: 1.7.6, deployment: 1.7.5; протокол ENGINE: 1.7.0.
 
 ---
 

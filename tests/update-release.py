@@ -14,7 +14,8 @@ with zipfile.ZipFile(baseline) as z:z.extractall(base/'old')
 (app/'config').mkdir(exist_ok=True)
 public_client={'client_id':'123456789-abcdefghij.apps.googleusercontent.com','client_secret':'GOCSPX-test_client'}
 (app/'config/google-desktop-client.json').write_text(json.dumps(public_client))
-legacy_secrets={'version':1,'connections':{},'google':public_client}
+# 1.7.5 user: Google signed in with a chosen model folder and a CloudCompute key — must survive without re-authorization.
+legacy_secrets={'version':1,'connections':{},'google':public_client,'cloud_key':'cc-update_test_key_123','drive':{'session_id':'keep-session','token':{'access_token':'keep-access','token_type':'Bearer','refresh_token':'keep-refresh','expiry':'2099-01-01T00:00:00.000Z'},'client':public_client,'account':{'email':'keep@example.invalid','name':'Keep'},'folder':{'id':'keep-folder','name':'MY_MODELS'}},'deployment':None}
 (data/'secrets.json').write_text(json.dumps(legacy_secrets))
 archive=release
 with zipfile.ZipFile(archive) as z:z.extractall(stage)
@@ -33,11 +34,18 @@ try:
  print(f'PASS baseline old server {old_version} on port 3000')
  run(['bash',str(new/'update.sh'),str(archive),str(app)])
  with urllib.request.urlopen(request) as response:
-  assert json.load(response)['version']=='1.7.5';cookie=response.headers['Set-Cookie'].split(';')[0]
- with urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:3000/api/version',headers={'X-Yoisaki-Local':'1','Cookie':cookie})) as response:assert json.load(response)['studio_version']=='1.7.5'
+  assert json.load(response)['version']=='1.7.6';cookie=response.headers['Set-Cookie'].split(';')[0]
+ with urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:3000/api/version',headers={'X-Yoisaki-Local':'1','Cookie':cookie})) as response:assert json.load(response)['studio_version']=='1.7.6'
  actual=json.loads((data/'state.json').read_text());assert actual==state
  assert json.loads((app/'config/google-desktop-client.json').read_text())==public_client
  assert json.loads((data/'secrets.json').read_text())==legacy_secrets
+ with urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:3000/api/drive/oauth',headers={'X-Yoisaki-Local':'1','Cookie':cookie})) as response:
+  view=json.load(response);assert view['connected'] and view['folder']=={'id':'keep-folder','name':'MY_MODELS'} and view['account']['email']=='keep@example.invalid'
+ with urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:3000/api/cloudcompute/config',headers={'X-Yoisaki-Local':'1','Cookie':cookie})) as response:assert json.load(response)['configured'] is True
+ with urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:3000/api/drive/library',headers={'X-Yoisaki-Local':'1','Cookie':cookie})) as response:
+  lib=json.load(response);assert lib['state']=='NONE' and lib['account']['folder']['id']=='keep-folder' and lib['selection'] is None
+ with urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:3000/api/sync/monitor',headers={'X-Yoisaki-Local':'1','Cookie':cookie})) as response:assert json.load(response)['state']=='IDLE'
+ print('PASS 1.7.5 Google sign-in, selected folder and CloudCompute key kept: no re-authorization; 1.7.6 library/monitor start empty')
  assert (data/'images'/image_id).read_bytes()==b'user-image-preservation-test'
  backups=list(base.glob('installed.backup-*'));assert len(backups)==1
  assert (backups[0]/'my-custom-file.txt').read_text()=='user content kept in code backup'

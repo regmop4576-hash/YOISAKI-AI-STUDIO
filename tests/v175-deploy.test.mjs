@@ -93,9 +93,11 @@ test('rendezvous stages: signed, fresh, whitelisted, byte-compatible with cloudc
 });
 
 // ---------------------------------------------------------------------------------------------------------------- app
-async function harness({drive=null,createReply,offers=OFFERS,imageStatus=200}={}){
+async function harness({drive=null,createReply,offers=OFFERS,imageStatus=200,selection=null}={}){
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'yoisaki-175-'));
  if(drive){const s=await new SecretStore(dir).init();await s.setDrive(drive)}
+ // v1.7.6: the models chosen on the phone (Models → Google Drive) before the GPU exists.
+ if(selection)await fs.writeFile(path.join(dir,'drive-library.json'),JSON.stringify({version:1,inventory:null,last_check:null,selection}));
  const cc={posts:[],instances:[],detailStatus:'loading',gone:false};let gpu={url:null,stages:[]};const sync={configured:false,job:null,items:[],started:null,bound:null};
  const syncView=()=>({service:'YOISAKI_DRIVE_SYNC',enabled:true,rclone_available:true,configured:sync.configured,source:'models',scope:'drive.readonly',connection:{state:'OK'},job:sync.job,items:sync.items,inventory_revision:1,selective:true,folder_selection:true});
  const providerRequest=async(url,opts={})=>{
@@ -141,9 +143,10 @@ test('deploy refuses without confirmation, with a changed price, an incompatible
  try{const r=await p.call('/api/cloudcompute/deploy','POST',createRequest);assert.equal(r.body.code,'CC_IMAGE_UNAVAILABLE');assert.match(r.body.error,/НЕ создан, деньги не списаны/);assert.equal(p.cc.posts.length,0)}finally{await p.close()}
 });
 
-test('deploy → signed stages → automatic connection → GPU_READY → Drive bind, check, only missing models downloaded',async()=>{
- const drive={session_id:'s1',client:{client_id:'123456789-abcdefghij.apps.googleusercontent.com',client_secret:'GOCSPX-test_secret'},token:{access_token:'private-access',refresh_token:'private-refresh',expiry:'2099-01-01T00:00:00Z'},account:{email:'test@example.invalid'},folder:{id:'models-folder',name:'Models'}};
- const h=await harness({drive});
+const DRIVE={session_id:'s1',client:{client_id:'123456789-abcdefghij.apps.googleusercontent.com',client_secret:'GOCSPX-test_secret'},token:{access_token:'private-access',refresh_token:'private-refresh',expiry:'2099-01-01T00:00:00Z'},account:{email:'test@example.invalid'},folder:{id:'models-folder',name:'Models'}};
+test('deploy → signed stages → automatic connection → GPU_READY → Drive bind, check, only the SELECTED missing models downloaded (1.7.6)',async()=>{
+ const drive=DRIVE;
+ const h=await harness({drive,selection:{folder_id:'models-folder',folder_name:'Models',items:{'loras/a.safetensors':{id:'f1',name:'a.safetensors',kind:'lora',size:2e8},'checkpoints/have.safetensors':{id:'f0',name:'have.safetensors',kind:'checkpoint',size:6e9}},updated_at:1}});
  try{
   const offers=(await h.call('/api/cloudcompute/offers')).body;assert.equal(offers.offers[0].id,505);assert.equal(offers.requirements.min_vram_mb,12288);
   const created=await h.call('/api/cloudcompute/deploy','POST',createRequest);assert.equal(created.status,201);
@@ -162,13 +165,26 @@ test('deploy → signed stages → automatic connection → GPU_READY → Drive 
   const ready=await until(async()=>{const d=(await h.call('/api/cloudcompute/deploy')).body.deployment;return d.stage==='GPU_READY'&&d.drive?.state==='DONE'&&d});
   const st=(await h.call('/api/gpu/status')).body;assert.equal(st.provider,'cloudcompute');assert.equal(st.url,'https://quick-name.trycloudflare.com');assert.equal(st.remembered.cloudcompute.discover,true);
   assert.equal(h.sync.bound.root_folder_id,'models-folder');assert.equal(JSON.parse(h.sync.bound.token).refresh_token,'private-refresh');
-  assert.deepEqual(h.sync.started,{paths:['loras/a.safetensors','checkpoints/b.safetensors']});
-  assert.deepEqual(ready.drive.summary,{installed:1,missing:2,missing_bytes:7.2e9,conflicts:0,rejected:0});
+  // the not-selected checkpoints/b.safetensors (7 GB) is not downloaded; the installed selected one is not re-downloaded
+  assert.deepEqual(h.sync.started,{paths:['loras/a.safetensors']});
+  assert.deepEqual(ready.drive.summary,{installed:1,missing:2,missing_bytes:7.2e9,selected:2,wanted:1,wanted_bytes:2e8,conflicts:0,rejected:0});
   const visible=JSON.stringify([(await h.call('/api/cloudcompute/deploy')).body,st,(await h.call('/api/diagnostics')).body]);
   for(const secret of [token,KEY,'private-refresh','private-access'])assert(!visible.includes(secret),secret);
   // deleting the instance from the app marks the deployment as gone (no silent billing assumptions)
   assert.equal((await h.call('/api/cloudcompute/instances/9001','DELETE',{confirm_id:'9001'})).status,200);
   assert.equal((await h.call('/api/cloudcompute/deploy')).body.deployment.stage,'INSTANCE_GONE');
+ }finally{await h.close()}
+});
+
+test('1.7.6: without a saved selection the automatic routine downloads nothing and says why; an explicit press downloads the missing files',async()=>{
+ const h=await harness({drive:DRIVE});
+ try{
+  await h.call('/api/cloudcompute/deploy','POST',createRequest);
+  h.setGpu({url:'https://quick-name.trycloudflare.com',stages:[{stage:'IMAGE_READY',ts:1},{stage:'SERVER_READY',ts:3}]});
+  const ready=await until(async()=>{const d=(await h.call('/api/cloudcompute/deploy')).body.deployment;return d.stage==='GPU_READY'&&d.drive?.state==='READY_TO_SYNC'&&d});
+  assert.equal(h.sync.started,null);assert.match(ready.drive.message,/не выбраны/);assert.match(ready.drive.message,/вся коллекция автоматически не скачивается/);
+  assert.equal((await h.call('/api/cloudcompute/deploy/sync','POST',{download:true})).status,202);
+  await until(async()=>h.sync.started);assert.deepEqual(h.sync.started,{paths:['loras/a.safetensors','checkpoints/b.safetensors']});
  }finally{await h.close()}
 });
 

@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useState} from 'react';
 import {CloudComputeAPI} from '@/components/CloudComputeAPI';
+import {GpuReadiness} from '@/components/GpuReadiness';
 import {Head} from '@/components/Common';
 import {useDirect,type Provider,type Phase} from '@/lib/engine/direct';
 import {useStudio} from '@/stores/studio';
@@ -60,6 +61,7 @@ export default function Page(){
  async function loadEvents(){try{setEvents(JSON.stringify(await localApi('/api/diagnostics'),null,1))}catch(e){setEvents((e as Error).message)}}
  return <div className="page stack" data-localized="true">
   <Head statusLabel={names[gpu.state]} title={t('GPU-движок','GPU engine')} detail={t('Выберите провайдера GPU','Choose a GPU provider')}/>
+  {gpu.provider==='cloudcompute'&&<GpuReadiness compact/>}
   {gpu.provider==='cloudcompute'&&<CloudComputeAPI/>}
   <div className="panel stack">
    <div className="grid2" role="group" aria-label={t('Провайдер GPU','GPU provider')}>

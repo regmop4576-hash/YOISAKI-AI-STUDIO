@@ -18,18 +18,23 @@ import {discover,progress as rendezvousProgress,RENDEZVOUS_HOST} from './rendezv
 import {CloudComputeAPI,instanceList} from './cloudcompute-api.mjs';
 import {ENGINE_IMAGE,REQUIREMENTS,END_STAGES,DeploymentWatcher,offerList,createBody,createdInstanceId,checkImage,validateImage,onstartScript,newToken,instanceName,deploymentView} from './cloudcompute-deploy.mjs';
 import {DriveAccount} from './drive-account.mjs';
-import {providerHttp} from './provider-http.mjs';
+import {providerHttp,providerBytes} from './provider-http.mjs';
+import {DriveLibrary,selectionEstimate,compareSources} from './drive-library.mjs';
+import {SyncMonitor,discoveryReport} from './sync-monitor.mjs';
+import {readiness} from './readiness.mjs';
 import {OAuthFlows,exchangeCode,validateClient,redirectUri,SCOPE} from './google-oauth.mjs';
 const ID=/^[a-f0-9-]{36}(?:_[0-3])?$/;
 const terminal=TERMINAL_STATUSES;
 async function readBody(req,max=12582912){const chunks=[];let n=0;for await(const b of req){n+=b.length;if(n>max)fail('BODY_TOO_LARGE','Слишком большой запрос.',413);chunks.push(b)}return Buffer.concat(chunks)}
 async function jsonBody(req){try{return JSON.parse((await readBody(req)).toString())}catch(e){if(e instanceof AppError)throw e;fail('INVALID_JSON','Неверный JSON запроса.')}}
 function send(res,value,status=200){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(value))}
-export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,serviceKey='',discoverAddress=discover,discoverProgress=rendezvousProgress,exchange=exchangeCode,providerRequest=providerHttp,defaultGoogle=null,sleep=ms=>new Promise(r=>setTimeout(r,ms).unref?.()),deployInterval=10000,driveInterval=3000,autoResume=true}={}){
+export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,serviceKey='',discoverAddress=discover,discoverProgress=rendezvousProgress,exchange=exchangeCode,providerRequest=providerHttp,providerBytesRequest=providerBytes,defaultGoogle=null,sleep=ms=>new Promise(r=>setTimeout(r,ms).unref?.()),deployInterval=10000,driveInterval=3000,autoResume=true}={}){
  const store=await new Store(dataDir).init();
  // v1.7.3: remembered connections and the Google OAuth client live in secrets.json (0600), never in state.json.
  const secrets=await new SecretStore(dataDir).init();const oauth=new OAuthFlows();let oauthResult=null,oauthGeneration=0;
- const cloud=new CloudComputeAPI(secrets,providerRequest),drive=new DriveAccount(secrets,providerRequest);
+ const cloud=new CloudComputeAPI(secrets,providerRequest),drive=new DriveAccount(secrets,providerRequest,providerBytesRequest);
+ // v1.7.6: Drive model library (no GPU needed) and the real-time sync monitor, each in its own 0600 file.
+ const library=await new DriveLibrary({drive,dir:dataDir}).init(),monitor=await new SyncMonitor({dir:dataDir}).init();
  const googleClient=()=>secrets.google()||defaultGoogle;
  if(store.data.history.some(j=>['RUNNING','QUEUED'].includes(j.status)))await store.change(d=>{for(const j of d.history)if(['RUNNING','QUEUED'].includes(j.status)){j.status='CONNECTION_LOST';j.connection_error='Состояние сохранено. Подключитесь к прежней сессии GPU для проверки.'}});
  let connection=null,info=null,state='OFFLINE',lastError='',lastCode='',epoch=0,refreshing=null,closed=false,polling=false,submissionChain=Promise.resolve();
@@ -139,12 +144,47 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
   auto={attempt:0,started_at:Date.now(),deadline:Date.now()+minutes*60000,origin:saved.origin};setPhase('CONNECTING','Подключаюсь к сохранённому серверу…');
   autoLoop(version,provider,saved).catch(e=>failConnect(e,version));
  }
+ // v1.7.6: every /sync/* answer of the connected GPU passes through the monitor (structured events, persistence).
+ const background=new Set();   // post-sync discovery runs; close() waits for them
+ function observeSync(c,result){
+  const view=validateSyncStatus(result);
+  if(c===connection){const r=monitor.observe(view,c.origin);if(r.finished){const task=afterSync(c).catch(()=>note('DISCOVERY_FAILED')).finally(()=>background.delete(task));background.add(task)}}
+  return view;
+ }
+ // After a sync job: fresh engine catalogue, then which downloaded files the generator can now use (and why not).
+ async function afterSync(c){
+  await refresh(true);if(c!==connection)return;
+  const job=monitor.data.job,items=monitor.lastItems()||[];
+  const paths=new Set([...(job?.seen||[]),...(job?.requested||[]).filter(p=>items.some(i=>i.path===p&&i.state==='INSTALLED'))]);
+  monitor.setDiscovery(discoveryReport([...paths],items,store.data.models,{error:modelsState.error}));
+ }
+ let syncPolling=null;
+ function pollSync(force=false){
+  const c=connection;if(!c||c.provider!=='cloudcompute')return Promise.resolve();if(syncPolling)return syncPolling;
+  const last=monitor.data.last;if(!force&&last?.origin===c.origin&&!monitor.data.gpu_error&&Date.now()-last.observed_at<1500)return Promise.resolve();
+  syncPolling=(async()=>{try{observeSync(c,await upstream(c,'/sync/status',{timeout:20000}))}
+   catch(e){if(c===connection)monitor.gpuUnreachable(e.code==='JOB_NOT_FOUND'?{code:'SYNC_UNAVAILABLE',error:'этот GPU-сервер не поддерживает синхронизацию Google Drive (нужен образ YOISAKI ENGINE 1.7.2+).'}:publicError(e),c.origin)}})().finally(()=>{syncPolling=null});
+  return syncPolling;
+ }
+ // While a job runs on the GPU the phone keeps following it (also when no page is open), every few seconds.
+ const syncTimer=setInterval(()=>{if(monitor.running())pollSync().catch(()=>{})},Math.max(driveInterval,1000));syncTimer.unref();
+ const selectionPending=()=>{const sel=library.selection();if(!sel)return 0;const items=monitor.lastItems();return Object.keys(sel.items).filter(p=>items?.find(i=>i.path===p)?.state!=='INSTALLED').length};
+ const monitorView=()=>monitor.view({connected:connection?.provider==='cloudcompute',origin:connection?.origin||'',selectionPending:selectionPending()});
+ const libraryView=(extra={})=>{
+  const v={...library.view(),...extra},sel=library.selection(),d=secrets.deployment(),live=connection?.provider==='cloudcompute'&&monitor.data.last?.origin===connection.origin;
+  v.selection=sel;
+  v.estimate=selectionEstimate(sel,v.inventory,{gpuItems:monitor.lastItems(),disk:live?monitor.lastDisk():null,plannedDiskGb:d?.disk_gb??REQUIREMENTS.default_disk_gb,imageGb:REQUIREMENTS.image_size_note_gb});
+  v.comparison=compareSources({inventory:v.inventory,gpuItems:monitor.lastItems(),gpuModels:store.data.models,currentPath:monitor.running()?monitor.data.last?.status?.job?.current?.path:null,selection:sel});
+  v.gpu={connected:!!connection,provider:connection?.provider||null,sync_observed_at:monitor.data.last?.observed_at||null,sync_live:!!live&&!monitor.data.gpu_error,models_updated_at:store.data.inventory?.updated_at||null,models_stale:status().models_stale};
+  return v;
+ };
+ const requireCloudGpu=()=>{const c=connection;if(!c)fail('GPU_OFFLINE','GPU не подключён. Подключите CloudCompute в разделе GPU; выбор моделей сохранён и будет использован.',409);if(c.provider!=='cloudcompute')fail('DRIVE_CLOUDCOMPUTE_ONLY','Синхронизация Google Drive доступна только для CloudCompute.',409);return c};
  // v1.7.5: Drive access goes only to the connected CloudCompute engine, over its authenticated HTTPS tunnel.
  async function bindDrive(c){
   const body=await drive.binding();if(c!==connection)fail('SUPERSEDED','GPU изменён.',409);
   const result=await upstream(c,'/sync/drive/connect',{method:'POST',body:validateConnect(body),timeout:30000});
   if(c!==connection)fail('SUPERSEDED','GPU изменён. Доступ был передан предыдущему серверу.',409);
-  const view=validateSyncStatus(result);if(result.folder_selection!==true)fail('DRIVE_SERVER_UPGRADE','Обновите пакет GPU: сервер не подтвердил выбор папки.',409);
+  const view=observeSync(c,result);if(result.folder_selection!==true)fail('DRIVE_SERVER_UPGRADE','Обновите пакет GPU: сервер не подтвердил выбор папки.',409);
   return view;
  }
  // ---- v1.7.5 zero-terminal CloudCompute deployment -------------------------------------------------------------
@@ -167,14 +207,14 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
   const until=Date.now()+limitMs;
   for(;;){
    if(c!==connection)fail('SUPERSEDED','GPU отключён во время синхронизации.',409);
-   const st=validateSyncStatus(await upstream(c,'/sync/status',{timeout:30000}));
+   const st=observeSync(c,await upstream(c,'/sync/status',{timeout:30000}));
    if(st.job&&st.job.type===type&&st.job.state!=='RUNNING')return st;
    if(Date.now()>until)fail('DRIVE_TIMEOUT','Синхронизация продолжается на GPU; прогресс виден в GOOGLE DRIVE AUTO SYNC.',504);
    await sleep(type==='check'?driveInterval:driveInterval*3);
   }
  }
  // Bind → check → (optionally) download only the missing/changed files → refresh the model inventory.
- function driveRoutine({download}){
+ function driveRoutine({download,automatic=false}){
   if(driveRun)return driveRun;
   const setDrive=patch=>watcher.update({drive:{...(watcher.get()?.drive||{}),...patch,at:Date.now()}});
   driveRun=(async()=>{
@@ -186,12 +226,17 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
     await upstream(c,'/sync/check',{method:'POST',body:'{}',timeout:30000});
     let st=await waitSyncJob(c,'check',15*60000);
     if(st.job.state!=='COMPLETED')fail('DRIVE_CHECK_FAILED',st.job.error||'Проверка папки не завершилась.',502);
-    const missing=st.items.filter(i=>['MISSING','CHANGED'].includes(i.state)),bytes=missing.reduce((n,i)=>n+(i.size||0),0);
-    const summary={installed:st.items.filter(i=>i.state==='INSTALLED').length,missing:missing.length,missing_bytes:bytes,conflicts:st.items.filter(i=>i.state==='CONFLICT').length,rejected:st.items.filter(i=>i.state==='REJECTED').length};
+    // v1.7.6: the saved selection (Models → Google Drive) decides what is downloaded; the whole collection is
+    // never downloaded automatically. Without a selection only an explicit button press downloads all missing files.
+    const sel=library.selection(),chosen=sel?new Set(Object.keys(sel.items)):null;
+    const missing=st.items.filter(i=>['MISSING','CHANGED'].includes(i.state)),wanted=chosen?missing.filter(i=>chosen.has(i.path)):missing,bytes=wanted.reduce((n,i)=>n+(i.size||0),0);
+    const summary={installed:st.items.filter(i=>i.state==='INSTALLED').length,missing:missing.length,missing_bytes:missing.reduce((n,i)=>n+(i.size||0),0),selected:chosen?chosen.size:null,wanted:wanted.length,wanted_bytes:bytes,conflicts:st.items.filter(i=>i.state==='CONFLICT').length,rejected:st.items.filter(i=>i.state==='REJECTED').length};
     if(!missing.length){await setDrive({state:'DONE',message:`Все ${summary.installed} моделей из папки уже на GPU.`,summary});await refresh(true);return}
-    if(!download){await setDrive({state:'READY_TO_SYNC',message:`На GPU уже ${summary.installed}; не хватает ${missing.length} файлов (${gb(bytes)}). Нажмите «Синхронизировать модели».`,summary});return}
-    await setDrive({state:'SYNCING',message:`Скачиваю только недостающие: ${missing.length} файлов (${gb(bytes)}). Прогресс — в GOOGLE DRIVE AUTO SYNC.`,summary});
-    await upstream(c,'/sync/start',{method:'POST',body:st.selective?JSON.stringify({paths:missing.map(i=>i.path)}):'{}',timeout:30000});
+    if(chosen&&!wanted.length){await setDrive({state:'DONE',message:`Все выбранные модели уже на GPU. В папке есть ещё ${missing.length} невыбранных файлов: их можно отметить в «Модели → Google Drive».`,summary});await refresh(true);return}
+    if(!download||automatic&&!chosen){await setDrive({state:'READY_TO_SYNC',message:automatic&&!chosen?`Модели для загрузки не выбраны. На GPU уже ${summary.installed}; в папке ещё ${missing.length} файлов (${gb(summary.missing_bytes)}). Отметьте нужные в «Модели → Google Drive» и нажмите «Синхронизировать модели»: вся коллекция автоматически не скачивается.`:`На GPU уже ${summary.installed}; не хватает ${wanted.length} файлов (${gb(bytes)}). Нажмите «Синхронизировать модели».`,summary});return}
+    await setDrive({state:'SYNCING',message:`Скачиваю ${chosen?'выбранные':'только недостающие'}: ${wanted.length} файлов (${gb(bytes)}). Прогресс — в «Модели → Синхронизация».`,summary});
+    monitor.request(st.selective?wanted.map(i=>i.path):null,c.origin);
+    observeSync(c,await upstream(c,'/sync/start',{method:'POST',body:st.selective?JSON.stringify({paths:wanted.map(i=>i.path)}):'{}',timeout:30000}));
     st=await waitSyncJob(c,'sync',6*3600000);
     await refresh(true);
     if(st.job.state!=='COMPLETED')fail('DRIVE_SYNC_FAILED',st.job.error||'Синхронизация завершилась с ошибкой: '+st.job.state,502);
@@ -202,7 +247,7 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
  }
  const watcher=new DeploymentWatcher({secrets,cloud,progress:discoverProgress,interval:deployInterval,sleep,
   connect:deployConnect,connectionState:()=>({phase:currentPhase(),origin:connection?.origin||'',token:connection?.token||''}),
-  afterReady:()=>{const d=secrets.deployment();if(d?.drive?.state&&d.drive.state!=='ERROR')return Promise.resolve();return driveRoutine({download:!!d?.auto_sync})}});
+  afterReady:()=>{const d=secrets.deployment();if(d?.drive?.state&&d.drive.state!=='ERROR')return Promise.resolve();return driveRoutine({download:!!d?.auto_sync,automatic:true})}});
  // A creation whose answer was lost keeps a pending record (with its token) and is resolved by name, never re-sent.
  const resolvePending=async d=>{if(!d.instance_id.startsWith('pending-'))return;try{const found=instanceList(await cloud.request('GET','/instances')).find(i=>i.name===d.name);if(found){await secrets.change(x=>{if(x.deployment?.instance_id===d.instance_id)x.deployment.instance_id=found.id})}}catch{}};
  const originalTick=watcher.tick.bind(watcher);watcher.tick=async(d,alive)=>{if(d.instance_id.startsWith('pending-')){await resolvePending(d);d=secrets.deployment();if(!d||d.instance_id.startsWith('pending-')){if(Date.now()-d?.created_at>5*60000)await watcher.setStage('FAILED','CloudCompute не подтвердил создание и инстанс с именем '+d?.name+' не появился в списке. Проверьте панель CloudCompute; повторная попытка не выполнялась.');return}}return originalTick(d,alive)};
@@ -383,6 +428,38 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
     const c=connection;if(!c||c.provider!=='cloudcompute')fail('GPU_OFFLINE','Подключите CloudCompute, чтобы передать доступ выбранному GPU.',409);
     return send(res,await bindDrive(c));
    }
+   // ---- v1.7.6 Google Drive model library, selection, sync monitor and GPU readiness ----------------------------
+   if(route==='/api/drive/library'&&method==='GET')return send(res,libraryView());
+   if(route==='/api/drive/library/check'&&method==='POST'){const r=await library.check();note(r.verified_now?'DRIVE_LIBRARY_VERIFIED':'DRIVE_LIBRARY_'+(r.error?.state||'ERROR'));return send(res,libraryView(r))}
+   if(route==='/api/drive/library/browse'&&method==='GET')return send(res,await library.browse({folder:u.searchParams.get('folder')||'',page:u.searchParams.get('page')||'',query:u.searchParams.get('q')||'',path:u.searchParams.get('path')||'',outside:u.searchParams.get('outside')==='1'}));
+   if(route==='/api/drive/library/parent'&&method==='GET')return send(res,await library.parent(u.searchParams.get('id')||''));
+   if(route==='/api/drive/library/inspect'&&method==='POST'){const r=await library.inspect((await jsonBody(req)).ids);return send(res,{...libraryView(),results:r.results})}
+   if(route==='/api/drive/selection'){
+    if(method==='GET')return send(res,libraryView());
+    if(method==='PUT'){await library.select((await jsonBody(req)).paths);note('DRIVE_SELECTION');return send(res,libraryView())}
+   }
+   if(route==='/api/sync/monitor'&&method==='GET'){if(u.searchParams.get('live')!=='0')await pollSync(true);return send(res,monitorView())}
+   if(route==='/api/sync/start'&&method==='POST'){
+    const b=await jsonBody(req);if(!['selected','missing','retry'].includes(b?.mode))fail('INVALID_REQUEST','Неверный режим синхронизации.');
+    const c=requireCloudGpu();let paths=null;
+    const saved=()=>{const sel=library.selection();return sel?Object.keys(sel.items):[]};
+    if(b.mode==='selected'){paths=saved();if(!paths.length)fail('DRIVE_NOTHING_SELECTED','Модели не выбраны. Отметьте их на вкладке «Google Drive».',409)}
+    if(b.mode==='retry'){const last=monitor.data.job;paths=last?.type==='sync'?last.requested:saved().length?saved():null}
+    let st=observeSync(c,await upstream(c,'/sync/status',{timeout:30000}));
+    if(st.job?.state==='RUNNING')fail('DRIVE_SYNC_BUSY','Синхронизация уже выполняется: прогресс показан на вкладке «Синхронизация».',409);
+    if(!st.enabled)fail('DRIVE_SYNC_DISABLED','Синхронизация отключена на GPU-сервере (YOISAKI_DRIVE_SYNC=0).',409);
+    // Drive access is (re)sent to this GPU when it has none or Google rejected the copy it has.
+    if(!st.configured||st.connection.state==='ERROR'&&['AUTH_FAILED','NOT_CONFIGURED'].includes(st.connection.code))st=await bindDrive(c);
+    if(paths&&!st.selective)fail('DRIVE_SERVER_UPGRADE','GPU-сервер не поддерживает выборочную синхронизацию: обновите образ движка.',409);
+    monitor.request(paths,c.origin);
+    observeSync(c,await upstream(c,'/sync/start',{method:'POST',body:validateSyncStart(JSON.stringify(paths?{paths}:{})),timeout:30000}));
+    note('DRIVE_SYNC_'+b.mode.toUpperCase());return send(res,monitorView(),202);
+   }
+   if(route==='/api/sync/cancel'&&method==='POST'){const c=requireCloudGpu();observeSync(c,await upstream(c,'/sync/cancel',{method:'POST',body:'{}',timeout:30000}));note('DRIVE_CANCEL');return send(res,monitorView())}
+   if(route==='/api/system/readiness'&&method==='GET'){
+    await pollSync();
+    return send(res,{...readiness({cloudConfigured:!!secrets.cloudKey(),deployment:watcher.view(),connection,state,info,lastCode,lastError,models:store.data.models,monitor:monitorView(),drive:library.account(),compatibility:engineCompatibility(info)}),dashboard:'https://app.cloudcompute.ru/',checked_at:Date.now()});
+   }
    const driveMatch=route.match(/^\/api\/gpu\/drive\/(status|check|sync|cancel|connect|disconnect)$/);
    if(driveMatch){
     const [remoteMethod,remoteRoute]=SYNC_ACTIONS[driveMatch[1]];
@@ -391,9 +468,9 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
     if(connection.provider!=='cloudcompute')fail('DRIVE_CLOUDCOMPUTE_ONLY','Google Drive Auto Sync доступна только для CloudCompute.',409);
     // The connect body (OAuth token) is forwarded once and never stored, logged or echoed.
     const body=driveMatch[1]==='connect'?validateConnect(await jsonBody(req)):driveMatch[1]==='sync'?validateSyncStart(await readBody(req,1048576)):remoteMethod==='POST'?'{}':undefined;
-    const c=connection;const result=await upstream(c,remoteRoute,{method:remoteMethod,body,timeout:30000});
+    const c=connection;if(driveMatch[1]==='sync')monitor.request(JSON.parse(body).paths||null,c.origin);const result=await upstream(c,remoteRoute,{method:remoteMethod,body,timeout:30000});
     if(connection!==c)fail('SUPERSEDED','Провайдер изменён.',409);
-    if(driveMatch[1]!=='status')note('DRIVE_'+driveMatch[1].toUpperCase());return send(res,validateSyncStatus(result));
+    if(driveMatch[1]!=='status')note('DRIVE_'+driveMatch[1].toUpperCase());return send(res,observeSync(c,result));
    }
    if(route==='/api/gpu/disconnect'&&method==='POST'){await disconnectSession();return send(res,status())}
    if(route==='/api/gpu/status'&&method==='GET')return send(res,await refresh(u.searchParams.get('models')==='1'));
@@ -512,5 +589,5 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
  if(autoResume){const d=secrets.deployment();
   if(d&&!END_STAGES.includes(d.stage)&&d.stage!=='GPU_READY')watcher.start();
   else if(d?.stage==='GPU_READY'&&providers.selected==='cloudcompute'&&secrets.connection('cloudcompute')?.token===d.token)startAutoconnect('cloudcompute',3).catch(()=>{});}
- return {server,store,status,pollJobs,async close(){closed=true;watcher.stop();clearInterval(pollTimer);connection=null;jobs.clear();acknowledgements.clear();await new Promise(resolve=>{server.close(resolve);server.closeAllConnections()});while(polling)await new Promise(r=>setTimeout(r,20));await store.chain}};
+ return {server,store,status,pollJobs,async close(){closed=true;watcher.stop();clearInterval(pollTimer);clearInterval(syncTimer);await Promise.allSettled([...background,syncPolling].filter(Boolean));connection=null;jobs.clear();acknowledgements.clear();await new Promise(resolve=>{server.close(resolve);server.closeAllConnections()});while(polling)await new Promise(r=>setTimeout(r,20));await store.chain;monitor.closed=library.closed=true;await monitor.chain;await library.chain}};
 }
