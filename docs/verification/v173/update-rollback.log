@@ -1,0 +1,46 @@
+$ python3 tests/update-release.py <v1.7.2 zip> <v1.7.3 zip>   (Linux simulation, not Android hardware)
+YOISAKI AI STUDIO v1.7.2 GOOGLE DRIVE AUTO SYNC EDITION
+Откройте: http://127.0.0.1:3000
+Остановка: ./stop.sh
+Не закрывайте принудительно Termux во время генерации.
+PASS baseline old server 1.7.2 on port 3000
+Проверка целостности файлов: OK
+Проверка целостности файлов: OK
+Установлено. Локальная production-сборка готова.
+Запуск: ./start.sh
+{"version":"1.7.3","source_sha256":"e84404366b5e66105f24fbe4214b47c55063c3656e2e4e2989ac15c076a09b14"}
+Приложение остановлено. Данные сохранены.
+YOISAKI AI STUDIO v1.7.3 ONE-CLICK CONNECT EDITION
+Откройте: http://127.0.0.1:3000
+Остановка: ./stop.sh
+Не закрывайте принудительно Termux во время генерации.
+Обновлено. Резервная копия кода: /tmp/yoisaki-update-4n9qol_h/installed.backup-20261027-012605-12870
+Резервная копия данных (если существовали): /tmp/yoisaki-update-4n9qol_h/user-data.backup-20261027-012605-12870
+Откройте http://127.0.0.1:3000/engine и проверьте версию 1.7.3 (AMBER CORE · v1.7.3 ONE-CLICK CONNECT EDITION).
+PASS update preserved gallery bytes, favorites, history, presets, settings, models, tags and custom content; code/data backups exist
+{"version":"1.7.3","source_sha256":"e84404366b5e66105f24fbe4214b47c55063c3656e2e4e2989ac15c076a09b14"}
+YOISAKI 1.7.3
+Node: v22.22.0
+Платформа: linux/x64
+Termux: false
+Сервер: работает
+Сборка соответствует исходникам: e84404366b5e66105f24fbe4214b47c55063c3656e2e4e2989ac15c076a09b14
+Версия запущенного сервера: 1.7.3
+Папка запущенного сервера: /tmp/yoisaki-update-4n9qol_h/installed
+Хранилище: 695 байт
+YOISAKI AI STUDIO v1.7.2 GOOGLE DRIVE AUTO SYNC EDITION
+Откройте http://127.0.0.1:3000
+Для остановки: ./stop.sh
+YOISAKI AI STUDIO v1.7.3 ONE-CLICK CONNECT EDITION
+Откройте http://127.0.0.1:3000
+Для остановки: ./stop.sh
+Приложение остановлено. Данные сохранены.
+Production build does not match installed sources. Run bash install.sh.
+Production assets differ. Run bash install.sh.
+PASS stale source and stale build rejected
+YOISAKI AI STUDIO v1.7.2 GOOGLE DRIVE AUTO SYNC EDITION
+Откройте: http://127.0.0.1:3000
+Остановка: ./stop.sh
+Не закрывайте принудительно Termux во время генерации.
+PASS manual rollback to old 1.7.2, user data unchanged; Linux simulation, not Android hardware
+Приложение остановлено. Данные сохранены.

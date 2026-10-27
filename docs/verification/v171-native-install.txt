@@ -1,0 +1,21 @@
+# native install on the host (data root /root/yoisaki-native-e2e). Earlier attempts were interrupted mid-pip (venv present, no marker) -> this run must resume.
+# PIP_CERT = sandbox proxy CA only (TLS interception in this sandbox).
+marker before: ls: cannot access '/root/yoisaki-native-e2e/runtime/venv/.yoisaki-install': No such file or directory
+Установка зависимостей (первый раз: несколько ГБ, займёт время)…
+[interrupted by the validator]
+
+# RESULT: NOT COMPLETED in the development sandbox.
+# The sandbox network to files.pythonhosted.org degraded from ~45 MB/s (Docker build) to 0.1-240 kB/s;
+# pip stalled on nvidia_cublas_cu12 (594 MB). Measured right before stopping: curl speed_download = 116 B/s.
+# What this run did verify:
+#   - Python selection picked python3.12 (same version as Colab and the image): Python 3.12.3
+#   - venv creation in $YOISAKI_DATA_ROOT/runtime/venv; marker absent after the interrupted pip -> the next run resumes (no false 'already installed')
+#   - marker present: no
+#   - the same pip commands and pins completed in the Docker build (v171-docker-build.txt: Successfully installed ..., pip check OK)
+# Still to verify on CloudCompute: a complete native install and its no-op repeat run.
+
+# last lines of logs/install-native.log
+Using cached torchvision-0.25.0-cp312-cp312-manylinux_2_28_x86_64.whl (8.1 MB)
+Using cached gdown-6.4.2-py3-none-any.whl (50 kB)
+Using cached cuda_bindings-12.9.4-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl (12.2 MB)
+Downloading nvidia_cublas_cu12-12.8.4.1-py3-none-manylinux_2_27_x86_64.whl (594.3 MB)

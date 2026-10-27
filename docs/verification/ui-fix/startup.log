@@ -1,0 +1,4 @@
+YOISAKI AI STUDIO v1.7.1 CLOUDCOMPUTE EDITION
+Откройте: http://127.0.0.1:3000
+Остановка: ./stop.sh
+Не закрывайте принудительно Termux во время генерации.
