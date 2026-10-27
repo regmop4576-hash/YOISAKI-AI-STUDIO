@@ -1,0 +1,9 @@
+{
+  "tests/test_controlnet.py": true,
+  "tests/test_controlnet_diffusers_cpu.py": true,
+  "tests/test_diffusers_cpu.py": true,
+  "tests/test_prompt_fidelity.py": true,
+  "tests/test_routing.py": true,
+  "tests/test_v162_sdpose.py": true,
+  "tests/test_v170_img2img.py": true
+}

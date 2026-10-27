@@ -1,0 +1,93 @@
+# docker compose 5.6.1 config (YOISAKI_DATA_ROOT=/workspace/yoisaki-data, HF_TOKEN unset)
+$ docker compose -f docker-compose.yml config
+name: yoisaki
+services:
+  engine:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities:
+                - gpu
+              driver: nvidia
+              count: -1
+    restart: 'no'
+    container_name: yoisaki-engine
+    cap_drop:
+      - ALL
+    environment:
+      CIVITAI_TOKEN: null
+      HF_TOKEN: null
+      PYTORCH_CUDA_ALLOC_CONF: null
+      YOISAKI_HF_OFFLINE: "0"
+      YOISAKI_PORT: "8765"
+      YOISAKI_RAM_FIX: "1"
+      YOISAKI_TUNNEL: "1"
+      YOISAKI_TUNNEL_RESTARTS: "3"
+      YOISAKI_WARMUP_CHECKPOINT: null
+    image: yoisaki-engine:1.7.1-cloudcompute
+    logging:
+      driver: json-file
+      options:
+        max-file: "3"
+        max-size: 10m
+    networks:
+      default: null
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 45s
+    tmpfs:
+      - /tmp:size=1g
+    user: 1000:1000
+    volumes:
+      - type: bind
+        source: /workspace/yoisaki-data
+        target: /data
+        bind: {}
+      - type: bind
+        source: /workspace/yoisaki-data/models
+        target: /data/models
+        read_only: true
+        bind: {}
+    build:
+      context: <package>
+      dockerfile: Dockerfile
+      labels:
+        org.yoisaki.source: manual
+networks:
+  default:
+    name: yoisaki_default
+x-engine:
+  cap_drop:
+    - ALL
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - capabilities:
+              - gpu
+            count: all
+            driver: nvidia
+  environment:
+    CIVITAI_TOKEN: null
+    HF_TOKEN: null
+    PYTORCH_CUDA_ALLOC_CONF: null
+    YOISAKI_HF_OFFLINE: "0"
+    YOISAKI_PORT: "8765"
+    YOISAKI_RAM_FIX: "1"
+    YOISAKI_TUNNEL: "1"
+    YOISAKI_TUNNEL_RESTARTS: "3"
+    YOISAKI_WARMUP_CHECKPOINT: null
+  image: yoisaki-engine:1.7.1-cloudcompute
+  read_only: true
+  security_opt:
+    - no-new-privileges:true
+  tmpfs:
+    - /tmp:size=1g
+  user: 1000:1000
+[exit 0]
+
+$ docker compose -f docker-compose.yml --profile tools config --services
+engine
+tools

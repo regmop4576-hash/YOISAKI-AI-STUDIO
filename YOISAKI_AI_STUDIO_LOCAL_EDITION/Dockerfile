@@ -1,0 +1,78 @@
+# syntax=docker/dockerfile:1
+# YOISAKI ENGINE · CloudCompute deployment 1.7.2 (engine protocol 1.7.0, engine/ unchanged).
+# Model weights are NEVER part of the image: they live on the persistent data volume (/data).
+#
+# CUDA 12.8 base: the minimum CUDA for RTX 50xx (sm_120); the PyTorch wheel brings its own CUDA 12.8
+# runtime libraries, the host provides only the NVIDIA driver (NVIDIA Container Toolkit, `--gpus all`).
+FROM nvidia/cuda:12.8.1-base-ubuntu24.04@sha256:133c78a0575303be34164d0b90137a042172bdf60696af01a3c424ab402d86e2
+
+ARG CLOUDFLARED_VERSION=2026.9.3
+ARG CLOUDFLARED_SHA256=77e26d8d900e0b8469f416239d14b5f296525fdf79fee6f511ef55609e3fbac2
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# python3.12 (Ubuntu 24.04), tini as PID 1 (signal forwarding, zombie reaping), glib for OpenCV.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends python3 python3-venv ca-certificates curl tini libglib2.0-0t64 \
+ && rm -rf /var/lib/apt/lists/*
+
+# Dependencies first: this ~7 GB layer is reused by every later build of changed code.
+COPY engine/requirements.txt /opt/yoisaki/engine/requirements.txt
+COPY cloudcompute/requirements-cloud.txt /opt/yoisaki/cloudcompute/requirements-cloud.txt
+RUN python3 -m venv /opt/yoisaki/venv \
+ && /opt/yoisaki/venv/bin/pip install -r /opt/yoisaki/cloudcompute/requirements-cloud.txt \
+ && /opt/yoisaki/venv/bin/pip install -c /opt/yoisaki/cloudcompute/requirements-cloud.txt -r /opt/yoisaki/engine/requirements.txt \
+ && /opt/yoisaki/venv/bin/pip check
+
+# Pinned cloudflared release, verified by SHA-256 (same quick-tunnel transport as the Colab panel).
+RUN curl -fsSL -o /usr/local/bin/cloudflared \
+      "https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-amd64" \
+ && echo "${CLOUDFLARED_SHA256}  /usr/local/bin/cloudflared" | sha256sum -c - \
+ && chmod 0755 /usr/local/bin/cloudflared
+
+# 1.7.2: rclone for the read-only Google Drive model sync (Ubuntu archive package, verified by apt signatures).
+# A separate layer AFTER the PyTorch layer: upgrading from 1.7.1 reuses the cached ~7 GB dependency layer.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends rclone \
+ && rm -rf /var/lib/apt/lists/* \
+ && rclone version | head -n1
+
+COPY engine/ /opt/yoisaki/engine/
+COPY cloudcompute/ /opt/yoisaki/cloudcompute/
+COPY start-cloudcompute.sh stop-cloudcompute.sh check-cloudcompute.sh fetch-models-cloudcompute.sh drive-sync-cloudcompute.sh /opt/yoisaki/
+
+# Same import check as the Colab installer + PyTorch kernels for sm_75..sm_120 (no GPU needed at build).
+RUN cd /opt/yoisaki/engine && /opt/yoisaki/venv/bin/python /opt/yoisaki/cloudcompute/import_check.py /opt/yoisaki/engine \
+ && find /opt/yoisaki -name __pycache__ -prune -exec rm -rf {} + \
+ && chmod -R a+rX,go-w /opt/yoisaki
+
+# Unprivileged runtime user (uid 1000; the stock "ubuntu" account is removed to free the uid).
+RUN userdel -r ubuntu 2>/dev/null || true \
+ && useradd --uid 1000 --create-home --shell /usr/sbin/nologin yoisaki
+
+ENV PATH=/opt/yoisaki/venv/bin:$PATH \
+    YOISAKI_IN_IMAGE=1 \
+    YOISAKI_DATA_ROOT=/data \
+    YOISAKI_ENGINE_DIR=/opt/yoisaki/engine \
+    YOISAKI_PYTHON=/opt/yoisaki/venv/bin/python \
+    YOISAKI_CLOUDFLARED=/usr/local/bin/cloudflared \
+    HF_HOME=/data/huggingface-cache \
+    HOME=/data/runtime/home
+
+USER 1000:1000
+WORKDIR /opt/yoisaki
+VOLUME ["/data"]
+
+# Healthy = the local engine answers /health with READY or BUSY (token read from the 0600 state file).
+HEALTHCHECK --interval=30s --timeout=10s --start-period=300s --retries=3 \
+  CMD ["/opt/yoisaki/venv/bin/python", "/opt/yoisaki/cloudcompute/launcher.py", "healthcheck"]
+
+STOPSIGNAL SIGTERM
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["/opt/yoisaki/venv/bin/python", "/opt/yoisaki/cloudcompute/launcher.py", "run"]
+LABEL org.opencontainers.image.title="YOISAKI ENGINE CloudCompute" \
+      org.opencontainers.image.version="1.7.2"

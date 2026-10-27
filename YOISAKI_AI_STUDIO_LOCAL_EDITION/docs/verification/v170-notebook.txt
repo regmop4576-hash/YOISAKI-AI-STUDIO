@@ -1,0 +1,10 @@
+# v1.7.0 notebook verification
+nbformat.validate OK
+all code cells compile
+SHA-256 == _EXPECTED f50bf634cdd6c0fa00cab11cc35a26e45733e0ade83903581f05b0f2deea8d7c
+25 files byte-identical to engine/
+extracted engine /health: 1.7.0 {'controlnet': True, 'sdpose': True, 'img2img': True, 'regional_control': True, 'result_ack': True}
+bootstrap import check (as run in Colab):
+  IMPORTS_OK
+  CUDA False
+Packaging reproducibility: the same builder applied to the v1.6.2 engine/ reproduces the original _EXPECTED ba0d610a607436f1db742acae58f43131db80433ac29b50023905b5dad6230c0 byte-for-byte.
