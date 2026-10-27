@@ -35,6 +35,8 @@ export function components({phase,info,code,modelsCount,modelsError,usableCheckp
   return out;
  }
  if(phase==='OFFLINE'||!code&&phase!=='ERROR')return {...out,...(phase==='STARTING'||phase==='CONNECTING'?{tunnel:'WAITING'}:{})};
+ // v1.7.3: a CloudCompute API error (instance not running, key rejected) says nothing about tunnel or engine.
+ if(String(code).startsWith('CC_'))return out;
  const rule=classify(code);const failed=ORDER.indexOf(rule.component);
  // AUTH_REJECTED proves the tunnel answered; engine errors behind the tunnel prove nothing about auth.
  for(let i=0;i<failed;i++)if(!(rule.component==='engine'&&ORDER[i]==='auth'))out[ORDER[i]]='READY';

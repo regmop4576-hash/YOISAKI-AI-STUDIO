@@ -198,23 +198,27 @@ test('Google OAuth helpers: Desktop client format, PKCE S256, single-use state, 
 });
 
 test('browser Google Drive authorization end to end: Google redirect → token exchange → GPU /sync/drive/connect',async()=>{
+ // v1.7.3 Easy Connect: the sign-in works without a GPU; the refresh token is kept ONLY in secrets.json (0600).
+ const fakeDrive=async({path:p})=>p.startsWith('/drive/v3/about')?{status:200,json:{user:{displayName:'Test User',emailAddress:'user@example.com'}}}:{status:404,json:{}};
  const sync={service:'YOISAKI_DRIVE_SYNC',version:1,enabled:true,rclone_available:true,configured:true,connection:{state:'UNKNOWN',error:'',code:''},source:'s',scope:'drive.readonly',job:null,items:[],disk:null,last_success_unix:null,last_check_unix:null,inventory_revision:0,verification:'',owner:'self',selective:true};
- let forwarded=null;const h=await harness(async(c,p,o={})=>{if(p==='/health')return health;if(p==='/inventory?models=1')return {revision:'1'.repeat(32),models:[]};if(p==='/sync/drive/connect'){forwarded=JSON.parse(o.body);return sync}throw Error(p)},{exchange:async(client,code,pending)=>{assert.equal(code,'from-google');assert(pending.verifier);return {access_token:'ya29.x',token_type:'Bearer',refresh_token:'1//refresh-secret',expiry:'2026-10-27T10:00:00.000Z'}}});
+ let forwarded=null;const h=await harness(async(c,p,o={})=>{if(p==='/health')return health;if(p==='/inventory?models=1')return {revision:'1'.repeat(32),models:[]};if(p==='/sync/drive/connect'){forwarded=JSON.parse(o.body);return sync}if(p==='/sync/status')return sync;if(p==='/sync/start')return sync;throw Error(p)},{driveRequest:fakeDrive,exchange:async(client,code,pending)=>{assert.equal(code,'from-google');assert(pending.verifier);return {access_token:'ya29.x',token_type:'Bearer',refresh_token:'1//refresh-secret',expiry:'2026-10-27T10:00:00.000Z'}}});
  try{
   assert.equal((await h.call('/api/drive/oauth/start','POST',{})).body.code,'DRIVE_OAUTH_NOT_CONFIGURED');
   const cfg=(await h.call('/api/drive/oauth','PUT',{client_id:'123456789-abcdefghij.apps.googleusercontent.com',client_secret:'GOCSPX-abcdefghijk'})).body;
   assert.equal(cfg.configured,true);assert(!JSON.stringify(cfg).includes('GOCSPX'));
-  assert.equal((await h.call('/api/drive/oauth/start','POST',{})).body.code,'GPU_OFFLINE');
+  assert(new URL((await h.call('/api/drive/oauth/start','POST',{})).body.url).searchParams.get('state'));  // no GPU needed any more
   await h.call('/api/gpu/provider','POST',{provider:'cloudcompute'});await h.call('/api/gpu/connect','POST',{url:'https://gpu.example.com/#token='+token,provider:'cloudcompute'});
   const {url}=(await h.call('/api/drive/oauth/start','POST',{})).body;const state=new URL(url).searchParams.get('state');
   // Unknown state from a foreign site: rejected by the normal cross-site rule.
   assert.equal((await fetch(h.base+'/?state='+'f'.repeat(64)+'&code=x',{headers:{'Sec-Fetch-Site':'cross-site'},redirect:'manual'})).status,403);
   const back=await fetch(h.base+'/?state='+state+'&code=from-google&scope='+encodeURIComponent(SCOPE),{headers:{'Sec-Fetch-Site':'cross-site'},redirect:'manual'});
   assert.equal(back.status,302);assert.equal(back.headers.get('location'),'/models?drive_auth=1');
-  assert.equal(JSON.parse(forwarded.token).refresh_token,'1//refresh-secret');assert.equal(forwarded.client_id,'123456789-abcdefghij.apps.googleusercontent.com');
+  await until(()=>forwarded);assert.equal(JSON.parse(forwarded.token).refresh_token,'1//refresh-secret');assert.equal(forwarded.client_id,'123456789-abcdefghij.apps.googleusercontent.com');
   assert.equal((await h.call('/api/drive/oauth')).body.last_result.ok,true);
   assert.equal((await fetch(h.base+'/?state='+state+'&code=again',{headers:{'Sec-Fetch-Site':'cross-site'},redirect:'manual'})).status,403);  // single use
-  for(const f of await fs.readdir(h.dataDir))if((await fs.stat(path.join(h.dataDir,f))).isFile())assert(!(await fs.readFile(path.join(h.dataDir,f),'utf8')).includes('refresh-secret'),f);
+  for(const f of await fs.readdir(h.dataDir))if(f!=='secrets.json'&&(await fs.stat(path.join(h.dataDir,f))).isFile())assert(!(await fs.readFile(path.join(h.dataDir,f),'utf8')).includes('refresh-secret'),f);
+  assert.equal((await fs.stat(path.join(h.dataDir,'secrets.json'))).mode&0o777,0o600);
+  const view=(await h.call('/api/drive')).body;assert.equal(view.linked,true);assert.equal(view.account.email,'user@example.com');assert(!JSON.stringify(view).includes('refresh-secret'));
  }finally{await h.close()}
 });
 

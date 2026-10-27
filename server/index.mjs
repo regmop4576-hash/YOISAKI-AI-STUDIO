@@ -8,7 +8,7 @@ const port=Number(process.env.PORT||3000);
 if(!Number.isInteger(port)||port<1024||port>65535){console.error('Неверный PORT.');process.exit(1)}
 try{
 await checkBuild();
-const app=await createLocalApp({dataDir,distDir:path.join(root,'dist'),serviceKey:process.env.YOISAKI_SERVICE_KEY||''});
+const app=await createLocalApp({dataDir,distDir:path.join(root,'dist'),serviceKey:process.env.YOISAKI_SERVICE_KEY||'',appRoot:root});
 app.server.once('error',e=>{console.error(e.code==='EADDRINUSE'?`Порт ${port} занят. Остановите другой сервер или используйте PORT=3001 ./start.sh.`:'Не удалось запустить локальный сервер.');process.exitCode=1;app.close().catch(()=>{})});
 app.server.listen(port,'127.0.0.1',()=>console.log(`YOISAKI AI STUDIO v${WEBSITE_VERSION} ${STUDIO_EDITION}\nОткройте http://127.0.0.1:${port}\nДля остановки: ./stop.sh`));
 let stopping=false;const stop=async()=>{if(stopping)return;stopping=true;await app.close();process.exit(0)};process.on('SIGTERM',stop);process.on('SIGINT',stop);

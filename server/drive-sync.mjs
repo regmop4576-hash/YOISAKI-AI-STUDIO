@@ -5,7 +5,7 @@ export const SYNC_ACTIONS={status:['GET','/sync/status'],check:['POST','/sync/ch
 export const SYNC_ROUTES=Object.values(SYNC_ACTIONS).map(([method,route])=>method+' '+route);
 const JOB_STATES=['RUNNING','COMPLETED','FAILED','CANCELLED','INTERRUPTED'];
 const ITEM_STATES=['PENDING','INSTALLED','MISSING','CHANGED','CONFLICT','REJECTED','DOWNLOADING','VERIFYING','FAILED'];
-const KINDS=['checkpoint','lora','vae'];
+const KINDS=['checkpoint','lora','vae','controlnet'];
 const bad=()=>fail('INVALID_RESPONSE','Некорректный ответ синхронизации Google Drive от GPU-сервера.',502);
 const clean=s=>s.replace(/[a-f0-9]{64}/g,'[СКРЫТО]').replace(/ya29\.[\w.-]+|1\/\/[\w.-]{20,}|GOCSPX-[\w-]+/g,'[СКРЫТО]');
 const str=(v,max,fallback='')=>v===undefined||v===null?fallback:typeof v==='string'&&v.length<=max?clean(v):bad();
@@ -28,6 +28,8 @@ export function validateSyncStatus(x){
   job:job(x.job),disk:d===null||d===undefined?null:typeof d!=='object'?bad():{free_bytes:num(d.free_bytes),total_bytes:num(d.total_bytes),reserve_bytes:num(d.reserve_bytes)},
   last_success_unix:num(x.last_success_unix),last_check_unix:num(x.last_check_unix),inventory_revision:Number.isInteger(x.inventory_revision)&&x.inventory_revision>=0?x.inventory_revision:bad(),
   verification:str(x.verification,600),owner:oneOf(x.owner??'self',['self','other']),selective:bool(x.selective),
+  // 1.7.3: the server accepts the model folder chosen on the website (folder_id in /sync/drive/connect).
+  folder_select:bool(x.folder_select),source_kind:oneOf(x.source_kind??'path',['path','folder']),
   items:x.items.map(i=>!i||typeof i!=='object'?bad():{path:str(i.path,400),name:str(i.name,300),kind:oneOf(i.kind,KINDS),size:num(i.size),state:oneOf(i.state,ITEM_STATES),reason:str(i.reason,600),verification:str(i.verification,60)})};
 }
 // v1.7.3: optional selection for /sync/start ({paths:[...]} = Drive paths reported by /sync/check). Servers before
@@ -40,9 +42,12 @@ export function validateSyncStart(raw){
  if(!Array.isArray(b.paths)||!b.paths.length||b.paths.length>2000||b.paths.some(x=>typeof x!=='string'||!x||x.length>400||/[\u0000-\u001f]/.test(x)))fail('DRIVE_INVALID_SELECTION','Выберите от 1 до 2000 файлов из списка проверки.');
  return JSON.stringify({paths:[...new Set(b.paths)]});
 }
-// The pasted value is the JSON printed by `rclone authorize` in Termux. It is forwarded once over HTTPS and never stored here.
+// Token JSON for rclone on the GPU: from the browser sign-in (local server) or pasted from `rclone authorize`.
+// 1.7.3: optional folder_id/folder_label (model folder chosen on the website); sent only to servers with folder_select.
 export function validateConnect(b){
  const token=typeof b?.token==='string'?b.token.trim():'';const client_id=typeof b?.client_id==='string'?b.client_id.trim():'';const client_secret=typeof b?.client_secret==='string'?b.client_secret.trim():'';
- if(token.length<20||token.length>12000||!token.startsWith('{')||client_id.length>200||client_secret.length>200||Object.keys(b).some(k=>!['token','client_id','client_secret'].includes(k)))fail('DRIVE_INVALID_TOKEN','Вставьте JSON-токен из rclone authorize целиком: {"access_token":…}.');
- return JSON.stringify({token,client_id,client_secret});
+ if(token.length<20||token.length>12000||!token.startsWith('{')||client_id.length>200||client_secret.length>200||Object.keys(b).some(k=>!['token','client_id','client_secret','folder_id','folder_label'].includes(k)))fail('DRIVE_INVALID_TOKEN','Вставьте JSON-токен из rclone authorize целиком: {"access_token":…}.');
+ const out={token,client_id,client_secret};
+ if(b.folder_id!==undefined){if(typeof b.folder_id!=='string'||!/^[A-Za-z0-9_-]{10,200}$/.test(b.folder_id)||typeof b.folder_label!=='string'||b.folder_label.length>300)fail('DRIVE_INVALID_FOLDER','Неверная папка Google Drive.');out.folder_id=b.folder_id;out.folder_label=b.folder_label.replace(/[\u0000-\u001f\u007f]/g,' ')}
+ return JSON.stringify(out);
 }

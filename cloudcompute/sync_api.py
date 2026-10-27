@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 from drive_sync import SyncError
 
 STATUS = {'BUSY': 409, 'NOT_CONFIGURED': 409, 'READ_ONLY': 409, 'DISABLED': 503, 'RCLONE_MISSING': 503,
-          'INVALID': 422, 'INVALID_TOKEN': 422, 'INVALID_CLIENT': 422}
+          'INVALID': 422, 'INVALID_TOKEN': 422, 'INVALID_CLIENT': 422, 'INVALID_FOLDER': 422}
 
 
 class ConnectRequest(BaseModel):
@@ -23,6 +23,9 @@ class ConnectRequest(BaseModel):
     token: str = Field(min_length=20, max_length=12000)
     client_id: str = Field(default='', max_length=200)
     client_secret: str = Field(default='', max_length=200)
+    # 1.7.3: model folder chosen on the website (Drive folder ID + display label). Optional: older sites omit it.
+    folder_id: str = Field(default='', max_length=200)
+    folder_label: str = Field(default='', max_length=300)
 
 
 def add_routes(app, token, service):
@@ -53,7 +56,8 @@ def add_routes(app, token, service):
     app.add_api_route('/sync/cancel', lambda: call(service.cancel), methods=['POST'], dependencies=auth)
 
     def connect(data: ConnectRequest):
-        return call(service.connect, data.token, data.client_id.strip(), data.client_secret.strip())
+        return call(service.connect, data.token, data.client_id.strip(), data.client_secret.strip(),
+                    data.folder_id.strip(), data.folder_label.strip())
     app.add_api_route('/sync/drive/connect', connect, methods=['POST'], dependencies=auth)
     app.add_api_route('/sync/drive/disconnect', lambda: call(service.disconnect), methods=['POST'], dependencies=auth)
     return app

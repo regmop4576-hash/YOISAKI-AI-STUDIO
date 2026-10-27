@@ -2,7 +2,8 @@
 
 One-way and read-only:
   source  <remote>:<YOISAKI_DRIVE_PATH>   default yoisaki-gdrive:YOISAKI_AI_STUDIO/models (My Drive)
-  target  $YOISAKI_DATA_ROOT/models/{checkpoints,loras,vae}   = the engine's own catalogue (no second model folder)
+          or (1.7.3) the folder the user chose on the website: rclone root_folder_id = <Drive folder ID>
+  target  $YOISAKI_DATA_ROOT/models/{checkpoints,loras,vae,controlnet} = the engine's own catalogue (no second model folder)
 
 Only `rclone lsjson` and `rclone cat` are ever executed (argv lists, no shell): nothing is written, moved or
 deleted on Google Drive, and no local model is deleted. Files are downloaded into models/.yoisaki-sync/*.part
@@ -32,9 +33,10 @@ sys.path.insert(0, str(HERE))
 from launcher import Config, LaunchError, write_private  # noqa: E402
 from fetch_models import NAME_RE, FetchError, validate  # noqa: E402
 
-KIND_FOLDERS = {'checkpoints': 'checkpoint', 'loras': 'lora', 'vae': 'vae'}
+KIND_FOLDERS = {'checkpoints': 'checkpoint', 'loras': 'lora', 'vae': 'vae', 'controlnet': 'controlnet'}
 # Plausible size windows; anything outside is reported, never downloaded.
-LIMITS = {'checkpoint': (256 * 2**20, 32 * 2**30), 'lora': (16 * 2**10, 4 * 2**30), 'vae': (1 * 2**20, 2 * 2**30)}
+LIMITS = {'checkpoint': (256 * 2**20, 32 * 2**30), 'lora': (16 * 2**10, 4 * 2**30), 'vae': (1 * 2**20, 2 * 2**30),
+          'controlnet': (1 * 2**20, 8 * 2**30)}
 PICKLE = ('.ckpt', '.pt', '.pth', '.bin', '.pkl', '.pickle')
 SEGMENT_RE = re.compile(r'^[\w .()+\-\[\]]{1,120}$')
 REMOTE_RE = re.compile(r'^[A-Za-z0-9_][A-Za-z0-9_-]{0,63}$')
@@ -46,6 +48,7 @@ ALLOWED_COMMANDS = ('lsjson', 'cat')  # read-only rclone subcommands; everything
 TOKEN_KEYS = {'access_token', 'token_type', 'refresh_token', 'expiry', 'expires_in'}
 CLIENT_ID_RE = re.compile(r'^[0-9]{6,30}-[a-z0-9]{10,64}\.apps\.googleusercontent\.com$')
 CLIENT_SECRET_RE = re.compile(r'^[A-Za-z0-9_-]{10,100}$')
+FOLDER_ID_RE = re.compile(r'^[A-Za-z0-9_-]{10,200}$')
 CHUNK = 2**20
 PUBLIC_ITEM = ('path', 'name', 'kind', 'size', 'state', 'reason', 'verification')
 VERIFICATION_NOTE = ('Проверка: размер + контрольная сумма Google Drive (sha256, sha1 или md5 — что доступно) + заголовок и '
@@ -76,7 +79,8 @@ def classify_rclone_error(stderr, returncode):
     if any(x in low for x in ('invalid_grant', 'unauthorized_client', 'oauth2', 'token expired', 'invalid_client', '401')):
         return SyncError('AUTH_FAILED', 'Google отклонил авторизацию. Подключите Google Drive заново (новый токен rclone authorize).')
     if 'directory not found' in low or 'object not found' in low or 'file not found' in low:
-        return SyncError('SOURCE_NOT_FOUND', 'Папка или файл не найдены на Google Drive. Проверьте MyDrive/YOISAKI_AI_STUDIO/models.')
+        return SyncError('SOURCE_NOT_FOUND', 'Папка или файл не найдены на Google Drive. Проверьте выбранную папку моделей '
+                                             '(на сайте: Модели → Google Drive → Изменить папку).')
     if any(x in low for x in ('ratelimitexceeded', 'userratelimitexceeded', 'quota', 'downloadquotaexceeded', '403')):
         return SyncError('RATE_LIMITED', 'Google Drive временно ограничил запросы или скачивание. Повторите позже.')
     if any(x in low for x in ('no such host', 'dial tcp', 'timeout', 'connection reset', 'tls', 'network is unreachable')):
@@ -95,6 +99,7 @@ class SyncConfig:
         self.staging = self.models / '.yoisaki-sync'  # same filesystem/mount as the targets: rename is atomic
         self.rclone_dir = self.data / 'config/rclone'
         self.rclone_conf = self.rclone_dir / 'rclone.conf'
+        self.source_file = self.state / 'source.json'  # 1.7.3: folder chosen on the website (ID + display label)
         self.remote = e.get('YOISAKI_DRIVE_REMOTE', 'yoisaki-gdrive').strip()
         if not REMOTE_RE.match(self.remote):
             raise LaunchError('YOISAKI_DRIVE_REMOTE: только латиница, цифры, _ и - (до 64 символов).')
@@ -132,7 +137,21 @@ def rclone_env(cfg):
     return env
 
 
+def folder_override(cfg):
+    """1.7.3: {'folder_id', 'label'} of the folder chosen on the website, or None (YOISAKI_DRIVE_PATH is used)."""
+    try:
+        value = json.loads(cfg.source_file.read_text())
+    except (OSError, ValueError):
+        return None
+    if not isinstance(value, dict) or not FOLDER_ID_RE.match(str(value.get('folder_id', ''))):
+        return None
+    return {'folder_id': value['folder_id'], 'label': sanitize(value.get('label') or '', 300)}
+
+
 def remote_spec(cfg, rel=''):
+    # With a chosen folder rclone.conf carries root_folder_id, so the remote root IS that folder.
+    if folder_override(cfg):
+        return f'{cfg.remote}:{rel}'
     return f'{cfg.remote}:{cfg.source}' + (f'/{rel}' if rel else '')
 
 
@@ -300,6 +319,7 @@ class SyncService:
     def _snapshot(self):
         with self.lock:
             configured, _ = config_state(self.cfg)
+            override = folder_override(self.cfg)
             try:
                 usage = shutil.disk_usage(self.cfg.models if self.cfg.models.exists() else self.cfg.data)
                 disk = {'free_bytes': usage.free, 'total_bytes': usage.total, 'reserve_bytes': MARGIN}
@@ -308,11 +328,12 @@ class SyncService:
             return {'service': 'YOISAKI_DRIVE_SYNC', 'version': 1, 'enabled': self.cfg.enabled,
                     'rclone_available': Path(self.cfg.rclone).is_file() and os.access(self.cfg.rclone, os.X_OK),
                     'configured': configured, 'connection': dict(self.connection),
-                    'source': self.cfg.source, 'scope': 'drive.readonly', 'job': json.loads(json.dumps(self.job)) if self.job else None,
+                    'source': (override or {}).get('label') or self.cfg.source, 'source_kind': 'folder' if override else 'path',
+                    'scope': 'drive.readonly', 'job': json.loads(json.dumps(self.job)) if self.job else None,
                     # Only what the page shows: no Drive IDs, checksums or server paths.
                     'items': [{k: i.get(k) for k in PUBLIC_ITEM} for i in self.items], 'disk': disk, 'last_success_unix': self.last_success_unix,
                     'last_check_unix': self.last_check_unix, 'inventory_revision': self.revision,
-                    'verification': VERIFICATION_NOTE, 'owner': 'self', 'selective': True}
+                    'verification': VERIFICATION_NOTE, 'owner': 'self', 'selective': True, 'folder_select': True}
 
     def status(self):
         with self.lock:
@@ -382,8 +403,11 @@ class SyncService:
         if thread is not None:
             thread.join(timeout)
 
-    def connect(self, token, client_id='', client_secret=''):
-        """Store the token printed by `rclone authorize` (read-only scope) as the sync remote."""
+    def connect(self, token, client_id='', client_secret='', folder_id='', folder_label=''):
+        """Store a read-only Drive token (browser sign-in on the website or `rclone authorize`) as the sync remote.
+
+        1.7.3: folder_id = the model folder chosen on the website (a Drive folder ID, used as rclone root_folder_id);
+        empty keeps YOISAKI_DRIVE_PATH. The ID only narrows what the read-only token can already see."""
         if isinstance(token, str):
             try:
                 token = json.loads(token.strip())
@@ -395,6 +419,8 @@ class SyncService:
             raise SyncError('INVALID_TOKEN', 'Это не токен rclone authorize для Google Drive. Скопируйте строку {"access_token":…} целиком.')
         if bool(client_id) != bool(client_secret) or client_id and (not CLIENT_ID_RE.match(client_id) or not CLIENT_SECRET_RE.match(client_secret)):
             raise SyncError('INVALID_CLIENT', 'Client ID и Client Secret указываются вместе и только из вашего OAuth-клиента Google.')
+        if folder_id and not FOLDER_ID_RE.match(folder_id) or not isinstance(folder_label, str) or len(folder_label) > 300:
+            raise SyncError('INVALID_FOLDER', 'Неверный идентификатор папки Google Drive.')
         with self.lock:
             if self.thread is not None and self.thread.is_alive():
                 raise SyncError('BUSY', 'Дождитесь окончания синхронизации.')
@@ -404,7 +430,14 @@ class SyncService:
                      'token = ' + json.dumps(token, separators=(',', ':'))]
             if client_id:
                 lines += [f'client_id = {client_id}', f'client_secret = {client_secret}']
+            if folder_id:
+                lines.append(f'root_folder_id = {folder_id}')
             write_private(self.cfg.rclone_conf, '\n'.join(lines) + '\n')
+            self._ensure_dirs()
+            if folder_id:
+                write_private(self.cfg.source_file, json.dumps({'folder_id': folder_id, 'label': sanitize(folder_label, 300)}, ensure_ascii=False))
+            else:
+                self.cfg.source_file.unlink(missing_ok=True)
             self.connection = {'state': 'UNKNOWN', 'error': '', 'code': ''}
         self._save(force=True)
         return self.status()
@@ -415,6 +448,7 @@ class SyncService:
             if self.thread is not None and self.thread.is_alive():
                 raise SyncError('BUSY', 'Дождитесь окончания синхронизации.')
             self.cfg.rclone_conf.unlink(missing_ok=True)
+            self.cfg.source_file.unlink(missing_ok=True)
             self.connection = {'state': 'UNKNOWN', 'error': '', 'code': ''}
         self._save(force=True)
         return self.status()
@@ -742,7 +776,8 @@ class SyncService:
 # ---------------------------------------------------------------------------------------------- CLI
 def print_status(snap):
     configured = 'да' if snap['configured'] else 'нет'
-    print(f"Google Drive подключён: {configured} · источник: Мой диск/{snap['source']} · доступ: {snap['scope']}")
+    where = f"папка «{snap['source']}» (выбрана на сайте)" if snap.get('source_kind') == 'folder' else f"Мой диск/{snap['source']}"
+    print(f"Google Drive подключён: {configured} · источник: {where} · доступ: {snap['scope']}")
     print('rclone: ' + ('установлен' if snap['rclone_available'] else 'НЕ НАЙДЕН'))
     if snap['disk']:
         print(f"Свободно на диске моделей: {fmt(snap['disk']['free_bytes'])} из {fmt(snap['disk']['total_bytes'])}")
