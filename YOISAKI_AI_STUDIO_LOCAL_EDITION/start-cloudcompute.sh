@@ -134,8 +134,9 @@ case $MODE in
   docker) start_docker ;;
   native) start_native ;;
 esac
-tail -n 8 "$YOISAKI_DATA_ROOT/logs/launcher.out" 2>/dev/null | grep -E 'готов|Прогрев' | yoisaki_redact || true
-yoisaki_print_link || true
+tail -n 8 "$YOISAKI_DATA_ROOT/logs/launcher.out" 2>/dev/null | grep -E 'готов|Прогрев|Туннель' | yoisaki_redact || true
+# 1.7.3: name the component that is not ready instead of reporting the whole engine as failed.
+yoisaki_print_link || say 'Движок работает, туннель Cloudflare ещё переподключается автоматически. Ссылка: ./check-cloudcompute.sh link'
 say ''
 say 'Проверка: ./check-cloudcompute.sh   ·   Остановка: ./stop-cloudcompute.sh'
 yoisaki_billing_notice

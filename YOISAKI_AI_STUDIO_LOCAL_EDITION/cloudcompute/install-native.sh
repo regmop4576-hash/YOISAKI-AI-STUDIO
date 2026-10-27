@@ -48,12 +48,20 @@ install_venv() {
   (( free_gb >= 12 )) || die "Для установки PyTorch нужно ≥ 12 ГБ свободного места, свободно ${free_gb} ГБ."
   say 'Установка зависимостей (первый раз: несколько ГБ, займёт время)…'
   local log=$YOISAKI_DATA_ROOT/logs/install-native.log
+  # 1.7.3: no pip cache (it only duplicated the ~4 GB of wheels on the data disk) and visible progress:
+  # the full output still goes to the log, the screen shows one line per package step.
+  export PIP_NO_CACHE_DIR=1 PIP_PROGRESS_BAR=off
+  say "Ход установки на экране; полный журнал: $log"
+  set +o pipefail  # the exit status of the install block is read from PIPESTATUS below
   {
     "$VENV/bin/python" -m pip install --disable-pip-version-check -r "$YOISAKI_APP/cloudcompute/requirements-cloud.txt" &&
     "$VENV/bin/python" -m pip install --disable-pip-version-check -c "$YOISAKI_APP/cloudcompute/requirements-cloud.txt" -r "$YOISAKI_APP/engine/requirements.txt" &&
     "$VENV/bin/python" -m pip check &&
     (cd "$YOISAKI_APP/engine" && "$VENV/bin/python" "$YOISAKI_APP/cloudcompute/import_check.py" "$YOISAKI_APP/engine")
-  } >"$log" 2>&1 || { tail -n 30 "$log" >&2; die "Установка не завершена. Полный журнал: $log"; }
+  } 2>&1 | tee "$log" | sed -u -n -E 's/^Collecting (.*)/  · пакет: \1/p; s/^Downloading (.*)/  ↓ загрузка: \1/p; s/^Installing collected packages.*/  ⚙ установка пакетов…/p; s/^Successfully installed.*/  ✔ пакеты установлены/p; /^ERROR/p'
+  local status=("${PIPESTATUS[@]}")
+  set -o pipefail
+  if (( status[0] )); then tail -n 30 "$log" >&2; die "Установка не завершена. Полный журнал: $log"; fi
   "$VENV/bin/python" -m pip freeze > "$RUNTIME/installed-versions.txt"
   printf '%s\n' "$want" > "$MARKER.tmp" && mv -f "$MARKER.tmp" "$MARKER"
   say '✔ Зависимости установлены.'

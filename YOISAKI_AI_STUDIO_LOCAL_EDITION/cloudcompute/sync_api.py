@@ -6,7 +6,9 @@ Responses never contain the OAuth token, rclone.conf content, Drive file IDs or 
 """
 import hmac
 
-from fastapi import Depends, Header, HTTPException
+import json
+
+from fastapi import Depends, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
@@ -38,7 +40,16 @@ def add_routes(app, token, service):
 
     app.add_api_route('/sync/status', lambda: call(service.status), methods=['GET'], dependencies=auth)
     app.add_api_route('/sync/check', lambda: call(service.start, 'check'), methods=['POST'], dependencies=auth)
-    app.add_api_route('/sync/start', lambda: call(service.start, 'sync'), methods=['POST'], dependencies=auth)
+    async def start(request: Request):
+        # 1.7.3: only an optional {"paths": [...]} selection from /sync/check is read; every other field is ignored
+        # (as before 1.7.3), so no path, remote or command can reach the server. Paths only select among listed items.
+        try:
+            data = json.loads(await request.body() or b'{}')
+        except ValueError:
+            data = {}
+        paths = data.get('paths') if isinstance(data, dict) else None
+        return call(service.start, 'sync', paths)
+    app.add_api_route('/sync/start', start, methods=['POST'], dependencies=auth)
     app.add_api_route('/sync/cancel', lambda: call(service.cancel), methods=['POST'], dependencies=auth)
 
     def connect(data: ConnectRequest):

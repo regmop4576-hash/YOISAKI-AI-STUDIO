@@ -8,7 +8,15 @@ No port is published and no secret is written to a log.
 adds the authenticated Google Drive sync routes (/sync/*); the engine code itself is not modified.
 
 Stdlib only: the same file serves the Docker HEALTHCHECK and the check/stop scripts.
-Subcommands: run (default), healthcheck, link, status.
+Subcommands: run (default), healthcheck, link, status, rotate-token.
+
+1.7.3 (one-click connection, all optional and backward compatible):
+  - persistent engine token: config/engine/engine.token (0600) survives restarts, so a remembered connection on the
+    website keeps working; `launcher.py rotate-token` revokes it (YOISAKI_STABLE_LINK=0 = old behaviour);
+  - YOISAKI_TUNNEL_MODE=named: a Cloudflare Named Tunnel with a fixed hostname (YOISAKI_PUBLIC_HOSTNAME, token in
+    config/engine/cloudflared.token) instead of a new *.trycloudflare.com name on every start;
+  - a tunnel failure no longer stops the engine: the tunnel is retried with growing pauses (phase TUNNEL_RETRY);
+  - YOISAKI_RENDEZVOUS=ntfy: the verified Quick Tunnel address is published signed (cloudcompute/rendezvous.py).
 """
 import fcntl
 import json
@@ -28,6 +36,9 @@ from pathlib import Path
 APP = Path(__file__).resolve().parents[1]
 VERSION = (Path(__file__).with_name('VERSION').read_text().strip() if Path(__file__).with_name('VERSION').is_file() else 'unknown')
 TUNNEL_RE = re.compile(r'https://[a-z0-9-]+\.trycloudflare\.com')
+HOSTNAME_RE = re.compile(r'^(?=.{4,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$')
+TOKEN_RE = re.compile(r'^[a-f0-9]{64}$')
+RETRY_PAUSES = (15, 30, 60, 120, 300)  # seconds between tunnel attempts once the quick restarts are used up
 # Writable subfolders of the data root. models/ is only read by the engine.
 WRITABLE = ('huggingface-cache', 'outputs', 'logs', 'diagnostics', 'runtime/state', 'runtime/home', 'runtime/sync')
 MODEL_FOLDERS = ('checkpoints', 'loras', 'vae', 'controlnet')
@@ -60,10 +71,22 @@ class Config:
         self.tunnel_timeout = float(e.get('YOISAKI_TUNNEL_TIMEOUT', '90'))
         self.tunnel_restarts = int(e.get('YOISAKI_TUNNEL_RESTARTS', '3'))
         self.drive_sync = e.get('YOISAKI_DRIVE_SYNC', '1') != '0'
+        # Off by default (each start = new token, as before); ./setup-cloudcompute.sh turns it on with the user's consent.
+        self.persistent_token = e.get('YOISAKI_STABLE_LINK', '0') == '1'
+        self.tunnel_mode = e.get('YOISAKI_TUNNEL_MODE', 'quick').strip().lower() or 'quick'
+        if self.tunnel_mode not in ('quick', 'named'):
+            raise LaunchError('YOISAKI_TUNNEL_MODE должен быть quick или named.')
+        self.public_hostname = e.get('YOISAKI_PUBLIC_HOSTNAME', '').strip().lower().rstrip('.')
+        if self.tunnel and self.tunnel_mode == 'named' and not HOSTNAME_RE.match(self.public_hostname):
+            raise LaunchError('Для YOISAKI_TUNNEL_MODE=named укажите YOISAKI_PUBLIC_HOSTNAME, например gpu.example.com.')
+        self.tunnel_dns_delay = float(e.get('YOISAKI_TUNNEL_DNS_DELAY', '5'))
+        self.rendezvous = e.get('YOISAKI_RENDEZVOUS', 'off').strip().lower() == 'ntfy'
+        self.rendezvous_host = e.get('YOISAKI_RENDEZVOUS_HOST', 'ntfy.sh').strip().lower()
         self.models = self.data / 'models'
         self.state = self.data / 'runtime/state'
         self.logs = self.data / 'logs'
         self.diagnostics = self.data / 'diagnostics'
+        self.secrets = self.data / 'config/engine'
 
     @property
     def local(self):
@@ -80,6 +103,12 @@ def prepare(cfg):
         (cfg.data / sub).mkdir(parents=True, exist_ok=True)
     os.chmod(cfg.state, 0o700)
     os.chmod(cfg.data / 'runtime/sync', 0o700)
+    try:  # created and granted by lib.sh when the start script runs as root; created here otherwise
+        cfg.secrets.mkdir(parents=True, exist_ok=True)
+        if cfg.secrets.stat().st_uid == os.getuid():
+            os.chmod(cfg.secrets, 0o700)
+    except OSError:
+        pass
     marker = cfg.data / '.yoisaki-data-id'
     if not marker.exists():
         # Persistence probe: if this date survives an instance stop/start, the disk is persistent.
@@ -123,6 +152,44 @@ def write_private(path, text):
     with os.fdopen(fd, 'w') as f:
         f.write(text)
     os.replace(temp, path)
+
+
+def engine_token(cfg):
+    """1.7.3: with YOISAKI_STABLE_LINK=1 the token stays the same across restarts until rotated; otherwise new every start."""
+    if not cfg.persistent_token:
+        return secrets.token_hex(32)
+    path = cfg.secrets / 'engine.token'
+    try:
+        value = path.read_text().strip()
+    except OSError:
+        value = ''
+    if TOKEN_RE.match(value):
+        return value
+    value = secrets.token_hex(32)
+    try:
+        write_private(path, value + '\n')
+    except OSError as exc:
+        log(f'ВНИМАНИЕ: постоянный токен не сохранён ({type(exc).__name__}); после перезапуска понадобится новая ссылка.')
+    return value
+
+
+def rotate_token(cfg):
+    """Revokes the remembered connection of every website: the next engine start uses a new token."""
+    path = cfg.secrets / 'engine.token'
+    cfg.secrets.mkdir(parents=True, exist_ok=True)
+    write_private(path, secrets.token_hex(32) + '\n')
+    if os.getuid() == 0:  # run by root for an engine that runs as its own user: keep the folder owner's access
+        folder = cfg.secrets.stat()
+        os.chown(path, folder.st_uid, folder.st_gid)
+    return path
+
+
+def tunnel_token(cfg):
+    try:
+        value = (cfg.secrets / 'cloudflared.token').read_text().strip()
+    except OSError:
+        return ''
+    return value if re.fullmatch(r'[A-Za-z0-9+/=_.-]{40,4096}', value) else ''
 
 
 def request_json(url, token, method='GET', body=None, timeout=8):
@@ -211,7 +278,7 @@ class Launcher:
         self.mark('gpu_check_done_unix')
 
     def start_server(self):
-        self.token = secrets.token_hex(32)
+        self.token = engine_token(self.cfg)
         f = rotate(self.cfg.logs / 'server.log')
         self.handles.append(f)
         # Same engine app either way; serve_cloud.py only adds the authenticated /sync/* routes.
@@ -289,25 +356,63 @@ class Launcher:
         path = self.cfg.logs / 'tunnel.log'
         f = rotate(path)
         self.handles.append(f)
-        self.tunnel = subprocess.Popen([binary, 'tunnel', '--no-autoupdate', '--protocol', 'http2', '--url', self.cfg.local],
-                                       stdout=f, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, start_new_session=True)
+        named = self.cfg.tunnel_mode == 'named'
+        env = None
+        if named:
+            secret = tunnel_token(self.cfg)
+            if not secret:
+                raise LaunchError('Нет токена Named Tunnel: сохраните его в config/engine/cloudflared.token (./setup-cloudcompute.sh).')
+            # The tunnel token goes through the environment (TUNNEL_TOKEN), never through argv or a log.
+            env = {**os.environ, 'TUNNEL_TOKEN': secret}
+            command = [binary, 'tunnel', '--no-autoupdate', '--protocol', 'http2', 'run']
+        else:
+            command = [binary, 'tunnel', '--no-autoupdate', '--protocol', 'http2', '--url', self.cfg.local]
+        self.tunnel = subprocess.Popen(command, stdout=f, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+                                       start_new_session=True, env=env)
         deadline = time.monotonic() + self.cfg.tunnel_timeout
+        found_at = None
         while time.monotonic() < deadline and not self.stopping:
             if self.tunnel.poll() is not None:
                 raise LaunchError('Туннель Cloudflare завершился. См. ./check-cloudcompute.sh logs')
-            match = TUNNEL_RE.search(path.read_text(errors='replace'))
-            if match:
-                try:
-                    if verify_tunnel(match.group(0), self.token):
-                        self.url = match.group(0)
-                        write_private(self.cfg.state / 'link.txt', self.url + '/#token=' + self.token + '\n')
-                        self.mark('tunnel_ready_unix')
-                        log('Туннель проверен: ' + self.url + ' (полная ссылка с токеном: ./check-cloudcompute.sh link)')
-                        return
-                except (OSError, ValueError):
-                    pass
+            if named:
+                candidate = 'https://' + self.cfg.public_hostname
+            else:
+                match = TUNNEL_RE.search(path.read_text(errors='replace'))
+                candidate = match.group(0) if match else None
+            if candidate:
+                found_at = found_at or time.monotonic()
+                # 1.7.3: do not query a brand-new quick-tunnel name immediately. An early lookup can be answered
+                # NXDOMAIN and cached by the resolver (suspected cause of "Could not resolve host"; unconfirmed).
+                if named or time.monotonic() - found_at >= self.cfg.tunnel_dns_delay:
+                    try:
+                        if verify_tunnel(candidate, self.token):
+                            self.url = candidate
+                            write_private(self.cfg.state / 'link.txt', self.url + '/#token=' + self.token + '\n')
+                            self.mark('tunnel_ready_unix')
+                            log('Туннель проверен: ' + self.url + ' (полная ссылка с токеном: ./check-cloudcompute.sh link)')
+                            self.announce()
+                            return
+                    except (OSError, ValueError):
+                        pass
             time.sleep(1)
-        raise LaunchError('Cloudflare не подтвердил соединение. Повторите запуск через минуту.')
+        if named:
+            raise LaunchError(f'Адрес {self.cfg.public_hostname} не отвечает движком. Проверьте в Cloudflare: Public Hostname → '
+                              f'Service http://127.0.0.1:{self.cfg.port} и что DNS-запись создана.')
+        raise LaunchError('Cloudflare не подтвердил соединение. Повторю попытку автоматически.')
+
+    def announce(self):
+        """YOISAKI_RENDEZVOUS=ntfy: publish the verified quick-tunnel address, signed with the engine token."""
+        if not self.cfg.rendezvous or self.cfg.tunnel_mode == 'named':
+            return
+        if not self.cfg.persistent_token:
+            log('Автообнаружение адреса пропущено: оно работает только с постоянным токеном (YOISAKI_STABLE_LINK=1).')
+            return
+        try:
+            from rendezvous import publish
+            publish(self.token, self.url, host=self.cfg.rendezvous_host)
+            log(f'Адрес опубликован для автообнаружения ({self.cfg.rendezvous_host}, подписан токеном движка).')
+        except Exception as exc:  # optional feature: the engine keeps running
+            log(f'Адрес не опубликован для автообнаружения: {type(exc).__name__}. Сайт можно подключить ссылкой.')
 
     def stop_tunnel(self):
         self.url = ''
@@ -338,10 +443,19 @@ class Launcher:
             self.report_models()
             self.save_state('WARMUP' if self.cfg.warmup else 'TUNNEL')
             self.warmup()
-            self.start_tunnel()
+            try:
+                self.start_tunnel()
+            except LaunchError as exc:
+                # 1.7.3: the engine stays up; supervise() keeps retrying the tunnel.
+                log('Туннель пока не готов: ' + str(exc))
+                self.stop_tunnel()
             row = self.save_timings()
-            self.save_state('READY', timings=row)
-            log('YOISAKI ENGINE готов. Модель SDXL загружается при первой генерации (если не включён прогрев).')
+            if self.url or not self.cfg.tunnel:
+                self.save_state('READY', timings=row)
+                log('YOISAKI ENGINE готов. Модель SDXL загружается при первой генерации (если не включён прогрев).')
+            else:
+                self.save_state('TUNNEL_RETRY', timings=row)
+                log('Движок работает, туннель переподключается автоматически.')
             self.supervise()
             return 0
         finally:
@@ -350,7 +464,9 @@ class Launcher:
             self.save_state('STOPPED')
 
     def supervise(self):
+        """Engine down = stop (exit code 3). Tunnel down = keep the engine and retry the tunnel with growing pauses."""
         failures = restarts = ticks = 0
+        next_attempt = 0.0
         while not self.stopping:
             time.sleep(1)
             ticks += 1
@@ -358,22 +474,32 @@ class Launcher:
                 raise LaunchError(f'Сервер движка завершился (код {self.server.returncode}). См. ./check-cloudcompute.sh logs')
             if not self.cfg.tunnel or ticks % 5:
                 continue
-            lost = self.tunnel.poll() is not None
+            lost = self.tunnel is None or self.tunnel.poll() is not None or not self.url
             if not lost and ticks % 30 == 0:
                 try:
                     failures = 0 if verify_tunnel(self.url, self.token) else failures + 1
                 except (OSError, ValueError):
                     failures += 1
                 lost = failures >= 3
-            if lost:
-                if restarts >= self.cfg.tunnel_restarts:
-                    raise LaunchError('Туннель Cloudflare потерян несколько раз подряд. Движок остановлен.')
-                restarts += 1
-                failures = 0
-                log(f'Туннель потерян, создаю новый ({restarts}/{self.cfg.tunnel_restarts}). Ссылка изменится — вставьте новую на сайте.')
-                self.stop_tunnel()
+            if not lost:
+                restarts = 0
+                continue
+            if time.monotonic() < next_attempt:
+                continue
+            restarts += 1
+            failures = 0
+            quick = self.cfg.tunnel_mode == 'quick'
+            log(f'Туннель недоступен, переподключаю (попытка {restarts}).' + (' Ссылка Quick Tunnel изменится.' if quick else ''))
+            self.stop_tunnel()
+            try:
                 self.start_tunnel()
                 self.save_state('READY', tunnel_restarts=restarts)
+            except LaunchError as exc:
+                pause = 0 if restarts < self.cfg.tunnel_restarts else RETRY_PAUSES[min(restarts - self.cfg.tunnel_restarts, len(RETRY_PAUSES) - 1)]
+                next_attempt = time.monotonic() + pause
+                log(f'Туннель не поднялся: {exc} Следующая попытка через {pause} с; движок продолжает работать.')
+                self.stop_tunnel()
+                self.save_state('TUNNEL_RETRY', tunnel_restarts=restarts, tunnel_error=str(exc)[:300])
 
 
 def terminate(process, timeout):
@@ -430,8 +556,14 @@ def main(argv):
         if command == 'status':
             print(json.dumps(local_status(cfg), ensure_ascii=False))
             return 0
+        if command == 'rotate-token':
+            rotate_token(cfg)
+            print('Новый токен сохранён. Он начнёт действовать после перезапуска движка (./stop-cloudcompute.sh, затем '
+                  './start-cloudcompute.sh). Все сайты, где подключение было запомнено, потеряют доступ: вставьте новую ссылку '
+                  '(./check-cloudcompute.sh link) один раз.')
+            return 0
         if command != 'run':
-            print('Использование: launcher.py [run|healthcheck|link|status]', file=sys.stderr)
+            print('Использование: launcher.py [run|healthcheck|link|status|rotate-token]', file=sys.stderr)
             return 2
         launcher = Launcher(cfg)
 

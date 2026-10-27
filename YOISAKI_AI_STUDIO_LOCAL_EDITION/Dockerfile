@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# YOISAKI ENGINE · CloudCompute deployment 1.7.2 (engine protocol 1.7.0, engine/ unchanged).
+# YOISAKI ENGINE · CloudCompute deployment 1.7.3 (engine protocol 1.7.0, engine/ unchanged).
 # Model weights are NEVER part of the image: they live on the persistent data volume (/data).
 #
 # CUDA 12.8 base: the minimum CUDA for RTX 50xx (sm_120); the PyTorch wheel brings its own CUDA 12.8
@@ -75,4 +75,4 @@ STOPSIGNAL SIGTERM
 ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["/opt/yoisaki/venv/bin/python", "/opt/yoisaki/cloudcompute/launcher.py", "run"]
 LABEL org.opencontainers.image.title="YOISAKI ENGINE CloudCompute" \
-      org.opencontainers.image.version="1.7.2"
+      org.opencontainers.image.version="1.7.3"

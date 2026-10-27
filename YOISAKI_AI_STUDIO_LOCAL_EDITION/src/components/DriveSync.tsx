@@ -8,7 +8,9 @@ import {localApi} from '@/lib/local-api';
 type Item={path:string;name:string;kind:'checkpoint'|'lora'|'vae';size:number|null;state:string;reason:string;verification:string};
 type Current={path:string;kind:string;phase:string;bytes_done:number|null;bytes_total:number|null;speed_bps:number|null;resumed_from:number|null};
 type Job={id:string;type:'check'|'sync';state:string;phase:string;started_unix:number|null;finished_unix:number|null;error:string;error_code:string;cancel_requested:boolean;restart_recommended:boolean;overall:{files_total:number;files_done:number;files_failed:number;bytes_total:number;bytes_done:number};summary:Record<string,number>;current:Current|null};
-export type SyncStatus={enabled:boolean;rclone_available:boolean;configured:boolean;source:string;scope:string;connection:{state:string;error:string;code:string};job:Job|null;disk:{free_bytes:number|null;total_bytes:number|null;reserve_bytes:number|null}|null;last_success_unix:number|null;last_check_unix:number|null;inventory_revision:number;verification:string;owner:'self'|'other';items:Item[]};
+export type SyncStatus={enabled:boolean;rclone_available:boolean;configured:boolean;source:string;scope:string;connection:{state:string;error:string;code:string};job:Job|null;disk:{free_bytes:number|null;total_bytes:number|null;reserve_bytes:number|null}|null;last_success_unix:number|null;last_check_unix:number|null;inventory_revision:number;verification:string;owner:'self'|'other';items:Item[];selective?:boolean};
+// v1.7.3 browser authorization: the user's own Google OAuth client (Desktop app) kept by the local app, never by the page.
+type OAuthView={configured:boolean;client_id:string;redirect_uri:string;scope:string;last_result:{ok:boolean;code:string;message:string;at:number}|null};
 
 export function bytes(n:number|null|undefined){if(n==null)return '—';const u=['B','KB','MB','GB','TB'];let i=0,v=n;while(v>=1024&&i<u.length-1){v/=1024;i++}return (i?v.toFixed(v<10?2:v<100?1:0):String(v))+' '+u[i]}
 const percent=(done:number|null|undefined,total:number|null|undefined)=>done!=null&&total?Math.min(100,Math.floor(done/total*100)):null;
@@ -27,7 +29,17 @@ export function DriveSync(){
  const call=useCallback(async(action:string,body?:object)=>{setError('');try{apply(await localApi<SyncStatus>('/api/gpu/drive/'+action,action==='status'?undefined:{method:'POST',body:JSON.stringify(body||{})}));return true}catch(e){setError((e as Error).message);return false}},[apply]);
  useEffect(()=>{revision.current=null;setStatus(null);setError('');if(provider==='cloudcompute'&&url)void call('status')},[provider,url,call]);
  useEffect(()=>{if(!running||!url)return;const id=setInterval(()=>{if(document.visibilityState==='visible')void call('status')},2000);return()=>clearInterval(id)},[running,url,call]);
+ const [oauth,setOauth]=useState<OAuthView|null>(null),[gId,setGId]=useState(''),[gSecret,setGSecret]=useState(''),[oauthMessage,setOauthMessage]=useState<{ok:boolean;text:string}|null>(null),[picked,setPicked]=useState<Set<string>>(new Set());
+ useEffect(()=>{if(provider!=='cloudcompute')return;localApi<OAuthView>('/api/drive/oauth').then(view=>{setOauth(view);
+  // Back from Google (/models?drive_auth=1): show the outcome once and check the Drive folder.
+  if(new URLSearchParams(location.search).get('drive_auth')==='1'){history.replaceState(null,'',location.pathname);if(view.last_result){setOauthMessage({ok:view.last_result.ok,text:view.last_result.message});if(view.last_result.ok)void call('check')}}}).catch(()=>{})},[provider,call]);
  if(provider!=='cloudcompute')return null;
+ const pickable=(i:Item)=>!!status?.selective&&['MISSING','CHANGED'].includes(i.state);
+ const togglePick=(path:string)=>setPicked(old=>{const next=new Set(old);if(next.has(path))next.delete(path);else next.add(path);return next});
+ const chosen=status?status.items.filter(i=>pickable(i)&&picked.has(i.path)).map(i=>i.path):[];
+ async function saveClient(){setOauthMessage(null);try{setOauth(await localApi<OAuthView>('/api/drive/oauth',{method:'PUT',body:JSON.stringify({client_id:gId.trim(),client_secret:gSecret.trim()})}));setGSecret('')}catch(e){setOauthMessage({ok:false,text:(e as Error).message})}}
+ async function signIn(){setOauthMessage(null);try{const {url}=await localApi<{url:string}>('/api/drive/oauth/start',{method:'POST',body:'{}'});location.href=url}catch(e){setOauthMessage({ok:false,text:(e as Error).message})}}
+ async function forgetClient(){if(!confirm(t('Удалить сохранённый OAuth-клиент Google с телефона? Подключение на GPU-сервере не изменится.','Remove the saved Google OAuth client from this phone? The GPU server connection is unchanged.')))return;setOauth(await localApi<OAuthView>('/api/drive/oauth',{method:'DELETE'}))}
  const act=async(action:string,body?:object)=>{setBusy(true);try{return await call(action,body)}finally{setBusy(false)}};
  const job=status?.job;const cur=job?.current;
  const curPct=cur&&['DOWNLOADING','HASHING_LOCAL'].includes(cur.phase)?percent(cur.bytes_done,cur.bytes_total):null;
@@ -59,7 +71,25 @@ export function DriveSync(){
    <button disabled={busy} onClick={()=>{void act('status');void refreshModels(true)}}>{t('Обновить список','Refresh list')}</button>
   </div>
   {form&&<div className="card stack">
-   <b>{t('Однократная авторизация (только Android)','One-time authorization (Android only)')}</b>
+   <b>{t('Вариант 1: вход в Google в браузере (рекомендуется)','Option 1: sign in to Google in the browser (recommended)')}</b>
+   {oauth?.configured?<div className="stack">
+    <p className="tiny">{t('Откроется страница Google: выберите аккаунт с папкой YOISAKI_AI_STUDIO/models и разрешите доступ только на чтение. Потом вы вернётесь сюда автоматически.','Google opens: choose the account with YOISAKI_AI_STUDIO/models and allow read-only access. You return here automatically.')}</p>
+    <div className="row"><button className="primary" disabled={busy||running} onClick={()=>void signIn()}>{t('Войти в Google и разрешить доступ','Sign in to Google and allow access')}</button><button disabled={busy} onClick={()=>void forgetClient()}>{t('Сменить OAuth-клиент','Change OAuth client')}</button></div>
+    <p className="tiny muted">OAuth-клиент: {oauth.client_id}</p>
+   </div>:<div className="stack">
+    <p className="tiny">{t('Один раз нужен ваш собственный OAuth-клиент Google (Google не разрешает встроить общий клиент в приложение). Настройка в браузере телефона, около 10 минут:','Once you need your own Google OAuth client (Google does not allow a shared one in the app). Setup in the phone browser, about 10 minutes:')}</p>
+    <ol className="tiny" style={{margin:0,paddingLeft:18,display:'flex',flexDirection:'column',gap:6}}>
+     <li>{t('console.cloud.google.com → создайте проект → «APIs & Services» → «Library» → включите Google Drive API.','console.cloud.google.com → create a project → APIs & Services → Library → enable Google Drive API.')}</li>
+     <li>{t('«OAuth consent screen»: тип External, добавьте свой адрес Gmail в Test users. Чтобы доступ не истекал через 7 дней, переведите приложение в «In production» (Google покажет предупреждение о непроверенном приложении — это ваше собственное приложение).','OAuth consent screen: External, add your Gmail to Test users. To avoid 7-day expiry switch to In production (Google warns about an unverified app — it is your own).')}</li>
+     <li>{t('«Credentials» → «Create credentials» → «OAuth client ID» → тип «Desktop app» (Приложение для ПК). Скопируйте Client ID и Client Secret сюда.','Credentials → Create credentials → OAuth client ID → Desktop app. Copy Client ID and Client Secret here.')}</li>
+    </ol>
+    <div className="grid2"><label className="field">Google Client ID<input autoComplete="off" spellCheck={false} value={gId} onChange={e=>setGId(e.target.value)} aria-label="Google Client ID" placeholder="123…-abc….apps.googleusercontent.com"/></label>
+    <label className="field">Google Client Secret<input type="password" autoComplete="off" spellCheck={false} value={gSecret} onChange={e=>setGSecret(e.target.value)} aria-label="Google Client Secret"/></label></div>
+    <button disabled={busy||!gId.trim()||!gSecret.trim()} onClick={()=>void saveClient()}>{t('Сохранить OAuth-клиент на телефоне','Save the OAuth client on this phone')}</button>
+    <p className="tiny muted">{t('Client ID и Secret хранятся только в приложении на телефоне (secrets.json, 0600). Доступ — только чтение Google Drive (drive.readonly). Refresh token уходит сразу на ваш GPU-сервер и на телефоне не сохраняется.','Client ID and Secret stay in the app on this phone (secrets.json, 0600). Access is read-only (drive.readonly). The refresh token goes straight to your GPU server and is not kept on the phone.')}</p>
+   </div>}
+   {oauthMessage&&<div className={'notice'+(oauthMessage.ok?'':' dangernotice')} role="alert">{oauthMessage.text}</div>}
+   <b>{t('Вариант 2: однократная авторизация через Termux (rclone)','Option 2: one-time authorization in Termux (rclone)')}</b>
    <ol className="tiny" style={{margin:0,paddingLeft:18,display:'flex',flexDirection:'column',gap:6}}>
     <li>{t('В Termux:','In Termux:')} <code>pkg install rclone</code></li>
     <li><code style={{overflowWrap:'anywhere'}}>rclone authorize "drive" "eyJzY29wZSI6ImRyaXZlLnJlYWRvbmx5In0"</code> {t('— доступ только на чтение (drive.readonly).','— read-only access (drive.readonly).')}</li>
@@ -91,9 +121,9 @@ export function DriveSync(){
   </div>}
   {status?.connection.state==='ERROR'&&status.connection.error&&!job?.error&&<div className="notice dangernotice" role="alert">{status.connection.error}</div>}
   {error&&<div className="notice dangernotice" role="alert">{error}</div>}
-  {status&&(status.items.length?<div style={{overflowX:'auto'}}><table className="synctable"><thead><tr><th>{t('Модель','Model')}</th><th>{t('Тип','Type')}</th><th>{t('Статус','Status')}</th></tr></thead><tbody>
-   {status.items.map(i=><tr key={i.path} data-state={i.state}><td><b>{i.name.replace(/\.safetensors$/i,'')}</b><div className="tiny muted">{i.path} · {bytes(i.size)}</div>{i.reason&&<div className="tiny muted">{i.reason}</div>}</td><td>{kindName[i.kind]}</td><td>{stateName[i.state]||i.state}</td></tr>)}
-  </tbody></table></div>:<p className="tiny muted">{status.last_check_unix?t('В папке Google Drive нет моделей в checkpoints/, loras/ или vae/.','No models in checkpoints/, loras/ or vae/ of the Google Drive folder.'):t('Список ещё не проверялся: нажмите «Проверить модели».','Not checked yet: press “Check models”.')}</p>)}
+  {status&&(status.items.length?<div style={{overflowX:'auto'}}><table className="synctable"><thead><tr><th>{t('Модель','Model')}</th><th>{t('Тип','Type')}</th><th>{t('Статус','Status')}</th>{status.selective&&<th>{t('Выбрать','Pick')}</th>}</tr></thead><tbody>
+   {status.items.map(i=><tr key={i.path} data-state={i.state}><td><b>{i.name.replace(/\.safetensors$/i,'')}</b><div className="tiny muted">{i.path} · {bytes(i.size)}</div>{i.reason&&<div className="tiny muted">{i.reason}</div>}</td><td>{kindName[i.kind]}</td><td>{stateName[i.state]||i.state}</td>{status.selective&&<td>{pickable(i)&&<input type="checkbox" aria-label={t('Выбрать ','Pick ')+i.name} checked={picked.has(i.path)} disabled={busy||running} onChange={()=>togglePick(i.path)}/>}</td>}</tr>)}
+  </tbody></table>{status.selective&&status.items.some(pickable)&&<div className="row"><button className="primary" disabled={disabled||running||!chosen.length} onClick={()=>void act('sync',{paths:chosen}).then(ok=>{if(ok)setPicked(new Set())})}>{t(`Синхронизировать выбранные (${chosen.length})`,`Sync selected (${chosen.length})`)}</button><span className="tiny muted">{t('или «Синхронизировать» — все недостающие','or «Synchronize» for all missing')}</span></div>}</div>:<p className="tiny muted">{status.last_check_unix?t('В папке Google Drive нет моделей в checkpoints/, loras/ или vae/.','No models in checkpoints/, loras/ or vae/ of the Google Drive folder.'):t('Список ещё не проверялся: нажмите «Проверить модели».','Not checked yet: press “Check models”.')}</p>)}
   {status?.verification&&<p className="tiny muted">{status.verification}</p>}
   </>}
  </div>;

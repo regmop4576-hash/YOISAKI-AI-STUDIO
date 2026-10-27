@@ -21,6 +21,8 @@ async function boot(){
  await useDirect.getState().refresh();
  if(location.pathname==='/')history.replaceState(null,'','/generate');
  createRoot(document.getElementById('root')!).render(<App/>);
+ // v1.7.3: a page reload also re-reads the GPU model list (in the background, after the first paint).
+ if(useDirect.getState().url)void useDirect.getState().refresh(true);
  let pending=false;
  setInterval(()=>{if(document.visibilityState==='visible'&&!pending&&useDirect.getState().url){pending=true;useDirect.getState().refresh().finally(()=>{pending=false})}},30000);
 }

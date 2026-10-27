@@ -1,12 +1,12 @@
 {
-  "version": "1.7.2",
-  "source_sha256": "d31269ba4870cf17719b04cfba15520840f2f72b16437a943ee758ebe011b75a",
+  "version": "1.7.3",
+  "source_sha256": "e84404366b5e66105f24fbe4214b47c55063c3656e2e4e2989ac15c076a09b14",
   "outputs": {
-    "dist/assets/Editor-C53HVYWA.js": "130968e19dae8f747b92fe9fdceed4c955240e46a3541158378c671b75394e4f",
-    "dist/assets/chunk-VPHKVEYS.js": "efbed5a872175aa0bef5aaf21357bbd3a18a14499e09e16e1e43d6d572217d27",
+    "dist/assets/Editor-HFSX2R5S.js": "8967802e6d0148ae973eea763eaee640d3d4f7b9772953854bb4f11d1b29426c",
+    "dist/assets/chunk-4PP32BZT.js": "72100d7458ed2191f14fbeb5f87a66860fd6415a7815a57aa4052b5fc940fb73",
     "dist/assets/main.css": "6837a1f0a0df65799bc9135a196019ad9483400eccb85fb783f152c1635cc5fa",
-    "dist/assets/main.js": "f0e9f2f23e37f83d475ffde884e2280bf129af68f33f8acf52192a1a316daa74",
-    "dist/index.html": "5ae978ead498ca9a009a2beaaef8fb1c093d3793fac57e57d6e74ddb9c1ce089",
+    "dist/assets/main.js": "39c3e4cd06122cc1de07087f9bf8598cd0f9f109285ff649a619ac86ae46171e",
+    "dist/index.html": "74d0fb026db705dc6e1fcb28e720a9993799c5f67a8cdbc19f4582387700d10d",
     "dist/logo/y-512.webp": "a19cd29aff36be5b6a92d8fb5568f1920790a3aeb5815c21050fdffe5d221599",
     "dist/logo/y-original.png": "5501cb9ac2542f0347fefa16d856c7c65558df5c63e2da6682884842f9f9ca57"
   }

@@ -3,40 +3,127 @@ import {validatePreprocess,validateControlImage,compactControlRequest} from './c
 import {compactSourceRequest} from './img2img.mjs';
 import {TERMINAL_STATUSES,HISTORY_LIMIT,isTerminal,matchesHistory} from './history.mjs';
 import {WEBSITE_VERSION,STUDIO_EDITION,COMPATIBLE_ENGINE_FAMILY,engineCompatibility} from './release.mjs';
-import {SYNC_ACTIONS,validateSyncStatus,validateConnect} from './drive-sync.mjs';
+import {SYNC_ACTIONS,validateSyncStatus,validateConnect,validateSyncStart} from './drive-sync.mjs';
 import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {randomBytes,randomUUID} from 'node:crypto';
 import {Store} from './storage.mjs';
-import {parseTunnel,requestUpstream,validateHealth,validateModels,validateGeneration,supportsRegionalControl} from './upstream.mjs';
+import {parseTunnel,requestUpstream,validateHealth,validateGeneration,supportsRegionalControl} from './upstream.mjs';
 import {AppError,fail,publicError} from './errors.mjs';
+import {parseInventory} from './inventory.mjs';
+import {SecretStore} from './secrets.mjs';
+import {classify,components} from './connect-flow.mjs';
+import {discover,RENDEZVOUS_HOST} from './rendezvous.mjs';
+import {OAuthFlows,exchangeCode,validateClient,redirectUri,SCOPE} from './google-oauth.mjs';
 const ID=/^[a-f0-9-]{36}(?:_[0-3])?$/;
 const terminal=TERMINAL_STATUSES;
 async function readBody(req,max=12582912){const chunks=[];let n=0;for await(const b of req){n+=b.length;if(n>max)fail('BODY_TOO_LARGE','Слишком большой запрос.',413);chunks.push(b)}return Buffer.concat(chunks)}
 async function jsonBody(req){try{return JSON.parse((await readBody(req)).toString())}catch(e){if(e instanceof AppError)throw e;fail('INVALID_JSON','Неверный JSON запроса.')}}
 function send(res,value,status=200){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(value))}
-export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,serviceKey=''}={}){
+export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,serviceKey='',discoverAddress=discover,exchange=exchangeCode,sleep=ms=>new Promise(r=>setTimeout(r,ms).unref?.())}={}){
  const store=await new Store(dataDir).init();
+ // v1.7.3: remembered connections and the Google OAuth client live in secrets.json (0600), never in state.json.
+ const secrets=await new SecretStore(dataDir).init();const oauth=new OAuthFlows();let oauthResult=null;
  if(store.data.history.some(j=>['RUNNING','QUEUED'].includes(j.status)))await store.change(d=>{for(const j of d.history)if(['RUNNING','QUEUED'].includes(j.status)){j.status='CONNECTION_LOST';j.connection_error='Состояние сохранено. Подключитесь к прежней сессии GPU для проверки.'}});
  let connection=null,info=null,state='OFFLINE',lastError='',lastCode='',epoch=0,refreshing=null,closed=false,polling=false,submissionChain=Promise.resolve();
+ // v1.7.3 connection phase (OFFLINE…READY/ERROR) shown to the user, the running auto-connect and the model-list health.
+ let refreshingForced=false,phase='OFFLINE',phaseMessage='',auto=null,connectedAt=0;const modelsState={error:'',code:''};
+ const setPhase=(p,message='')=>{phase=p;phaseMessage=message};
  const jobs=new Map();const acknowledgements=new Map();const session=randomBytes(32).toString('hex');
  const diagnostics=[];
  const note=(code)=>{diagnostics.push({at:new Date().toISOString(),code});if(diagnostics.length>30)diagnostics.shift()};
  // No credentials are ever stored in state.json. Unfinished histories can resume on explicit reconnect.
  const historySnapshot=()=>({items:store.data.history.map(j=>({...j,terminal:isTerminal(j),can_delete:isTerminal(j)&&!jobs.has(j.id)})),limit:HISTORY_LIMIT});
  let providers=providerConfig(store.data.preferences);
- const status=()=>({provider:providers.selected,endpoints:{...providers.endpoints},url:connection?.origin||'',state,info,models:store.data.models,error:lastError,code:lastCode,storage_warning:store.warning,website_version:WEBSITE_VERSION,compatible_engine_family:COMPATIBLE_ENGINE_FAMILY,compatibility:engineCompatibility(info)});
+ const currentPhase=()=>connection?(state==='ERROR'?'ERROR':state==='LOADING'?'LOADING':'READY'):phase;
+ const status=()=>{
+  const inv=store.data.inventory||null,p=currentPhase();
+  return {provider:providers.selected,endpoints:{...providers.endpoints},url:connection?.origin||'',state,info,models:store.data.models,error:lastError,code:lastCode,storage_warning:store.warning,website_version:WEBSITE_VERSION,compatible_engine_family:COMPATIBLE_ENGINE_FAMILY,compatibility:engineCompatibility(info),
+   // v1.7.3: the list is never presented as current when it is not (models_stale) and rejected entries are listed.
+   phase:p,phase_message:connection&&p!=='ERROR'?'':phaseMessage,
+   components:components({phase:p,info:connection?info:null,code:lastCode,modelsCount:store.data.models.length,modelsError:modelsState.error,usableCheckpoints:store.data.models.some(m=>m.kind==='checkpoint'&&m.compatible!==false)}),
+   models_updated_at:inv?.updated_at||null,models_origin:inv?.origin||null,models_rejected:inv?.rejected||[],models_error:modelsState.error,models_code:modelsState.code,
+   models_stale:!connection||!!modelsState.error||!!inv?.origin&&inv.origin!==connection.origin,
+   connected_at:connection?connectedAt:null,remembered:secrets.publicView(),secrets_warning:secrets.warning,rendezvous_host:RENDEZVOUS_HOST,
+   autoconnect:auto?{attempt:auto.attempt,started_at:auto.started_at,deadline:auto.deadline,origin:auto.origin}:null};
+ };
  async function disconnectSession(){
-  const version=++epoch;refreshing=null;connection=null;info=null;state='OFFLINE';lastError='';lastCode='';jobs.clear();acknowledgements.clear();
+  const version=++epoch;refreshing=null;connection=null;info=null;state='OFFLINE';lastError='';lastCode='';jobs.clear();acknowledgements.clear();auto=null;connectedAt=0;setPhase('OFFLINE');modelsState.error='';modelsState.code='';
   // Disconnect does not cancel GPU work. Preserve unresolved records for explicit reconnect.
   await store.change(d=>{for(const j of d.history)if(!terminal.includes(j.status)){j.status='CONNECTION_LOST';j.connection_error='GPU отключён. Подключитесь к прежнему провайдеру и адресу для проверки.'}});
   return version;
  }
  const sameProvider=(job,c)=>job.origin===c.origin&&(job.provider||'colab')===c.provider;
- const mergeModels=async(models)=>store.change(d=>{d.models=models;for(const m of models){if(m.kind!=='lora'||d.tags[m.id])continue;let words=m.trigger_words||m.sidecar?.trainedWords;const tags=Array.isArray(words)?words:typeof words==='string'&&!words.trim().startsWith('{')?words.split(/[,\n]/):[];d.tags[m.id]={model_id:m.id,trigger_words:tags.filter(x=>typeof x==='string').slice(0,64),recommended_tags:[],description:typeof m.sidecar?.description==='string'?m.sidecar.description.slice(0,4000):''}}});
- async function refresh(forceModels=false){if(!connection)return status();if(refreshing)return refreshing;const current=connection,version=epoch;
- refreshing=(async()=>{try{const health=validateHealth(await upstream(current,'/health',{timeout:20000}));let models;if(forceModels)models=validateModels(await upstream(current,'/models',{timeout:30000}));if(epoch===version){if(models)await mergeModels(models);if(epoch!==version)return status();info=health;state=health.state;lastError='';lastCode=''}}catch(e){if(epoch===version){state='ERROR';info=null;lastError=publicError(e).error;lastCode=e.code||'LOCAL_ERROR';note(lastCode)}}return status()})().finally(()=>{refreshing=null});return refreshing;
+ // v1.7.3: stores the compact inventory (no safetensors metadata) and where/when it was read.
+ const mergeModels=async(inv,c)=>store.change(d=>{d.models=inv.models;d.inventory={updated_at:Date.now(),provider:c?.provider||null,origin:c?.origin||null,revision:inv.revision||null,rejected:inv.rejected};for(const m of inv.models){if(m.kind!=='lora'||d.tags[m.id])continue;const source=inv.tagSources[m.id]||{};let words=source.trigger_words||source.sidecar?.trainedWords;const tags=Array.isArray(words)?words:typeof words==='string'&&!words.trim().startsWith('{')?words.split(/[,\n]/):[];d.tags[m.id]={model_id:m.id,trigger_words:tags.filter(x=>typeof x==='string').slice(0,64),recommended_tags:[],description:typeof source.sidecar?.description==='string'?source.sidecar.description.slice(0,4000):''}}});
+ // CloudCompute 1.7.3 servers offer /inventory (compact list + revision). Older servers answer 404 (remembered for this
+ // connection); any other failure of /inventory falls back to the engine's own /models for this one call.
+ async function loadModels(c){
+  if(c.provider==='cloudcompute'&&c.inventory!==false){try{return parseInventory(await upstream(c,'/inventory?models=1',{timeout:30000}))}catch(e){if(e.code==='AUTH_REJECTED')throw e;if(e.code==='JOB_NOT_FOUND')c.inventory=false;else note('INVENTORY_FALLBACK')}}
+  return parseInventory(await upstream(c,'/models',{timeout:30000}));
+ }
+ // A failed model refresh keeps the old list but marks it stale with the reason; the GPU connection stays usable.
+ async function syncModels(c,version){
+  try{const inv=await loadModels(c);if(version!==epoch)return;await mergeModels(inv,c);modelsState.error='';modelsState.code=''}
+  catch(e){if(version!==epoch)return;modelsState.error=publicError(e).error;modelsState.code=e.code||'LOCAL_ERROR';note('MODELS_'+modelsState.code)}
+ }
+ // Cheap change probe: models copied to the GPU (scp, Drive sync) appear without pressing anything.
+ async function inventoryChanged(c){
+  if(c.provider!=='cloudcompute'||c.inventory===false)return false;
+  try{const r=await upstream(c,'/inventory',{timeout:15000});const rev=typeof r?.revision==='string'?r.revision:null;return !!rev&&(rev!==store.data.inventory?.revision||store.data.inventory?.origin!==c.origin)}
+  catch(e){if(e.code==='JOB_NOT_FOUND')c.inventory=false;return false}
+ }
+ async function refresh(forceModels=false){if(!connection)return status();
+ // v1.7.3: a forced model refresh is never swallowed by a plain status refresh that is already running.
+ if(refreshing){if(!forceModels||refreshingForced)return refreshing;return refreshing.then(()=>refresh(true))}
+ const current=connection,version=epoch;refreshingForced=forceModels;
+ refreshing=(async()=>{try{const health=validateHealth(await upstream(current,'/health',{timeout:20000}));if(epoch!==version)return status();info=health;state=health.state;lastError='';lastCode='';
+  if(forceModels||await inventoryChanged(current))await syncModels(current,version);
+ }catch(e){if(epoch===version){state='ERROR';info=null;lastError=publicError(e).error;lastCode=e.code||'LOCAL_ERROR';note(lastCode)}}return status()})().finally(()=>{refreshing=null;refreshingForced=false});return refreshing;
+ }
+ // Shared by the manual link connect and the one-click auto-connect: health → models → activate.
+ async function establish(c,version){
+  setPhase('AUTHENTICATING','Проверяю токен и состояние движка…');
+  const h=validateHealth(await upstream(c,'/health',{timeout:20000}));if(version!==epoch)fail('SUPERSEDED','Подключение отменено.',409);
+  setPhase('LOADING','Движок отвечает. Загружаю список моделей…');
+  let inv=null,modelsError=null;try{inv=await loadModels(c)}catch(e){if(e.code==='AUTH_REJECTED')throw e;modelsError=e}
+  if(version!==epoch)fail('SUPERSEDED','Подключение отменено.',409);
+  await store.change(d=>{for(const j of d.history)if(!['COMPLETED','FAILED','CANCELLED','INTERRUPTED'].includes(j.status)){j.status='CONNECTION_LOST';j.connection_error='Ожидается подтверждение GPU'}});
+  if(version!==epoch)fail('SUPERSEDED','Подключение отменено.',409);jobs.clear();acknowledgements.clear();connection=c;info=h;state=h.state;auto=null;connectedAt=Date.now();
+  if(inv){await mergeModels(inv,c);modelsState.error='';modelsState.code=''}else{modelsState.error=publicError(modelsError).error;modelsState.code=modelsError.code||'LOCAL_ERROR';note('MODELS_'+modelsState.code)}
+  await store.change(d=>{d.preferences={...d.preferences,last_host:c.origin}});
+  if(version!==epoch)fail('SUPERSEDED','Подключение отменено.',409);
+  for(const j of store.data.history){if(sameProvider(j,c)&&!['COMPLETED','FAILED','CANCELLED'].includes(j.status)){jobs.set(j.id,c);await setJob(j.id,{status:'CONNECTION_LOST',connection_error:'Проверяем прежнюю задачу…'})}}
+  if(/^1\.[5-7]\./.test(h.engine_version||''))for(const j of store.data.history.filter(j=>sameProvider(j,c)&&j.status==='COMPLETED'&&j.result?.image_keys?.every((_,i)=>store.data.gallery.some(g=>g.id===j.id+'_'+i))))acknowledgements.set(j.id,c);
+  lastError='';lastCode='';setPhase('READY');note('CONNECTED');
+ }
+ const failConnect=(e,version)=>{if(version===epoch){state='ERROR';connection=null;info=null;lastError=publicError(e).error;lastCode=e.code||'LOCAL_ERROR';setPhase('ERROR',classify(lastCode).message||lastError);note(lastCode)}};
+ // One-click connect with a remembered server: waits while the GPU boots (tunnel/engine not up yet), stops at once
+ // on errors waiting cannot fix (token rejected, wrong engine, no CUDA). Disconnect cancels it (epoch).
+ async function autoLoop(version,provider,saved){
+  let origin=saved.origin,delay=3000;const alive=()=>version===epoch&&!closed;
+  while(alive()){
+   auto.attempt++;let c;
+   try{c=parseTunnel(origin+'/#token='+saved.token,provider);setPhase('CONNECTING',(auto.attempt===1?'Подключаюсь к ':`Попытка ${auto.attempt}: подключаюсь к `)+c.hostname+'…');await establish(c,version);
+    if(!alive())return;
+    if(c.origin!==saved.origin)await secrets.remember(provider,{origin:c.origin,token:saved.token});
+    providers={...providers,endpoints:{...providers.endpoints,[provider]:c.origin}};await store.change(d=>{d.preferences={...d.preferences,gpu:providers}});return;
+   }catch(e){
+    if(!alive())return;
+    if(c&&connection===c){connection=null;info=null;state='CONNECTING';jobs.clear();acknowledgements.clear()}  // failed after activation: not usable
+    const code=e.code||'LOCAL_ERROR',rule=classify(code);lastCode=code;lastError=publicError(e).error;note(code);
+    if(rule.retry&&auto&&Date.now()<auto.deadline){
+     if(rule.discover&&saved.discover){
+      setPhase('CONNECTING','Ищу новый адрес сервера…');
+      try{const found=await discoverAddress(saved.token);if(alive()&&found&&found!==origin){endpoint(found,provider);origin=found;auto.origin=found;note('ADDRESS_DISCOVERED');continue}}catch(x){note(x.code||'DISCOVERY_FAILED')}
+      if(!alive())return;
+     }
+     setPhase('STARTING',rule.message+' Жду запуска сервера…');await sleep(delay);delay=Math.min(Math.round(delay*1.5),20000);continue;
+    }
+    state='ERROR';connection=null;info=null;auto=null;setPhase('ERROR',(rule.message||lastError)+(rule.retry?' Время ожидания истекло: проверьте, запущен ли GPU-инстанс.':''));return;
+   }
+  }
  }
  async function setJob(id,patch){await store.change(d=>{const j=d.history.find(j=>j.id===id);if(j)Object.assign(j,patch,{updated:Date.now()})})}
  async function collect(job,remote,c){
@@ -68,8 +155,10 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
   const host=req.headers.host;const port=server.address()?.port;const allowedHosts=[`127.0.0.1:${port}`,`localhost:${port}`];
   if(!allowedHosts.includes(host))fail('HOST_DENIED','Неверный адрес локального сервера.',403);
   const origin=req.headers.origin;if(origin&&!allowedHosts.some(h=>origin==='http://'+h))fail('ORIGIN_DENIED','Доступ разрешён только локальному приложению.',403);
-  if(req.headers['sec-fetch-site']&& !['same-origin','none'].includes(req.headers['sec-fetch-site']))fail('ORIGIN_DENIED','Внешняя страница не имеет доступа.',403);
   const u=new URL(req.url,'http://'+host);const route=u.pathname;const method=req.method;
+  // v1.7.3: Google's OAuth redirect (cross-site navigation). Only a pending single-use state of this app is accepted.
+  if(route==='/'&&method==='GET'&&oauth.has(u.searchParams.get('state')))return finishOAuth(u,res);
+  if(req.headers['sec-fetch-site']&& !['same-origin','none'].includes(req.headers['sec-fetch-site']))fail('ORIGIN_DENIED','Внешняя страница не имеет доступа.',403);
   if(route==='/_yoisaki/service'){if(!serviceKey||req.headers['x-yoisaki-service']!==serviceKey)fail('LOCAL_ONLY','Нет доступа.',403);return send(res,{pid:process.pid,version:WEBSITE_VERSION})}
   if(route.startsWith('/api/')){
    const image=method==='GET'&&/^\/api\/gallery\/[a-f0-9_-]+\/file$/.test(route);
@@ -97,14 +186,40 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
     const version=await disconnectSession();if(version!==epoch)fail('SUPERSEDED','Подключение отменено.',409);state='CONNECTING';lastError='';
     providers={...providers,endpoints:{...providers.endpoints,[provider]:c.origin}};
     await store.change(d=>{d.preferences={...d.preferences,gpu:providers}});
-    try{const h=validateHealth(await upstream(c,'/health',{timeout:20000}));const models=validateModels(await upstream(c,'/models',{timeout:30000}));if(version!==epoch)fail('SUPERSEDED','Подключение отменено.',409);
-    await store.change(d=>{for(const j of d.history)if(!['COMPLETED','FAILED','CANCELLED','INTERRUPTED'].includes(j.status)){j.status='CONNECTION_LOST';j.connection_error='Ожидается подтверждение GPU'}});
-    if(version!==epoch)fail('SUPERSEDED','Подключение отменено.',409);jobs.clear();acknowledgements.clear();connection=c;info=h;state=h.state;await mergeModels(models);await store.change(d=>{d.preferences={...d.preferences,last_host:c.origin}});
-    if(version!==epoch)fail('SUPERSEDED','Подключение отменено.',409);
-    for(const j of store.data.history){if(sameProvider(j,c)&&!['COMPLETED','FAILED','CANCELLED'].includes(j.status)){jobs.set(j.id,c);await setJob(j.id,{status:'CONNECTION_LOST',connection_error:'Проверяем прежнюю задачу…'})}}
-    if(/^1\.[5-7]\./.test(h.engine_version||''))for(const j of store.data.history.filter(j=>sameProvider(j,c)&&j.status==='COMPLETED'&&j.result?.image_keys?.every((_,i)=>store.data.gallery.some(g=>g.id===j.id+'_'+i))))acknowledgements.set(j.id,c);
-    lastError='';lastCode='';note('CONNECTED');return send(res,status());
-    }catch(e){if(version===epoch){state='ERROR';connection=null;info=null;lastError=publicError(e).error;lastCode=e.code||'LOCAL_ERROR';note(lastCode)}throw e}
+    setPhase('CONNECTING','Подключаюсь…');
+    try{await establish(c,version);
+     // v1.7.3: explicit opt-in only. remember:false forgets a previously remembered server of this provider.
+     if(body.remember===true)await secrets.remember(provider,{origin:c.origin,token:c.token,discover:typeof body.discover==='boolean'?body.discover:undefined});else if(body.remember===false)await secrets.forget(provider);
+     return send(res,status());
+    }catch(e){failConnect(e,version);throw e}
+   }
+   if(route==='/api/gpu/autoconnect'&&method==='POST'){
+    const body=await jsonBody(req);const provider=providerName(body.provider??providers.selected);
+    if(provider!==providers.selected)fail('PROVIDER_CHANGED','Сначала выберите провайдера.',409);
+    const saved=secrets.connection(provider);if(!saved)fail('NOT_REMEMBERED','Для этого провайдера нет сохранённого подключения. Вставьте ссылку один раз и отметьте «Запомнить».',409);
+    const version=await disconnectSession();if(version!==epoch)fail('SUPERSEDED','Подключение отменено.',409);
+    const minutes=Math.min(Math.max(Number(body.wait_minutes)||15,1),30);state='CONNECTING';
+    auto={attempt:0,started_at:Date.now(),deadline:Date.now()+minutes*60000,origin:saved.origin};setPhase('CONNECTING','Подключаюсь к сохранённому серверу…');
+    autoLoop(version,provider,saved).catch(e=>failConnect(e,version));
+    return send(res,status(),202);
+   }
+   if(route==='/api/gpu/remembered'&&method==='POST'){
+    const b=await jsonBody(req);const provider=providerName(b.provider);
+    if(b.forget===true)await secrets.forget(provider);else if(typeof b.discover==='boolean'){if(!secrets.connection(provider))fail('NOT_REMEMBERED','Сначала запомните подключение.',409);await secrets.setDiscover(provider,b.discover)}
+    else fail('INVALID_REQUEST','Неверный запрос.');
+    note(b.forget===true?'CONNECTION_FORGOTTEN':'DISCOVERY_'+(b.discover?'ON':'OFF'));return send(res,status());
+   }
+   const oauthView=()=>{const g=secrets.google();return {configured:!!g,client_id:g?.client_id||'',redirect_uri:redirectUri(port),scope:SCOPE,last_result:oauthResult}};
+   if(route==='/api/drive/oauth'){
+    if(method==='GET')return send(res,oauthView());
+    if(method==='PUT'){await secrets.setGoogle(validateClient(await jsonBody(req)));oauthResult=null;note('DRIVE_OAUTH_CLIENT_SAVED');return send(res,oauthView())}
+    if(method==='DELETE'){await secrets.setGoogle(null);oauthResult=null;return send(res,oauthView())}
+   }
+   if(route==='/api/drive/oauth/start'&&method==='POST'){
+    const g=secrets.google();if(!g)fail('DRIVE_OAUTH_NOT_CONFIGURED','Сначала сохраните Client ID и Client Secret своего OAuth-клиента Google.',409);
+    if(!connection)fail('GPU_OFFLINE','GPU отключён. Подключите CloudCompute в разделе GPU.',409);
+    if(connection.provider!=='cloudcompute')fail('DRIVE_CLOUDCOMPUTE_ONLY','Google Drive Auto Sync доступна только для CloudCompute.',409);
+    oauthResult=null;return send(res,{url:oauth.start(g,port,{origin:connection.origin})});
    }
    const driveMatch=route.match(/^\/api\/gpu\/drive\/(status|check|sync|cancel|connect|disconnect)$/);
    if(driveMatch){
@@ -113,7 +228,7 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
     if(!connection)fail('GPU_OFFLINE','GPU отключён. Подключите CloudCompute в разделе GPU.',409);
     if(connection.provider!=='cloudcompute')fail('DRIVE_CLOUDCOMPUTE_ONLY','Google Drive Auto Sync доступна только для CloudCompute.',409);
     // The connect body (OAuth token) is forwarded once and never stored, logged or echoed.
-    const body=driveMatch[1]==='connect'?validateConnect(await jsonBody(req)):remoteMethod==='POST'?'{}':undefined;
+    const body=driveMatch[1]==='connect'?validateConnect(await jsonBody(req)):driveMatch[1]==='sync'?validateSyncStart(await readBody(req,1048576)):remoteMethod==='POST'?'{}':undefined;
     const c=connection;const result=await upstream(c,remoteRoute,{method:remoteMethod,body,timeout:30000});
     if(connection!==c)fail('SUPERSEDED','Провайдер изменён.',409);
     if(driveMatch[1]!=='status')note('DRIVE_'+driveMatch[1].toUpperCase());return send(res,validateSyncStatus(result));
@@ -205,7 +320,7 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
     if(method==='PATCH'){const b=await jsonBody(req);if(!item)fail('NOT_FOUND','Изображение не найдено.',404);if(typeof b.prompt!=='string'||b.prompt.length>10000||typeof b.favorite!=='boolean')fail('INVALID_METADATA','Некорректные данные изображения.');await store.change(d=>Object.assign(d.gallery.find(x=>x.id===id),{prompt:b.prompt,favorite:b.favorite}));return send(res,{ok:true})}
     if(method==='POST'){if(item)fail('EXISTS','Изображение уже существует.',409);const bytes=await readBody(req,25*1024*1024);const type=req.headers['content-type'];const sig=bytes.subarray(0,12);const valid=type==='image/png'&&sig.subarray(0,8).toString('hex')==='89504e470d0a1a0a'||type==='image/jpeg'&&sig.subarray(0,3).toString('hex')==='ffd8ff'||type==='image/webp'&&sig.subarray(0,4).toString()==='RIFF'&&sig.subarray(8,12).toString()==='WEBP';if(!valid)fail('INVALID_IMAGE','Разрешены PNG, JPEG и WebP.');const name=(u.searchParams.get('name')||'image').slice(0,200);return send(res,await store.saveImage({id,name,created:Date.now(),favorite:false,prompt:'',origin:'imported',type,url:'/api/gallery/'+id+'/file'},bytes),201)}
    }
-   if(route==='/api/diagnostics'&&method==='GET')return send(res,{version:WEBSITE_VERSION,node:process.version,platform:process.platform,arch:process.arch,provider:providers.selected,engine_version:info?.engine_version??null,api_version:info?.api_version??null,state,code:lastCode,models:store.data.models.length,images:store.data.gallery.length,events:diagnostics});
+   if(route==='/api/diagnostics'&&method==='GET'){const st=status();return send(res,{version:WEBSITE_VERSION,node:process.version,platform:process.platform,arch:process.arch,provider:providers.selected,engine_version:info?.engine_version??null,api_version:info?.api_version??null,state,code:lastCode,phase:st.phase,components:st.components,models:store.data.models.length,models_error:modelsState.code,models_rejected:st.models_rejected.length,remembered:Object.fromEntries(Object.entries(st.remembered).map(([k,v])=>[k,!!v])),images:store.data.gallery.length,events:diagnostics})}
    fail('NOT_FOUND','API не найден.',404);
   }
   if(!['GET','HEAD'].includes(method))fail('METHOD_DENIED','Метод не поддерживается.',405);
@@ -214,6 +329,20 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
   const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.webp':'image/webp'}[path.extname(file)]||'application/octet-stream';const bytes=await fs.readFile(file);res.writeHead(200,{'Content-Type':mime,'Cache-Control':'no-cache','Content-Length':bytes.length});res.end(method==='HEAD'?undefined:bytes);
  }catch(e){note(e.code||'LOCAL_ERROR');if(!res.headersSent)send(res,publicError(e),e.status||500);else res.destroy()}
  });
+ // Completes the Google authorization: code → tokens (PKCE) → GPU /sync/drive/connect. Tokens are not kept here.
+ async function finishOAuth(u,res){
+  const pending=oauth.take(u.searchParams.get('state'));
+  try{
+   if(!pending)fail('DRIVE_OAUTH_STATE','Сеанс авторизации устарел. Нажмите «Подключить Google Drive» ещё раз.');
+   if(u.searchParams.get('error'))fail('DRIVE_OAUTH_DENIED',u.searchParams.get('error')==='access_denied'?'Доступ к Google Drive не разрешён.':'Google отменил авторизацию.');
+   const g=secrets.google();if(!g)fail('DRIVE_OAUTH_NOT_CONFIGURED','OAuth-клиент Google не настроен.');
+   const c=connection;if(!c||c.origin!==pending.context.origin)fail('GPU_OFFLINE','GPU-сервер сменился или отключён во время авторизации. Подключитесь и повторите.');
+   const token=await exchange(g,u.searchParams.get('code'),pending);
+   const result=await upstream(c,'/sync/drive/connect',{method:'POST',body:validateConnect({token:JSON.stringify(token),client_id:g.client_id,client_secret:g.client_secret}),timeout:30000});
+   validateSyncStatus(result);oauthResult={ok:true,code:'CONNECTED',message:'Google Drive подключён (только чтение).',at:Date.now()};note('DRIVE_OAUTH_CONNECTED');
+  }catch(e){oauthResult={ok:false,code:e.code||'DRIVE_OAUTH_FAILED',message:publicError(e).error,at:Date.now()};note(oauthResult.code)}
+  res.writeHead(302,{Location:'/models?drive_auth=1','Cache-Control':'no-store'});res.end();
+ }
  server.requestTimeout=100000;server.headersTimeout=10000;
  return {server,store,status,pollJobs,async close(){closed=true;clearInterval(pollTimer);connection=null;jobs.clear();acknowledgements.clear();await new Promise(resolve=>{server.close(resolve);server.closeAllConnections()});while(polling)await new Promise(r=>setTimeout(r,20));await store.chain}};
 }

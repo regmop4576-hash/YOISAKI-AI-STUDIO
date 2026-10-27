@@ -1,3 +1,9 @@
+# YOISAKI AI STUDIO v1.7.3 — ONE-CLICK CONNECT EDITION
+
+**Новое в 1.7.3:** подключение к GPU одной кнопкой (CloudCompute) с ожиданием загрузки и диагностикой по компонентам; исправлено исчезновение новых LoRA из генератора; Google Drive через вход в браузере. Инструкция: `YOISAKI_V1.7.3_ONE_CLICK_SETUP_RU.md`, отчёт: `YOISAKI_V1.7.3_REPORT_RU.md`.
+
+---
+
 # YOISAKI AI STUDIO v1.7.2 — GOOGLE DRIVE AUTO SYNC EDITION
 
 **Новое в 1.7.2:** страница «Модели» → раздел **GOOGLE DRIVE AUTO SYNC** (только CloudCompute). GPU-сервер сам скачивает модели из вашей приватной папки `Мой диск/YOISAKI_AI_STUDIO/models/{checkpoints,loras,vae}`: только чтение Drive, без публичных ссылок, с докачкой, проверкой файлов и атомарной установкой. Локальные модели при этом не удаляются. Инструкции:

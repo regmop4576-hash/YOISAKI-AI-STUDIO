@@ -5,7 +5,7 @@
 YOISAKI_APP=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
 export YOISAKI_DATA_ROOT=${YOISAKI_DATA_ROOT:-/workspace/yoisaki-data}
 # shellcheck disable=SC2034  # constants used by the scripts that source this file
-YOISAKI_IMAGE=yoisaki-engine:1.7.2-cloudcompute
+YOISAKI_IMAGE=yoisaki-engine:1.7.3-cloudcompute
 YOISAKI_CONTAINER=yoisaki-engine
 # shellcheck disable=SC2034
 YOISAKI_RUN_USER=yoisaki
@@ -72,6 +72,8 @@ yoisaki_compose() {
 yoisaki_ready() {
   local state=$YOISAKI_DATA_ROOT/runtime/state
   [[ -s $state/link.txt ]] && return 0
+  # 1.7.3: the engine runs and only the tunnel is being retried (it reconnects by itself).
+  grep -q '"phase": "TUNNEL_RETRY"' "$state/launcher.json" 2>/dev/null && return 0
   [[ ${YOISAKI_TUNNEL:-1} == 0 ]] && grep -q '"phase": "READY"' "$state/launcher.json" 2>/dev/null
 }
 
@@ -96,12 +98,12 @@ yoisaki_redact() { sed -E 's/[a-f0-9]{64}/[СКРЫТО]/g; s/(#token=|Bearer )[
 yoisaki_prepare_dirs() {
   local d
   for d in models/checkpoints models/loras models/vae models/controlnet models/.yoisaki-sync huggingface-cache outputs logs diagnostics \
-           runtime/state runtime/home runtime/bin runtime/sync config config/rclone sdpose; do
+           runtime/state runtime/home runtime/bin runtime/sync config config/rclone config/engine sdpose; do
     mkdir -p "$YOISAKI_DATA_ROOT/$d" 2>/dev/null || [[ -d $YOISAKI_DATA_ROOT/$d ]] \
       || die "Нет прав на создание $YOISAKI_DATA_ROOT/$d (владелец папки данных: $(stat -c %U "$YOISAKI_DATA_ROOT" 2>/dev/null || echo '?'))."
   done
   # Only folders we own (a folder prepared by root for the engine user is left as it is).
-  for d in runtime/state runtime/sync config/rclone models/.yoisaki-sync; do [[ -O $YOISAKI_DATA_ROOT/$d ]] && chmod 700 "$YOISAKI_DATA_ROOT/$d"; done
+  for d in runtime/state runtime/sync config/rclone config/engine models/.yoisaki-sync; do [[ -O $YOISAKI_DATA_ROOT/$d ]] && chmod 700 "$YOISAKI_DATA_ROOT/$d"; done
   # config/: traverse-only for the engine user (reaches its own config/rclone); yoisaki.env stays 0600 and unlistable.
   [[ -O $YOISAKI_DATA_ROOT/config ]] && chmod 711 "$YOISAKI_DATA_ROOT/config"
   [[ -w $YOISAKI_DATA_ROOT/runtime/state && -w $YOISAKI_DATA_ROOT/logs ]] \
@@ -115,7 +117,7 @@ yoisaki_prepare_dirs() {
 yoisaki_grant() {
   local owner=$1 d
   [[ $(id -u) == 0 ]] || return 0
-  for d in huggingface-cache outputs logs diagnostics runtime/state runtime/home runtime/sync config/rclone models/.yoisaki-sync; do
+  for d in huggingface-cache outputs logs diagnostics runtime/state runtime/home runtime/sync config/rclone config/engine models/.yoisaki-sync; do
     chown -R "$owner" "$YOISAKI_DATA_ROOT/$d"
   done
   # Folders only (files keep their owner): lets fetch-models / Drive sync add files, also in subfolders.
@@ -144,7 +146,13 @@ yoisaki_print_link() {
   say ''
   cat -- "$link"
   say ''
-  say 'Ссылка содержит секретный токен: не публикуйте её. После перезапуска движка она меняется.'
+  say 'Ссылка содержит секретный токен: не публикуйте её.'
+  if [[ ${YOISAKI_STABLE_LINK:-0} == 1 ]]; then
+    say 'Токен постоянный: на сайте отметьте «Запомнить» — дальше подключение одной кнопкой.'
+    [[ ${YOISAKI_TUNNEL_MODE:-quick} == named ]] || say 'Адрес Quick Tunnel меняется при каждом запуске: включите Named Tunnel или автообнаружение (./setup-cloudcompute.sh).'
+  else
+    say 'После перезапуска движка ссылка меняется. Подключение одной кнопкой: ./setup-cloudcompute.sh'
+  fi
 }
 
 yoisaki_billing_notice() {

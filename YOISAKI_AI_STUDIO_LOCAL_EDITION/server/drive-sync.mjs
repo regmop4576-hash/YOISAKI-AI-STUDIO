@@ -27,8 +27,18 @@ export function validateSyncStatus(x){
   connection:{state:oneOf(n.state??'UNKNOWN',['UNKNOWN','OK','ERROR']),error:str(n.error,600),code:str(n.code,40)},
   job:job(x.job),disk:d===null||d===undefined?null:typeof d!=='object'?bad():{free_bytes:num(d.free_bytes),total_bytes:num(d.total_bytes),reserve_bytes:num(d.reserve_bytes)},
   last_success_unix:num(x.last_success_unix),last_check_unix:num(x.last_check_unix),inventory_revision:Number.isInteger(x.inventory_revision)&&x.inventory_revision>=0?x.inventory_revision:bad(),
-  verification:str(x.verification,600),owner:oneOf(x.owner??'self',['self','other']),
+  verification:str(x.verification,600),owner:oneOf(x.owner??'self',['self','other']),selective:bool(x.selective),
   items:x.items.map(i=>!i||typeof i!=='object'?bad():{path:str(i.path,400),name:str(i.name,300),kind:oneOf(i.kind,KINDS),size:num(i.size),state:oneOf(i.state,ITEM_STATES),reason:str(i.reason,600),verification:str(i.verification,60)})};
+}
+// v1.7.3: optional selection for /sync/start ({paths:[...]} = Drive paths reported by /sync/check). Servers before
+// 1.7.3 ignore the body and sync everything, so the page offers a selection only when status.selective is true.
+export function validateSyncStart(raw){
+ const text=Buffer.isBuffer(raw)?raw.toString('utf8').trim():String(raw??'').trim();if(!text)return '{}';
+ let b;try{b=JSON.parse(text)}catch{fail('INVALID_JSON','Неверный JSON запроса.')}
+ if(b===null||typeof b!=='object'||Array.isArray(b)||Object.keys(b).some(k=>k!=='paths'))fail('DRIVE_INVALID_SELECTION','Неверный выбор файлов.');
+ if(b.paths===undefined)return '{}';
+ if(!Array.isArray(b.paths)||!b.paths.length||b.paths.length>2000||b.paths.some(x=>typeof x!=='string'||!x||x.length>400||/[\u0000-\u001f]/.test(x)))fail('DRIVE_INVALID_SELECTION','Выберите от 1 до 2000 файлов из списка проверки.');
+ return JSON.stringify({paths:[...new Set(b.paths)]});
 }
 // The pasted value is the JSON printed by `rclone authorize` in Termux. It is forwarded once over HTTPS and never stored here.
 export function validateConnect(b){

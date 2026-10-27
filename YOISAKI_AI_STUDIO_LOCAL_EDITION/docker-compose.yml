@@ -1,10 +1,10 @@
-# YOISAKI ENGINE · CloudCompute deployment 1.7.2. Use through ./start-cloudcompute.sh, which sets
+# YOISAKI ENGINE · CloudCompute deployment 1.7.3. Use through ./start-cloudcompute.sh, which sets
 # YOISAKI_DATA_ROOT / YOISAKI_UID / YOISAKI_GID / YOISAKI_SOURCE_HASH and builds the image only when needed.
 # No port is published: the website reaches the engine through the Cloudflare tunnel started inside.
 name: yoisaki
 
 x-engine: &engine
-  image: yoisaki-engine:1.7.2-cloudcompute
+  image: yoisaki-engine:1.7.3-cloudcompute
   user: "${YOISAKI_UID:-1000}:${YOISAKI_GID:-1000}"
   environment:
     YOISAKI_PORT: "${YOISAKI_PORT:-8765}"
@@ -14,6 +14,13 @@ x-engine: &engine
     YOISAKI_RAM_FIX: "${YOISAKI_RAM_FIX:-1}"
     YOISAKI_TUNNEL: "${YOISAKI_TUNNEL:-1}"
     YOISAKI_TUNNEL_RESTARTS: "${YOISAKI_TUNNEL_RESTARTS:-3}"
+    # 1.7.3 one-click connection. The Named Tunnel credential is a file in /data/config/engine (0600), never set here.
+    YOISAKI_STABLE_LINK: "${YOISAKI_STABLE_LINK:-0}"
+    YOISAKI_TUNNEL_MODE: "${YOISAKI_TUNNEL_MODE:-quick}"
+    YOISAKI_PUBLIC_HOSTNAME: "${YOISAKI_PUBLIC_HOSTNAME:-}"
+    YOISAKI_TUNNEL_DNS_DELAY: "${YOISAKI_TUNNEL_DNS_DELAY:-5}"
+    YOISAKI_RENDEZVOUS: "${YOISAKI_RENDEZVOUS:-off}"
+    YOISAKI_RENDEZVOUS_HOST: "${YOISAKI_RENDEZVOUS_HOST:-ntfy.sh}"
     # 1.7.2 Google Drive model sync (read-only on Drive). The OAuth token stays in /data/config/rclone (0600).
     YOISAKI_DRIVE_SYNC: "${YOISAKI_DRIVE_SYNC:-1}"
     YOISAKI_DRIVE_REMOTE: "${YOISAKI_DRIVE_REMOTE:-yoisaki-gdrive}"

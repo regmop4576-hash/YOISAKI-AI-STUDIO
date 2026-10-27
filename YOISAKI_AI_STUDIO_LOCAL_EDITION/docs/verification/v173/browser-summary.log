@@ -1,0 +1,14 @@
+providers-browser exit=0
+browser-e2e exit=0
+ui-check exit=0
+drive-sync-browser exit=0
+history-browser exit=1
+img2img-browser exit=0
+controlnet-browser exit=0
+regional-compatibility-browser exit=0
+memory-ui exit=0
+mobile exit=0 (local server started on 127.0.0.1:3000 beforehand, as the test expects)
+history-browser: the same failure on the UNMODIFIED v1.7.2 baseline in this environment (it waits for the text
+  'YOISAKI ENGINE v1.7.0', which no page renders; v1.7.2's own docs/verification/v172/browser-history-browser.log shows
+  the identical timeout). Pre-existing stale assertion, not changed by 1.7.3. Its history/gallery steps before that line passed.
+All browser tests use a synthetic upstream (no GPU, no tunnel). Chromium 153 instead of the pinned 141.

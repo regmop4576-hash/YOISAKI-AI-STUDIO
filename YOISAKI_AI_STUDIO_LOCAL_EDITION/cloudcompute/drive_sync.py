@@ -312,7 +312,7 @@ class SyncService:
                     # Only what the page shows: no Drive IDs, checksums or server paths.
                     'items': [{k: i.get(k) for k in PUBLIC_ITEM} for i in self.items], 'disk': disk, 'last_success_unix': self.last_success_unix,
                     'last_check_unix': self.last_check_unix, 'inventory_revision': self.revision,
-                    'verification': VERIFICATION_NOTE, 'owner': 'self'}
+                    'verification': VERIFICATION_NOTE, 'owner': 'self', 'selective': True}
 
     def status(self):
         with self.lock:
@@ -325,9 +325,13 @@ class SyncService:
             return snap
         return self._snapshot()
 
-    def start(self, kind):
+    def start(self, kind, paths=None):
+        """paths (1.7.3, sync only): download just these Drive paths from the check list; None = everything missing."""
         if kind not in ('check', 'sync'):
             raise SyncError('INVALID', 'Неизвестная операция.')
+        if paths is not None and (kind != 'sync' or not isinstance(paths, list) or not paths or len(paths) > MAX_FILES
+                                  or any(not isinstance(x, str) or not x or len(x) > 400 for x in paths)):
+            raise SyncError('INVALID', 'Неверный выбор файлов для синхронизации.')
         if not self.cfg.enabled:
             raise SyncError('DISABLED', 'Синхронизация отключена на сервере (YOISAKI_DRIVE_SYNC=0).')
         if not (Path(self.cfg.rclone).is_file() and os.access(self.cfg.rclone, os.X_OK)):
@@ -354,7 +358,8 @@ class SyncService:
                         'started_unix': time.time(), 'finished_unix': None, 'error': '', 'error_code': '',
                         'current': None, 'overall': {'files_total': 0, 'files_done': 0, 'files_failed': 0, 'bytes_total': 0, 'bytes_done': 0},
                         'summary': {}, 'cancel_requested': False, 'restart_recommended': False}
-            self.thread = threading.Thread(target=self._run, args=(kind,), name='yoisaki-drive-sync', daemon=True)
+            self.thread = threading.Thread(target=self._run, args=(kind, None if paths is None else set(paths)),
+                                           name='yoisaki-drive-sync', daemon=True)
             self.thread.start()
         self._save(force=True)
         return self.status()
@@ -424,7 +429,7 @@ class SyncService:
         if self.cancel_event.is_set():
             raise SyncError('CANCELLED', 'Синхронизация отменена. Частично загруженный файл сохранён для продолжения.')
 
-    def _run(self, kind):
+    def _run(self, kind, paths=None):
         try:
             items = self._discover()
             with self.lock:
@@ -432,7 +437,7 @@ class SyncService:
                 self.last_check_unix = time.time()
                 self.connection = {'state': 'OK', 'error': '', 'code': ''}
             if kind == 'sync':
-                self._download_all(items)
+                self._download_all(items, paths)
             summary = {s.lower(): sum(i['state'] == s for i in items) for s in ('INSTALLED', 'MISSING', 'CHANGED', 'CONFLICT', 'REJECTED', 'FAILED')}
             with self.lock:
                 self.job.update(state='COMPLETED', phase='DONE', current=None, summary={**self.job.get('summary', {}), **summary})
@@ -546,8 +551,9 @@ class SyncService:
                 self.job['current'].update(bytes_done=done, bytes_total=total, speed_bps=speed)
         self._save()
 
-    def _download_all(self, items):
-        todo = [i for i in items if i['state'] in ('MISSING', 'CHANGED')]
+    def _download_all(self, items, paths=None):
+        # Paths only select among what this server itself listed on Drive: an unknown path selects nothing.
+        todo = [i for i in items if i['state'] in ('MISSING', 'CHANGED') and (paths is None or i['path'] in paths)]
         self.offsets = {i['path']: self._part_offset(i) for i in todo}  # resumed bytes count as done
         total = sum(i['size'] for i in todo)
         done = sum(self.offsets.values())

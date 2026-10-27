@@ -28,8 +28,8 @@ try:
  print(f'PASS baseline old server {old_version} on port 3000')
  run(['bash',str(new/'update.sh'),str(archive),str(app)])
  with urllib.request.urlopen(request) as response:
-  assert json.load(response)['version']=='1.7.2';cookie=response.headers['Set-Cookie'].split(';')[0]
- with urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:3000/api/version',headers={'X-Yoisaki-Local':'1','Cookie':cookie})) as response:assert json.load(response)['studio_version']=='1.7.2'
+  assert json.load(response)['version']=='1.7.3';cookie=response.headers['Set-Cookie'].split(';')[0]
+ with urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:3000/api/version',headers={'X-Yoisaki-Local':'1','Cookie':cookie})) as response:assert json.load(response)['studio_version']=='1.7.3'
  actual=json.loads((data/'state.json').read_text());assert actual==state
  assert (data/'images'/image_id).read_bytes()==b'user-image-preservation-test'
  backups=list(base.glob('installed.backup-*'));assert len(backups)==1
