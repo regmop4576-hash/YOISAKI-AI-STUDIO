@@ -1,3 +1,11 @@
+# YOISAKI AI STUDIO v1.7.5 — ZERO-TERMINAL CLOUDCOMPUTE
+
+Обновление v1.7.4. GPU в CloudCompute арендуется и запускается с телефона в пять кнопок, без SSH, Python и Termux: выбор GPU с ценой → создание с подтверждением оплаты → автоматический запуск готового образа движка → автоматическое подключение → загрузка недостающих моделей из Google Drive.
+
+**Начните с [инструкции](docs/CLOUDCOMPUTE_ZERO_TERMINAL_RU.md) и [отчёта](YOISAKI_V1.7.5_REPORT_RU.md).** Образ: `ghcr.io/regmop4576-hash/yoisaki-ai-studio/engine:1.7.5`. Живое создание инстанса CloudCompute в разработке не выполнялось: первый запуск — приёмочный. Сайт и deployment: 1.7.5; протокол ENGINE: 1.7.0.
+
+---
+
 # YOISAKI AI STUDIO v1.7.4 — CloudCompute API & Google Drive
 
 Обновление существующего v1.7.3. CloudCompute REST API, Google OAuth и выбор папки без GPU, обновление токенов, передача папки существующему rclone, честный статус каталога моделей, повторное использование готовых окружений и Docker-образов.

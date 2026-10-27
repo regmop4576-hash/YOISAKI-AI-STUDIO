@@ -1,0 +1,537 @@
+
+> yoisaki-ai-studio-local@1.7.5 test
+> node --test tests/*.test.mjs
+
+TAP version 13
+# Subtest: URL parser rejects missing token, unsafe host, path, credentials, query, IP and duplicate token
+ok 1 - URL parser rejects missing token, unsafe host, path, credentials, query, IP and duplicate token
+  ---
+  duration_ms: 2.996376
+  type: 'test'
+  ...
+# Subtest: IP policy rejects private, loopback, metadata, mapped IPv6 and reserved ranges
+ok 2 - IP policy rejects private, loopback, metadata, mapped IPv6 and reserved ranges
+  ---
+  duration_ms: 7.541513
+  type: 'test'
+  ...
+# Subtest: proxy blocks arbitrary paths and DNS rebinding into a private network
+ok 3 - proxy blocks arbitrary paths and DNS rebinding into a private network
+  ---
+  duration_ms: 1.76434
+  type: 'test'
+  ...
+# Subtest: strict health/model contracts distinguish worker readiness from response format
+ok 4 - strict health/model contracts distinguish worker readiness from response format
+  ---
+  duration_ms: 0.678633
+  type: 'test'
+  ...
+# Subtest: atomic persistence serializes writes and recovers damaged main file from backup
+ok 5 - atomic persistence serializes writes and recovers damaged main file from backup
+  ---
+  duration_ms: 101.343655
+  type: 'test'
+  ...
+# Subtest: loopback app rejects cross-site access, wrong Host, missing session and unrestricted proxy
+ok 6 - loopback app rejects cross-site access, wrong Host, missing session and unrestricted proxy
+  ---
+  duration_ms: 106.938567
+  type: 'test'
+  ...
+# Subtest: connection, authenticated contract, generation transport, file saving, gallery and restart (SYNTHETIC INFERENCE)
+ok 7 - connection, authenticated contract, generation transport, file saving, gallery and restart (SYNTHETIC INFERENCE)
+  ---
+  duration_ms: 156.17879
+  type: 'test'
+  ...
+# Subtest: expired token, outage and timeout report distinct failures; reconnect works
+ok 8 - expired token, outage and timeout report distinct failures; reconnect works
+  ---
+  duration_ms: 30.695696
+  type: 'test'
+  ...
+# Subtest: three ControlNet modes transport exact isolated settings and preserve batch/LoRA
+ok 9 - three ControlNet modes transport exact isolated settings and preserve batch/LoRA
+  ---
+  duration_ms: 2.465949
+  type: 'test'
+  ...
+# Subtest: missing map, stale type, invalid intervals, formats and combined modes rejected
+ok 10 - missing map, stale type, invalid intervals, formats and combined modes rejected
+  ---
+  duration_ms: 1.046985
+  type: 'test'
+  ...
+# Subtest: only v1.7.0 with ControlNet + SDPose + Img2Img capability is accepted
+ok 11 - only v1.7.0 with ControlNet + SDPose + Img2Img capability is accepted
+  ---
+  duration_ms: 0.40128
+  type: 'test'
+  ...
+# Subtest: individual terminal deletion persists through reload/restart/reconnect; Gallery and all user data preserved
+ok 12 - individual terminal deletion persists through reload/restart/reconnect; Gallery and all user data preserved
+  ---
+  duration_ms: 235.408428
+  type: 'test'
+  ...
+# Subtest: bulk scopes remove only confirmed selected records; queued/running/unknown are protected
+ok 13 - bulk scopes remove only confirmed selected records; queued/running/unknown are protected
+  ---
+  duration_ms: 96.608099
+  type: 'test'
+  ...
+# Subtest: connection-lost cannot be silently forgotten; terminal remote reconciliation allows deletion
+ok 14 - connection-lost cannot be silently forgotten; terminal remote reconciliation allows deletion
+  ---
+  duration_ms: 83.497298
+  type: 'test'
+  ...
+# Subtest: unconfirmed completed result is saved to Gallery before history removal
+ok 15 - unconfirmed completed result is saved to Gallery before history removal
+  ---
+  duration_ms: 137.123453
+  type: 'test'
+  ...
+# Subtest: retention persists at 50 terminal jobs and keeps every nonterminal, ordered by timestamps
+ok 16 - retention persists at 50 terminal jobs and keeps every nonterminal, ordered by timestamps
+  ---
+  duration_ms: 40.768651
+  type: 'test'
+  ...
+# Subtest: serialized cleanup and concurrent completion do not lose unrelated changes; failure does not delete
+ok 17 - serialized cleanup and concurrent completion do not lose unrelated changes; failure does not delete
+  ---
+  duration_ms: 65.900093
+  type: 'test'
+  ...
+# Subtest: website and engine have independent versions and compatibility metadata
+ok 18 - website and engine have independent versions and compatibility metadata
+  ---
+  duration_ms: 51.864657
+  type: 'test'
+  ...
+# Subtest: deletion is atomic when a selected job becomes active before cleanup commits
+ok 19 - deletion is atomic when a selected job becomes active before cleanup commits
+  ---
+  duration_ms: 27.387951
+  type: 'test'
+  ...
+# Subtest: actual HTTPS carries Bearer, refuses redirects, classifies 401/malformed response/timeout
+ok 20 - actual HTTPS carries Bearer, refuses redirects, classifies 401/malformed response/timeout
+  ---
+  duration_ms: 376.056102
+  type: 'test'
+  ...
+# Subtest: full long positive/negative and exact multi-LoRA settings survive Termux validation
+ok 21 - full long positive/negative and exact multi-LoRA settings survive Termux validation
+  ---
+  duration_ms: 1.409421
+  type: 'test'
+  ...
+# Subtest: both providers: separate endpoints, explicit reconnect, no secrets on disk/export/status, persistent selection
+ok 22 - both providers: separate endpoints, explicit reconnect, no secrets on disk/export/status, persistent selection
+  ---
+  duration_ms: 291.871395
+  type: 'test'
+  ...
+# Subtest: late health from a disconnected provider cannot revive a session
+ok 23 - late health from a disconnected provider cannot revive a session
+  ---
+  duration_ms: 51.482666
+  type: 'test'
+  ...
+# Subtest: CloudCompute public HTTPS policy keeps DNS pinning and rejects private hosts / credentials / redirects
+ok 24 - CloudCompute public HTTPS policy keeps DNS pinning and rejects private hosts / credentials / redirects
+  ---
+  duration_ms: 1.780036
+  type: 'test'
+  ...
+# Subtest: API metadata is independent; legacy health and missing hardware supported without fabricated values
+ok 25 - API metadata is independent; legacy health and missing hardware supported without fabricated values
+  ---
+  duration_ms: 0.218455
+  type: 'test'
+  ...
+# Subtest: late refresh cannot adopt a different provider session
+ok 26 - late refresh cannot adopt a different provider session
+  ---
+  duration_ms: 81.914854
+  type: 'test'
+  ...
+# Subtest: history cancellation never forwards an old-provider job to the new engine
+ok 27 - history cancellation never forwards an old-provider job to the new engine
+  ---
+  duration_ms: 113.788746
+  type: 'test'
+  ...
+# Subtest: legacy versions and explicit capabilities are evaluated conservatively
+ok 28 - legacy versions and explicit capabilities are evaluated conservatively
+  ---
+  duration_ms: 1.858911
+  type: 'test'
+  ...
+# Subtest: health/status preserve capabilities, regional requests reach upstream only when supported, plain Text2Img unchanged
+ok 29 - health/status preserve capabilities, regional requests reach upstream only when supported, plain Text2Img unchanged
+  ---
+  duration_ms: 247.914175
+  type: 'test'
+  ...
+# Subtest: queue: three intentional submissions, idempotent retry, recovery and targeted cancel
+ok 30 - queue: three intentional submissions, idempotent retry, recovery and targeted cancel
+  ---
+  duration_ms: 432.179569
+  type: 'test'
+  ...
+# Subtest: regional contract transports masks and rejects duplicate global character adapter and T4 over-limit
+ok 31 - regional contract transports masks and rejects duplicate global character adapter and T4 over-limit
+  ---
+  duration_ms: 1.366705
+  type: 'test'
+  ...
+# Subtest: ACK only after durable gallery, retries without losing result or resubmitting
+ok 32 - ACK only after durable gallery, retries without losing result or resubmitting
+  ---
+  duration_ms: 225.929707
+  type: 'test'
+  ...
+# state.json=21234 B, .bak=21195 B, /api/history=10270 B, /api/gallery=10883 B (v1.6.0 audit: 58.8 MB / 58.8 MB / 33.6 MB / 25.2 MB)
+# Subtest: AUD-002: 12 ControlNet jobs with ~2 MB maps do not grow state/history/gallery with base64 copies
+ok 33 - AUD-002: 12 ControlNet jobs with ~2 MB maps do not grow state/history/gallery with base64 copies
+  ---
+  duration_ms: 1427.537059
+  type: 'test'
+  ...
+# Subtest: AUD-002: idempotent retry with the same request ID is not a conflict after compact storage
+ok 34 - AUD-002: idempotent retry with the same request ID is not a conflict after compact storage
+  ---
+  duration_ms: 187.131237
+  type: 'test'
+  ...
+# Subtest: AUD-002: existing v1.6.0 state.json migrates without data loss; original kept as backup
+ok 35 - AUD-002: existing v1.6.0 state.json migrates without data loss; original kept as backup
+  ---
+  duration_ms: 677.901883
+  type: 'test'
+  ...
+# Subtest: storage: an unchanged change() does not rewrite state.json or .bak
+ok 36 - storage: an unchanged change() does not rewrite state.json or .bak
+  ---
+  duration_ms: 39.289931
+  type: 'test'
+  ...
+# Subtest: AUD-006: PENDING preprocessing is passed through with a sub-100 s hop and resumed with the identical body
+ok 37 - AUD-006: PENDING preprocessing is passed through with a sub-100 s hop and resumed with the identical body
+  ---
+  duration_ms: 66.872754
+  type: 'test'
+  ...
+# Subtest: AUD-009: engine rejection reasons for /generate reach the user, sanitised
+ok 38 - AUD-009: engine rejection reasons for /generate reach the user, sanitised
+  ---
+  duration_ms: 5.81677
+  type: 'test'
+  ...
+# Subtest: preprocess validation: pose preprocessor only for OpenPose, classic is the default
+ok 39 - preprocess validation: pose preprocessor only for OpenPose, classic is the default
+  ---
+  duration_ms: 1.621849
+  type: 'test'
+  ...
+# Subtest: generation validation and history keep the preprocessor, never the map
+ok 40 - generation validation and history keep the preprocessor, never the map
+  ---
+  duration_ms: 0.703553
+  type: 'test'
+  ...
+# Subtest: only an engine declaring SDPose is compatible
+ok 41 - only an engine declaring SDPose is compatible
+  ---
+  duration_ms: 0.279978
+  type: 'test'
+  ...
+# Subtest: route: SDPose request reaches the engine, the echo is checked, failures are explained, Canny/Depth unchanged
+ok 42 - route: SDPose request reaches the engine, the echo is checked, failures are explained, Canny/Depth unchanged
+  ---
+  duration_ms: 179.730626
+  type: 'test'
+  ...
+# Subtest: validation: Img2Img fields are required and bounded; Text2Img requests stay byte-identical
+ok 43 - validation: Img2Img fields are required and bounded; Text2Img requests stay byte-identical
+  ---
+  duration_ms: 3.01098
+  type: 'test'
+  ...
+# Subtest: only an engine 1.7.0 declaring Img2Img is compatible
+ok 44 - only an engine 1.7.0 declaring Img2Img is compatible
+  ---
+  duration_ms: 0.330911
+  type: 'test'
+  ...
+# Subtest: history and gallery keep a digest of the source, never the base64 image
+ok 45 - history and gallery keep a digest of the source, never the base64 image
+  ---
+  duration_ms: 0.631639
+  type: 'test'
+  ...
+# Subtest: route: Img2Img reaches the engine with all parameters, result lands in the gallery and is acknowledged
+ok 46 - route: Img2Img reaches the engine with all parameters, result lands in the gallery and is acknowledged
+  ---
+  duration_ms: 209.869945
+  type: 'test'
+  ...
+# Subtest: proxy allowlist contains exactly the six sync routes
+ok 47 - proxy allowlist contains exactly the six sync routes
+  ---
+  duration_ms: 2.130126
+  type: 'test'
+  ...
+# Subtest: status projection drops unknown fields, redacts secrets and rejects malformed data
+ok 48 - status projection drops unknown fields, redacts secrets and rejects malformed data
+  ---
+  duration_ms: 2.746611
+  type: 'test'
+  ...
+# Subtest: connect body validation
+ok 49 - connect body validation
+  ---
+  duration_ms: 1.997025
+  type: 'test'
+  ...
+# Subtest: local API: CloudCompute only, method checks, exact upstream mapping, no token persistence or echo
+ok 50 - local API: CloudCompute only, method checks, exact upstream mapping, no token persistence or echo
+  ---
+  duration_ms: 168.189646
+  type: 'test'
+  ...
+# Subtest: local API passes engine sync errors through with their code
+ok 51 - local API passes engine sync errors through with their code
+  ---
+  duration_ms: 51.127024
+  type: 'test'
+  ...
+# Subtest: upstream maps sync HTTP errors: 404 = no sync service, engine code kept, secrets removed
+ok 52 - upstream maps sync HTTP errors: 404 = no sync service, engine code kept, secrets removed
+  ---
+  duration_ms: 6.825138
+  type: 'test'
+  ...
+# Subtest: inventory: one malformed entry is reported, not fatal; reasons and base-model hints; no metadata kept
+ok 53 - inventory: one malformed entry is reported, not fatal; reasons and base-model hints; no metadata kept
+  ---
+  duration_ms: 9.438234
+  type: 'test'
+  ...
+# Subtest: Amber_Nova / Vesper_Nova: a forced refresh brings both; the incompatible one keeps its reason; page reload path too
+ok 54 - Amber_Nova / Vesper_Nova: a forced refresh brings both; the incompatible one keeps its reason; page reload path too
+  ---
+  duration_ms: 96.379905
+  type: 'test'
+  ...
+# Subtest: a forced model refresh is never swallowed by a plain refresh already in flight
+ok 55 - a forced model refresh is never swallowed by a plain refresh already in flight
+  ---
+  duration_ms: 117.109682
+  type: 'test'
+  ...
+# Subtest: failed model refresh keeps the GPU usable and marks the old list stale with the reason
+ok 56 - failed model refresh keeps the GPU usable and marks the old list stale with the reason
+  ---
+  duration_ms: 43.518801
+  type: 'test'
+  ...
+# Subtest: CloudCompute /inventory revision: new files appear on the next plain status without pressing anything
+ok 57 - CloudCompute /inventory revision: new files appear on the next plain status without pressing anything
+  ---
+  duration_ms: 90.710428
+  type: 'test'
+  ...
+# Subtest: older CloudCompute servers without /inventory fall back to /models once
+ok 58 - older CloudCompute servers without /inventory fall back to /models once
+  ---
+  duration_ms: 78.036795
+  type: 'test'
+  ...
+# Subtest: remember: token only in secrets.json (0600), never in state.json or any status; forget removes it
+ok 59 - remember: token only in secrets.json (0600), never in state.json or any status; forget removes it
+  ---
+  duration_ms: 73.345985
+  type: 'test'
+  ...
+# Subtest: one-click auto-connect waits while the GPU boots (530 / DNS), then connects; phases are reported
+ok 60 - one-click auto-connect waits while the GPU boots (530 / DNS), then connects; phases are reported
+  ---
+  duration_ms: 67.829098
+  type: 'test'
+  ...
+# Subtest: auto-connect stops at once when waiting cannot help (token rotated) and explains it
+ok 61 - auto-connect stops at once when waiting cannot help (token rotated) and explains it
+  ---
+  duration_ms: 42.307128
+  type: 'test'
+  ...
+# Subtest: disconnect cancels a waiting auto-connect
+ok 62 - disconnect cancels a waiting auto-connect
+  ---
+  duration_ms: 117.082124
+  type: 'test'
+  ...
+# Subtest: address discovery: a signed new Quick Tunnel address is followed; forged, stale or foreign ones are ignored
+ok 63 - address discovery: a signed new Quick Tunnel address is followed; forged, stale or foreign ones are ignored
+  ---
+  duration_ms: 88.033635
+  type: 'test'
+  ...
+# Subtest: Cloudflare 530 (tunnel without a connector) is reported as TUNNEL_OFFLINE
+ok 64 - Cloudflare 530 (tunnel without a connector) is reported as TUNNEL_OFFLINE
+  ---
+  duration_ms: 1.524661
+  type: 'test'
+  ...
+# Subtest: component diagnostics name the failing part and never claim unreached parts are READY
+ok 65 - component diagnostics name the failing part and never claim unreached parts are READY
+  ---
+  duration_ms: 0.375964
+  type: 'test'
+  ...
+# Subtest: Google OAuth helpers: Desktop client format, PKCE S256, single-use state, token exchange errors
+ok 66 - Google OAuth helpers: Desktop client format, PKCE S256, single-use state, token exchange errors
+  ---
+  duration_ms: 1.646289
+  type: 'test'
+  ...
+# Subtest: browser Google Drive authorization: offline account → folder → explicit GPU binding (mock providers)
+ok 67 - browser Google Drive authorization: offline account → folder → explicit GPU binding (mock providers)
+  ---
+  duration_ms: 71.067159
+  type: 'test'
+  ...
+# Subtest: selective Drive sync: the selection is validated and forwarded; an empty body still syncs everything
+ok 68 - selective Drive sync: the selection is validated and forwarded; an empty body still syncs everything
+  ---
+  duration_ms: 0.749661
+  type: 'test'
+  ...
+# Subtest: CC validates live response before saving, uses exactly one API prefix, and persists secrets privately
+ok 69 - CC validates live response before saving, uses exactly one API prefix, and persists secrets privately
+  ---
+  duration_ms: 26.944055
+  type: 'test'
+  ...
+# Subtest: CC methods, request validation and uncertain responses never fabricate status
+ok 70 - CC methods, request validation and uncertain responses never fabricate status
+  ---
+  duration_ms: 9.180645
+  type: 'test'
+  ...
+# Subtest: CC HTTP routes enforce session, explicit create/delete confirmation and never echo credentials
+ok 71 - CC HTTP routes enforce session, explicit create/delete confirmation and never echo credentials
+  ---
+  duration_ms: 93.271258
+  type: 'test'
+  ...
+# Subtest: Drive refresh is single-flight, retained across restart, never exposed by view
+ok 72 - Drive refresh is single-flight, retained across restart, never exposed by view
+  ---
+  duration_ms: 41.79496
+  type: 'test'
+  ...
+# Subtest: Drive browse pagination, server-verified folder selection and binding use chosen folder
+ok 73 - Drive browse pagination, server-verified folder selection and binding use chosen folder
+  ---
+  duration_ms: 12.035973
+  type: 'test'
+  ...
+# Subtest: Drive revoked token gives explicit error; logout during refresh cannot restore credentials
+ok 74 - Drive revoked token gives explicit error; logout during refresh cannot restore credentials
+  ---
+  duration_ms: 17.163755
+  type: 'test'
+  ...
+# Subtest: OAuth cancellation, replay, no-GPU success, local logout and callback race
+ok 75 - OAuth cancellation, replay, no-GPU success, local logout and callback race
+  ---
+  duration_ms: 70.275495
+  type: 'test'
+  ...
+# Subtest: Inventory probe errors mark cached list stale and recovered probe refreshes it
+ok 76 - Inventory probe errors mark cached list stale and recovered probe refreshes it
+  ---
+  duration_ms: 71.006298
+  type: 'test'
+  ...
+# Subtest: offers: verified price units only, VRAM/CUDA/disk compatibility, sorted, unknown schema refused
+ok 77 - offers: verified price units only, VRAM/CUDA/disk compatibility, sorted, unknown schema refused
+  ---
+  duration_ms: 4.731307
+  type: 'test'
+  ...
+# Subtest: create body: documented fields only, strict offer, exact price ceiling, onstart with token, disk bounds
+ok 78 - create body: documented fields only, strict offer, exact price ceiling, onstart with token, disk bounds
+  ---
+  duration_ms: 1.461742
+  type: 'test'
+  ...
+# Subtest: onstart script really provisions: inside the image and on a Docker host (fake docker), token only in 0600 files
+ok 79 - onstart script really provisions: inside the image and on a Docker host (fake docker), token only in 0600 files
+  ---
+  duration_ms: 67.429011
+  type: 'test'
+  ...
+# Subtest: image check: anonymous ghcr pull = accessible; private / missing image refused; other registries not claimed
+ok 80 - image check: anonymous ghcr pull = accessible; private / missing image refused; other registries not claimed
+  ---
+  duration_ms: 1.22527
+  type: 'test'
+  ...
+# Subtest: rendezvous stages: signed, fresh, whitelisted, byte-compatible with cloudcompute/rendezvous.py
+ok 81 - rendezvous stages: signed, fresh, whitelisted, byte-compatible with cloudcompute/rendezvous.py
+  ---
+  duration_ms: 70.41885
+  type: 'test'
+  ...
+# Subtest: deploy refuses without confirmation, with a changed price, an incompatible offer or an unpublished image — nothing is created
+ok 82 - deploy refuses without confirmation, with a changed price, an incompatible offer or an unpublished image — nothing is created
+  ---
+  duration_ms: 103.576016
+  type: 'test'
+  ...
+# Subtest: deploy → signed stages → automatic connection → GPU_READY → Drive bind, check, only missing models downloaded
+ok 83 - deploy → signed stages → automatic connection → GPU_READY → Drive bind, check, only missing models downloaded
+  ---
+  duration_ms: 174.227416
+  type: 'test'
+  ...
+# Subtest: Drive not connected: GPU still becomes ready, models step is skipped with a clear message, no downloads
+ok 84 - Drive not connected: GPU still becomes ready, models step is skipped with a clear message, no downloads
+  ---
+  duration_ms: 67.528205
+  type: 'test'
+  ...
+# Subtest: GPU check failure and stopped instance are reported from observed signals; failed creation is never retried
+ok 85 - GPU check failure and stopped instance are reported from observed signals; failed creation is never retried
+  ---
+  duration_ms: 94.176999
+  type: 'test'
+  ...
+# Subtest: existing instance adoption returns the one-time command; forgetting never deletes the instance
+ok 86 - existing instance adoption returns the one-time command; forgetting never deletes the instance
+  ---
+  duration_ms: 33.695157
+  type: 'test'
+  ...
+# Subtest: watcher timeout is explicit and mentions continued billing; restart resumes watching
+ok 87 - watcher timeout is explicit and mentions continued billing; restart resumes watching
+  ---
+  duration_ms: 16.894987
+  type: 'test'
+  ...
+1..87
+# tests 87
+# suites 0
+# pass 87
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3853.168475

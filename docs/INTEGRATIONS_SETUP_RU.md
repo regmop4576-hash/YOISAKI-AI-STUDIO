@@ -71,6 +71,8 @@ GPU Start/Stop/Restart в опубликованной спецификации 
 
 ## Готовый Docker-образ и повторный запуск
 
+> **1.7.5:** образ опубликован (`ghcr.io/regmop4576-hash/yoisaki-ai-studio/engine:1.7.5`), а создание, запуск и подключение выполняются кнопками на сайте — см. `docs/CLOUDCOMPUTE_ZERO_TERMINAL_RU.md`. Текст ниже описывает ручной путь 1.7.4 и сохранён для справки.
+
 Репозиторий содержит `.github/workflows/engine-image.yml`. После публикации исходников в своём GitHub-репозитории запустите вручную Actions → Build prepared YOISAKI engine. Workflow собирает имеющийся Dockerfile и публикует `ghcr.io/<owner>/<repo>/engine:1.7.4`. Выдайте стандартному GITHUB_TOKEN право Packages: write; для скачивания без авторизации сделайте пакет публичным. Workflow здесь не запускался; опубликованного образа пока нет.
 
 На уже настроенном Docker-хосте:
