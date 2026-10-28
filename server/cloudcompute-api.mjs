@@ -14,7 +14,7 @@ export const PROVIDER_STATUS_FIELDS=['status','actual_status','intended_status',
 export function instanceView(v){
  if(!v||typeof v!=='object'||!['string','number'].includes(typeof v.id))fail('CC_RESPONSE_SCHEMA','CloudCompute вернул инстанс без ID. Формат успешных ответов не описан в OpenAPI; требуется обновление адаптера.',502);
  const provider={};for(const k of PROVIDER_STATUS_FIELDS){const x=v[k]&&typeof v[k]==='object'?v[k].message:v[k];const t=safe(x,k.includes('msg')||k.includes('message')||k.startsWith('error')?300:60);if(t)provider[k]=t}
- return {id:String(v.id),name:safe(v.name||v.label)||String(v.id),status:safe(v.status||v.actual_status||v.state)||'UNKNOWN',gpu:safe(v.gpu_name||v.gpu?.name),label:safe(v.label),provider};
+ return {id:String(v.id),name:safe(v.name||v.label)||String(v.id),status:safe(v.status??v.actual_status??v.state)||'UNKNOWN',gpu:safe(v.gpu_name||v.gpu?.name),label:safe(v.label),provider,raw_status:typeof v.status==='number'?v.status:safe(v.status)};
 }
 export function instanceList(x){const list=Array.isArray(x)?x:Array.isArray(x?.data)?x.data:Array.isArray(x?.instances)?x.instances:x?.data?.instances;
  if(!Array.isArray(list))fail('CC_RESPONSE_SCHEMA','CloudCompute вернул неизвестный формат списка инстансов. Список не считается обновлённым.',502);
@@ -62,5 +62,6 @@ export class CloudComputeAPI{
  deploy(body){return this.request('POST','/instances',body,undefined,{timeout:60000})}
  // v1.7.7: documented POST /instances/{id}/terminal-token, used only as a manual availability probe of the provider
  // web terminal. The returned token is discarded here and never stored, logged or shown.
- async terminalProbe(value){const json=await this.request('POST','/instances/'+id(value)+'/terminal-token',{});return {available:!!json&&typeof json==='object'}}
+ terminalSession(value){return this.request('POST','/instances/'+id(value)+'/terminal-token',{})}
+ async terminalProbe(value){const json=await this.terminalSession(value);return {available:typeof json?.ws_url==='string'&&json.ws_url.startsWith('wss://')}}
 }

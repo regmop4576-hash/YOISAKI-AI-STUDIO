@@ -17,7 +17,7 @@ export function readiness({cloudConfigured,deployment,connection,state,info,last
   // v1.7.7: "instance running" (CloudCompute) and "engine ready" (health check passed) are separate facts.
   cloudcompute:{api:cloudConfigured?'CONFIGURED':'NOT_CONFIGURED',instance:deployment?{id:deployment.instance_id,name:deployment.name,status:deployment.instance_status||'UNKNOWN',
    running:deployment.provider?deployment.provider.phase==='RUNNING':RUNNING_INSTANCE.test(deployment.instance_status||''),provider_phase:deployment.provider?.phase||'UNKNOWN',
-   engine_ready:deployment.stage==='GPU_READY',stage:deployment.stage,stage_message:deployment.stage_message,error:deployment.error,failure:deployment.failure||null}:null},
+   engine_ready:connected&&healthy,stage:deployment.stage,stage_message:deployment.stage_message,error:deployment.error,failure:deployment.failure||null}:null},
   engine:{state:engine,provider:connection?.provider||null,version:info?.engine_version||null,compatibility,error:connection||state==='ERROR'?lastError||'':''},
   cuda,gpu:{name:connection&&info?.gpu_name||null,vram_total_mb:connection?info?.vram_total_mb??null:null,vram_available_mb:connection?info?.vram_available_mb??null:null},
   storage:sync?.disk?{...sync.disk,source:sync.source}:null,

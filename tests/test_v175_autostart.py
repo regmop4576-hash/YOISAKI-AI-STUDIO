@@ -228,7 +228,7 @@ def test_image_policies_175():
     code = re.sub(r'#.*', '', docker)
     assert '--require-hashes --no-deps -r /opt/yoisaki/cloudcompute/requirements-lock.txt' in docker and 'pip check' in docker and 'check_lock.py' in docker
     assert 'CMD ["/opt/yoisaki/cloudcompute/autostart-image.sh"]' in docker and 'chown -R 1000:1000 /data' in docker
-    assert 'org.opencontainers.image.version="1.7.7"' in docker and ':latest' not in code
+    assert 'org.opencontainers.image.version="1.7.7.1"' in docker and ':latest' not in code
     # 1.7.7: the container starts as root (provider bootstraps need it); the engine drops to uid 1000 in autostart
     assert not re.search(r'^\s*USER\s', code, re.M)
     autostart = AUTOSTART.read_text()
@@ -240,7 +240,7 @@ def test_image_policies_175():
     assert '!config/' not in ignore and '!server/' not in ignore
     workflow = (APP / '.github/workflows/engine-image.yml').read_text()
     assert ':latest' not in re.sub(r'#.*', '', workflow) and 'steps.meta.outputs.version' in workflow and 'Refuse to overwrite' in workflow
-    assert (APP / 'cloudcompute/VERSION').read_text().strip() == '1.7.7'
+    assert (APP / 'cloudcompute/VERSION').read_text().strip() == '1.7.7.1'
     assert os.access(AUTOSTART, os.X_OK) or AUTOSTART.read_text().startswith('#!/usr/bin/env bash')
 
 

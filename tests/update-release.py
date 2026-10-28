@@ -34,8 +34,8 @@ try:
  print(f'PASS baseline old server {old_version} on port 3000')
  run(['bash',str(new/'update.sh'),str(archive),str(app)])
  with urllib.request.urlopen(request) as response:
-  assert json.load(response)['version']=='1.7.7';cookie=response.headers['Set-Cookie'].split(';')[0]
- with urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:3000/api/version',headers={'X-Yoisaki-Local':'1','Cookie':cookie})) as response:assert json.load(response)['studio_version']=='1.7.7'
+  assert json.load(response)['version']=='1.7.7.1';cookie=response.headers['Set-Cookie'].split(';')[0]
+ with urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:3000/api/version',headers={'X-Yoisaki-Local':'1','Cookie':cookie})) as response:assert json.load(response)['studio_version']=='1.7.7.1'
  actual=json.loads((data/'state.json').read_text());assert actual==state
  assert json.loads((app/'config/google-desktop-client.json').read_text())==public_client
  assert json.loads((data/'secrets.json').read_text())==legacy_secrets

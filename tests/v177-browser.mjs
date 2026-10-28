@@ -8,11 +8,11 @@ import os from 'node:os';
 import path from 'node:path';
 import {createLocalApp} from '../server/app.mjs';
 const dir=await fs.mkdtemp(path.join(os.tmpdir(),'yoisaki-browser-177-'));const shots=process.env.YOISAKI_SHOTS||'/tmp/yoisaki-ui-177';await fs.mkdir(shots,{recursive:true});
-const KEY='cc-browser_test_key_177';const posts=[];let gpu={url:null,stages:[]};let detail={status:'loading'};
+const KEY='cc-browser_test_key_177';const posts=[];let gpu={url:null,stages:[]};let detail={status:'loading'};let initialized=0;
 const offers=[{ask_id:601,gpu_name:'RTX 4090',num_gpus:1,gpu_ram:24576,price_hour:2500,disk_space:300,cuda_max_good:12.9,reliability2:0.99,geolocation:'RU'},
  {ask_id:602,gpu_name:'RTX 3090',num_gpus:1,gpu_ram:24576,price_hour:2200,disk_space:200,cuda_max_good:12.8,reliability2:0.97},
  {ask_id:603,gpu_name:'Tesla T4',num_gpus:1,gpu_ram:15360,price_hour:900,disk_space:100,cuda_max_good:12.8}];
-const app=await createLocalApp({dataDir:dir,distDir:path.resolve('dist'),deployInterval:200,monitorMinGap:0,
+const app=await createLocalApp({dataDir:dir,distDir:path.resolve('dist'),deployInterval:200,monitorMinGap:0,terminalInitialize:async a=>{assert.equal(a.instanceId,'10758');initialized++;return {method:'terminal-api',completed_at:Date.now(),supervisor_confirmed:true}},
  providerRequest:async(url,opts={})=>{
   if(url.startsWith('https://ghcr.io/token'))return {status:200,json:{token:'anon'}};if(url.startsWith('https://ghcr.io/v2/'))return {status:200,json:{}};
   const route=url.replace('https://app.cloudcompute.ru/api/v1','');
@@ -65,7 +65,11 @@ try{
  detail={status:'running'};await page.getByText(/инстанс работает\. YOISAKI ENGINE ещё не отозвался/).waitFor();
  const tiles=await page.getByRole('status',{name:'Ход инициализации'}).innerText();assert.match(tiles,/ИНСТАНС CLOUDCOMPUTE\s+работает/);assert.match(tiles,/YOISAKI ENGINE\s+не готов/);
  await page.getByRole('button',{name:'Проверить веб-терминал'}).click();await page.getByText(/Terminal port has not yet been published by the host\./).waitFor();
- await page.getByText(/профиль worker может не включать терминал/).waitFor();
+ await page.getByText(/worker включает SSH\/ttyd/).waitFor();
+ detail={status:1};await page.getByText('состояние не распознано',{exact:true}).waitFor();
+ await Promise.all([page.waitForResponse(r=>r.url().endsWith('/api/cloudcompute/deploy/initialize')),page.getByRole('button',{name:'4. Инициализировать движок',exact:true}).click()]);assert.equal(initialized,1);
+ assert.match(await page.getByRole('status',{name:'Ход инициализации'}).innerText(),/YOISAKI ENGINE\s+не готов/);
+ detail={status:'running'};
  await overflow('running');await page.screenshot({path:shots+'/3-instance-running-engine-not-ready.png',fullPage:true});
  // Docker failure reported by the provider is attributed to Docker, not to the engine
  detail={status:'running',status_msg:'Error response from daemon: No such container: c-10758'};await page.getByText(/Где сбой: Docker на хосте CloudCompute/).waitFor();

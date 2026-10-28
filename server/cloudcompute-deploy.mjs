@@ -10,9 +10,8 @@ import {gpuAssessment} from './gpu-catalog.mjs';
 // currency, onstart). The OpenAPI file describes no success response schemas, so every response is parsed
 // defensively: an unknown shape is an explicit error, never a guess presented as fact.
 
-// v1.7.7: published by .github/workflows/engine-image.yml (run 40633281336), anonymous pull verified (HTTP 200),
-// digest sha256:c10d8d6dcd179020850cece5fe937a25032e78804d99277a10a1d426466d1fcd, linux/amd64. Engine inside: 1.7.0.
-export const ENGINE_IMAGE='ghcr.io/regmop4576-hash/yoisaki-ai-studio/engine:1.7.7';
+// Target release; publication evidence belongs in the 1.7.7.1 test report. Engine protocol remains 1.7.0.
+export const ENGINE_IMAGE='ghcr.io/regmop4576-hash/yoisaki-ai-studio/engine:1.7.7.1';
 // Known deployment images: the engine protocol stays 1.7.0 in all of them (engine/ is unchanged).
 export const IMAGE_NOTES={
  'ghcr.io/regmop4576-hash/yoisaki-ai-studio/engine:1.7.5':'Образ 1.7.5 запускается от uid 1000 и отклоняет RTX 4090/Ada (sm_89) при проверке GPU; исправлено в 1.7.7.',
@@ -29,15 +28,11 @@ export const REQUIREMENTS={min_vram_mb:12288,recommended_vram_mb:16384,min_cuda:
 export const DEPLOY_STAGES=['CREATING','GPU_CREATED','PROVIDER_BOOTSTRAPPING','IMAGE_PREPARING','INSTANCE_RUNNING','DOCKER_IMAGE_READY','ENGINE_STARTING','ENGINE_HEALTH_CHECK','GPU_READY'];
 export const LEGACY_STAGES={INSTANCE_INITIALIZING:'PROVIDER_BOOTSTRAPPING'};
 export const END_STAGES=['FAILED','TIMEOUT','INSTANCE_GONE'];
-// v1.7.7 documented bootstrap profiles of POST /instances (OpenAPI enum). 'worker' is the default for the YOISAKI image:
-// the image brings its own supervisor (CMD) and needs no SSH/Jupyter; a small provider bootstrap also leaves the most
-// room in the combined bootstrap + onstart limit. 'provider_default' sends no field (the 1.7.5/1.7.6 behaviour).
-// Not verified on a real instance yet: see YOISAKI_DOCKER_AUDIT.md.
+// Official docs (2026-10-28): worker installs minimal SSH/ttyd then image CMD; onstart is supported
+// for all profiles (none: only custom onstart). worker stays the explicit default; terminal API is fallback.
 export const BOOTSTRAP_PROFILES=['worker','access_only','full','none','provider_default'];
 export const DEFAULT_BOOTSTRAP_PROFILE='worker';
-// The OpenAPI snapshot limits `onstart` to 50 000 characters; the current documentation (as reported for this task,
-// not reachable from the build environment) limits the COMBINED provider bootstrap + custom script to 16 384 bytes.
-// The stricter rule is enforced in bytes, and the YOISAKI script keeps half of it for the provider's bootstrap.
+// Official combined bootstrap + onstart limit: 16,384 UTF-8 bytes. Reserve half for provider bootstrap.
 export const ONSTART_LIMIT_BYTES=16384,ONSTART_BUDGET_BYTES=8192;
 const TOKEN=/^[a-f0-9]{64}$/,INSTANCE_ID=/^[A-Za-z0-9_-]{1,100}$/;
 
@@ -109,59 +104,37 @@ const quote=v=>"'"+String(v).replace(/'/g,"'\\''")+"'";
 
 // The CloudCompute "onstart" script. It contains this instance's engine token: the provider stores it with the instance
 // like any other instance setting; this app never logs it.
-// v1.7.7:
-//  - everything runs in a subshell and nothing calls `exit` at top level, so a provider that concatenates its own
-//    bootstrap with this script (one combined script) can neither be ended early nor inherit shell options from it;
-//  - the automatic (create) script only provisions the YOISAKI image. It never starts Docker itself: nested Docker is
-//    not documented by CloudCompute, and the 1.7.5/1.7.6 "Docker host" branch could only run in a container that is
-//    not the requested image. The manual command for an existing instance (adopt) keeps that branch, but only after
-//    `docker info` proves a reachable daemon;
-//  - the size is checked in bytes (ONSTART_BUDGET_BYTES of the ONSTART_LIMIT_BYTES combined limit).
-export function onstartScript({image,token,docker=false}){
+// 1.7.7.1: execute in the current provider container, propagate failure, never start nested Docker.
+// Shell options and exit are confined to this subshell; successful provisioning returns to provider bootstrap.
+export function onstartScript({image,token}){
  validateImage(image);validateToken(token);
- const dockerBranch=docker?`
-elif command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
-  note "Docker daemon reachable: starting $YOISAKI_IMAGE_REF in it."
-  D=\${YOISAKI_HOST_DATA:-/workspace/yoisaki-data}
-  [ -d "$(dirname "$D")" ] || D=/var/lib/yoisaki-data
-  mkdir -p "$D/config/engine" "$D/runtime/state" && chmod 700 "$D/config/engine"
-  printf '%s\\n' "$YOISAKI_PROVISION_TOKEN" >"$D/config/engine/engine.token" && chmod 600 "$D/config/engine/engine.token"
-  printf '%s\\n' '{"version": 1, "stable_link": true, "rendezvous": "ntfy"}' >"$D/config/engine/autostart.json"
-  touch "$D/runtime/state/autostart.restart"
-  unset YOISAKI_PROVISION_TOKEN
-  find "$D" -xdev \\( ! -uid 1000 -o ! -gid 1000 \\) -exec chown -h 1000:1000 {} + 2>/dev/null
-  if docker container inspect yoisaki-engine >/dev/null 2>&1; then
-    docker start yoisaki-engine >>"$LOG" 2>&1 || note 'docker start yoisaki-engine failed.'
-  else
-    for attempt in 1 2 3; do docker pull "$YOISAKI_IMAGE_REF" >>"$LOG" 2>&1 && break; note "pull attempt $attempt failed"; sleep 30; done
-    docker run -d --name yoisaki-engine --restart unless-stopped --gpus all --security-opt no-new-privileges:true --cap-drop ALL --cap-add CHOWN --cap-add SETUID --cap-add SETGID --cap-add DAC_OVERRIDE --cap-add FOWNER \\
-      -v "$D:/data" "$YOISAKI_IMAGE_REF" >>"$LOG" 2>&1 || note 'docker run failed.'
-  fi
-elif command -v docker >/dev/null 2>&1; then
-  note 'docker CLI found, but no reachable Docker daemon: nested Docker is not available here. The engine was not started.'`:'';
  return `#!/bin/bash
-# YOISAKI AI STUDIO 1.7.7 · YOISAKI ENGINE initialization for this instance (generated; contains this instance's
-# engine token, do not share). Log: /var/log/yoisaki-onstart.log or /tmp/yoisaki-onstart.log
+# Image: ${image}
+# YOISAKI 1.7.7.1 provisioning. Contains a per-instance engine credential; never share.
 (
+set +x
+set -eu
 umask 077
-YOISAKI_IMAGE_REF=${quote(image)}
+APP=\${YOISAKI_APP_DIR:-/opt/yoisaki}
+if [ ! -x "$APP/cloudcompute/autostart-image.sh" ]; then
+  echo 'YOISAKI_INIT_FAILED: required image files missing in this container.' >&2
+  exit 42
+fi
 YOISAKI_PROVISION_TOKEN=${quote(token)}
 export YOISAKI_PROVISION_TOKEN
-APP=\${YOISAKI_APP_DIR:-/opt/yoisaki}
-LOG=/var/log/yoisaki-onstart.log
-{ touch "$LOG"; } 2>/dev/null || LOG=/tmp/yoisaki-onstart.log
-note() { printf '%s %s\\n' "$(date '+%F %T')" "$*" >>"$LOG" 2>/dev/null; }
-note "onstart: uid $(id -u), requested image $YOISAKI_IMAGE_REF"
-if [ -x "$APP/cloudcompute/autostart-image.sh" ]; then
-  note 'YOISAKI image detected: provisioning the engine.'
-  "$APP/cloudcompute/autostart-image.sh" --provision >>"$LOG" 2>&1 || note "autostart-image.sh --provision failed (code $?)."${dockerBranch}
-else
-  note "YOISAKI ENGINE image not found in this container ($APP/cloudcompute/autostart-image.sh missing): it does not run the requested image. The engine was not started."
+"$APP/cloudcompute/autostart-image.sh" --provision
+unset YOISAKI_PROVISION_TOKEN
+# Read-only diagnostics are optional when initializing the older 1.7.7 image.
+if grep -q '^def startup_diagnostics' "$APP/cloudcompute/launcher.py" 2>/dev/null; then
+  "\${YOISAKI_PYTHON:-$APP/venv/bin/python}" "$APP/cloudcompute/launcher.py" diagnostics || true
 fi
-) </dev/null
-true
+echo 'YOISAKI_INIT_OK: provisioning command completed; GPU readiness is checked separately.'
+)
 `;
 }
+// First line disables interactive history before bash reads the credential-bearing here-document.
+// Leading space also honors HISTCONTROL=ignorespace; caller is the selected instance's browser terminal.
+export const manualCommand=options=>" set +o history; stty -echo\n bash <<'YOISAKI_ONSTART'\n"+onstartScript(options)+"YOISAKI_ONSTART\nyoisaki_rc=$?; stty echo; printf 'YOISAKI initialization exit: %s\\n' \"$yoisaki_rc\"\n";
 export const bytes=text=>Buffer.byteLength(text,'utf8');
 
 export function createBody({offer,disk_gb,name,image,token,max_price_hour_minor,currency,bootstrap_profile=DEFAULT_BOOTSTRAP_PROFILE}){
@@ -212,7 +185,7 @@ export function classifyProvider(view){
  let phase='UNKNOWN';
  if(states.some(v=>RX.GONE.test(v)))phase='GONE';
  else if(states.some(v=>RX.FAILED.test(v)))phase='FAILED';
- else{const primary=states[0]||view?.status||'';for(const k of ['RUNNING','STOPPED','IMAGE','BOOT','CREATE'])if(RX[k].test(primary)){phase=k;break}}
+ else{const primary=states.find(v=>Object.values(RX).some(rx=>rx.test(v)))||view?.status||'';for(const k of ['RUNNING','STOPPED','IMAGE','BOOT','CREATE'])if(RX[k].test(primary)){phase=k;break}}
  const docker=DOCKER_ERROR.test(message);
  return {phase,status:view?.status||'UNKNOWN',message,docker_error:docker,component:!docker?'cloudcompute':GPU_HOST_ERROR.test(message)?'gpu_host':'docker'};
 }
@@ -252,7 +225,7 @@ export function deploymentView(d,{watching=false}={}){
   stage,stage_message:d.stage_message||'',stage_at:d.stage_at||null,error:d.error||'',instance_status:d.instance_status||'',url_found:!!d.url,url_host:d.url?new URL(d.url).hostname:'',
   gpu_stages:Array.isArray(d.gpu_stages)?d.gpu_stages:[],drive:d.drive||null,watching,
   // v1.7.7: the two conditions the user must be able to tell apart, plus the evidence behind them.
-  instance_running:provider?.phase==='RUNNING',engine_ready:stage==='GPU_READY',
+  initialization:d.initialization||null,engine_running:!!d.gpu_stages?.some(s=>s.stage==='SERVER_READY')&&!d.failure,instance_running:provider?.phase==='RUNNING',engine_ready:stage==='GPU_READY',
   provider,failure:d.failure||null,stage_history:Array.isArray(d.stage_history)?d.stage_history:[],bootstrap_profile:d.bootstrap_profile||null,terminal:d.terminal||null,pending:String(d.instance_id).startsWith('pending-')};
 }
 
@@ -267,9 +240,9 @@ const STAGE_TEXT={
  ENGINE_HEALTH_CHECK:'Найден защищённый адрес движка. Проверяю токен и состояние…',
  GPU_READY:'YOISAKI ENGINE прошёл проверку состояния: GPU готов к генерации.',
 };
-const GPU_STAGE_TO_DEPLOY={IMAGE_READY:'DOCKER_IMAGE_READY',ENGINE_STARTING:'ENGINE_STARTING',SERVER_READY:'ENGINE_STARTING',TUNNEL_RETRY:'ENGINE_STARTING'};
+const GPU_STAGE_TO_DEPLOY={PROVISIONED:'DOCKER_IMAGE_READY',SUPERVISOR_STARTED:'DOCKER_IMAGE_READY',IMAGE_READY:'DOCKER_IMAGE_READY',ENGINE_STARTING:'ENGINE_STARTING',SERVER_READY:'ENGINE_STARTING',TUNNEL_RETRY:'ENGINE_STARTING'};
 const PROVIDER_TO_DEPLOY={CREATE:'GPU_CREATED',BOOT:'PROVIDER_BOOTSTRAPPING',IMAGE:'IMAGE_PREPARING',RUNNING:'INSTANCE_RUNNING'};
-const PROGRESS_SIGNALS=['IMAGE_READY','ENGINE_STARTING','SERVER_READY','TUNNEL_RETRY'];
+const PROGRESS_SIGNALS=['PROVISIONED','SUPERVISOR_STARTED','IMAGE_READY','ENGINE_STARTING','SERVER_READY','TUNNEL_RETRY'];
 const rank=s=>DEPLOY_STAGES.indexOf(normalizeStage(s));
 const HISTORY_MAX=40,QUIET_MINUTES=15;
 const timeoutText=(stage,minutes,providerStatus,profile)=>{
@@ -286,7 +259,7 @@ export class DeploymentWatcher{
   Object.assign(this,{secrets,cloud,progress,connect,connectionState,afterReady,sleep,now,interval,timeoutMinutes});this.generation=0;this.running=false;this.connectingTo='';
  }
  get(){return this.secrets.deployment()}
- view(){return deploymentView(this.get(),{watching:this.running})}
+ view(){const d=this.get(),v=deploymentView(d,{watching:this.running});if(v){const c=this.connectionState();v.engine_ready=c.phase==='READY'&&(c.token===d.token||!!d.url&&c.origin===d.url);v.engine_running=v.engine_ready||(c.phase==='BUSY'&&c.token===d.token)||v.engine_running}return v}
  async update(patch){const before=this.get();if(!before)return null;await this.secrets.change(d=>{if(d.deployment&&d.deployment.instance_id===before.instance_id)Object.assign(d.deployment,patch)});return this.get()}
  // v1.7.7: every stage change is recorded with its time and evidence source; the original provider status is kept.
  async setStage(stage,message,extra={},source='app'){
@@ -316,7 +289,7 @@ export class DeploymentWatcher{
   try{
    const raw=await this.cloud.detail(d.instance_id);if(!alive())return;
    const view=instanceView(raw?.data||raw?.instance||raw);pc=classifyProvider(view);
-   extra.instance_status=view.status;extra.provider={status:view.status,fields:view.provider,phase:pc.phase,message:pc.message,checked_at:now};
+   extra.instance_status=view.status;extra.provider={status:view.status,fields:view.provider,raw_status:view.raw_status,phase:pc.phase,message:pc.message,checked_at:now};
   }catch(e){
    if(!alive())return;
    if(e.code==='CC_HTTP_404'){await this.setStage('INSTANCE_GONE','CloudCompute не находит этот инстанс: он удалён. Создайте новый GPU-сервер.',{failure:null,provider:{...(d.provider||{}),phase:'GONE',checked_at:now}},'cloudcompute');return}
@@ -324,7 +297,7 @@ export class DeploymentWatcher{
   }
   let p=null;try{p=await this.progress(d.token)}catch(e){if(!alive())return;errors.push('Сервис обнаружения адреса недоступен: '+publicError(e).error)}
   if(!alive())return;
-  if(p){extra.gpu_stages=p.stages.slice(-8);if(p.url)extra.url=p.url}
+  if(p){extra.gpu_stages=p.stages.slice(-8);if(p.url)extra.url=p.url;if(p.diagnostics)extra.initialization={...(d.initialization||{}),snapshot:p.diagnostics.snapshot,evidence_at:p.diagnostics.ts*1000}}
   extra.error=errors.join(' · ');
   if(pc?.phase==='GONE'){await this.setStage('INSTANCE_GONE',`CloudCompute сообщает: инстанс удалён (${pc.status}).`,{...extra,failure:null},'cloudcompute');return}
   if(pc?.phase==='FAILED'){
@@ -344,7 +317,7 @@ export class DeploymentWatcher{
   else if(last?.stage==='TUNNEL_RETRY')message='Движок работает, защищённый туннель Cloudflare переподключается.';
   if(pc?.phase==='STOPPED'){failure={component:'cloudcompute',code:'INSTANCE_STOPPED',message:'инстанс остановлен ('+pc.status+')',terminal:false,at:now};message='CloudCompute сообщает: инстанс остановлен ('+pc.status+'). Запустите его в панели CloudCompute.'}
   else if(pc?.docker_error&&!failure){failure={component:pc.component,code:pc.component==='gpu_host'?'GPU_HOST_ERROR':'DOCKER_ERROR',message:pc.message,terminal:false,at:now};message=`CloudCompute сообщает об ошибке ${pc.component==='gpu_host'?'драйвера/NVIDIA Container Toolkit':'Docker'} (статус «${pc.status}»): ${pc.message}`}
-  if(d.adopted&&rank(stage)<=rank('INSTANCE_RUNNING')&&!message&&!signals.length)message='Инстанс '+(pc?.phase==='RUNNING'?'работает':'ещё запускается')+'. Выполните показанную команду один раз в веб-терминале инстанса (панель CloudCompute).';
+  if(!message&&!signals.length&&d.initialization?.error)message=d.initialization.error;
   if(stage==='INSTANCE_RUNNING'&&!message){
    const since=(d.stage_history||[]).findLast?.(h=>h.stage==='INSTANCE_RUNNING')?.at||d.stage_at||now;
    if(normalizeStage(d.stage)==='INSTANCE_RUNNING'&&now-since>QUIET_MINUTES*60000)message=`CloudCompute сообщает «${pc?.status||d.instance_status}» уже ${Math.round((now-since)/60000)} мин, но контейнер YOISAKI не отозвался. Инстанс работает, движок — нет. Проверьте веб-терминал/журнал инстанса (/var/log/yoisaki-onstart.log); профиль инициализации: ${d.bootstrap_profile||'по умолчанию провайдера'}.`;
@@ -354,13 +327,13 @@ export class DeploymentWatcher{
    if(rank(stage)<rank('ENGINE_HEALTH_CHECK')){stage='ENGINE_HEALTH_CHECK';source='engine'}
    const c=this.connectionState();
    if(c.phase==='READY'&&(c.origin===url||c.token===d.token)){await this.setStage('GPU_READY',undefined,{...extra,failure:null},'health');if(alive()&&this.afterReady)this.afterReady().catch(()=>{});return}
-   if(this.connectingTo!==url&&!['CONNECTING','AUTHENTICATING','LOADING','STARTING'].includes(c.phase)){
-    this.connectingTo=url;
+   if((this.connectingTo!==url||now-(this.lastConnectAt||0)>30000)&&!['CONNECTING','AUTHENTICATING','LOADING','STARTING'].includes(c.phase)){
+    this.connectingTo=url;this.lastConnectAt=now;
     try{const r=await this.connect(url,d.token,{automatic:true});if(r?.message&&!message)message=r.message}catch(e){failure=failure||{component:'connection',code:e.code||'CONNECT_FAILED',message:publicError(e).error,terminal:false,at:now};message='Подключение: '+publicError(e).error}
    }
   }
   if(!alive())return;
-  if(rank(stage)<rank('ENGINE_HEALTH_CHECK')&&now-Math.max(d.created_at,this.startedAt||0)>this.timeoutMinutes*60000){
+  if(stage!=='GPU_READY'&&now-Math.max(d.created_at,this.startedAt||0)>this.timeoutMinutes*60000){
    await this.setStage('TIMEOUT',timeoutText(stage,this.timeoutMinutes,pc?.status||d.instance_status,d.bootstrap_profile),{...extra,failure:failure||{component:rank(stage)<rank('INSTANCE_RUNNING')?'cloudcompute':rank(stage)===rank('INSTANCE_RUNNING')?'bootstrap':'engine',code:'TIMEOUT',message:'нет сигнала за '+this.timeoutMinutes+' мин',terminal:true,at:now},last_verified_stage:stage},'app');return;
   }
   await this.setStage(stage,message,{...extra,failure},source);

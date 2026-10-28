@@ -26,7 +26,7 @@ jobs:
         run: |
           set -euo pipefail
           version=$(tr -d '[:space:]' < cloudcompute/VERSION)
-          [[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::cloudcompute/VERSION must be x.y.z"; exit 1; }
+          [[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$ ]] || { echo "::error::cloudcompute/VERSION must be x.y.z or x.y.z.hotfix"; exit 1; }
           grep -q "org.opencontainers.image.version=\"$version\"" Dockerfile || { echo "::error::Dockerfile label differs from $version"; exit 1; }
           python3 cloudcompute/check_lock.py .
           echo "version=$version" >> "$GITHUB_OUTPUT"
@@ -59,18 +59,30 @@ jobs:
       - uses: docker/setup-buildx-action@v3
         if: steps.exists.outputs.published == 'false'
 
-      - name: Build and push
+      - name: Build candidate (publish only after CPU runtime checks)
         id: build
         if: steps.exists.outputs.published == 'false'
         uses: docker/build-push-action@v6
         with:
           context: .
-          push: true
+          platforms: linux/amd64
+          push: false
+          load: true
           provenance: false
           sbom: false
           build-args: |
             YOISAKI_REVISION=${{ github.sha }}
           tags: ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}
+
+      - name: CPU runtime startup checks (not GPU validation)
+        if: steps.exists.outputs.published == 'false'
+        shell: bash
+        run: bash tests/docker-startup-1771.sh "${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}"
+
+      - name: Publish validated immutable candidate
+        if: steps.exists.outputs.published == 'false'
+        shell: bash
+        run: docker push "${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}"
 
       - name: Check anonymous pull access (what CloudCompute needs)
         shell: bash
@@ -88,4 +100,4 @@ jobs:
             if [[ $code == 200 ]]; then echo "Anonymous pull: OK (public)."
             else echo "Anonymous pull: HTTP ${code}. Make the package public: GitHub → Your profile → Packages → engine → Package settings → Change visibility → Public."; fi
           } >> "$GITHUB_STEP_SUMMARY"
-          [[ $code == 200 ]] || echo "::warning::The image is not publicly pullable yet (HTTP ${code}). CloudCompute cannot pull private images; change the package visibility to Public."
+          [[ $code == 200 ]] || { echo "::error::Image is not publicly pullable (HTTP ${code})."; exit 1; }

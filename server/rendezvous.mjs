@@ -1,3 +1,4 @@
+import {sanitize} from './cc-diagnostics.mjs';
 import https from 'node:https';
 import {createHmac,timingSafeEqual} from 'node:crypto';
 import {AppError} from './errors.mjs';
@@ -45,7 +46,7 @@ export async function discover(token,{fetchText=get,now}={}){
 }
 // v1.7.5 signed initialization stages of an automatically provisioned instance (cloudcompute/rendezvous.py STAGES).
 // Same freshness and signature rules as addresses; unknown stages and forged records are ignored.
-export const STAGES=['IMAGE_READY','ENGINE_STARTING','SERVER_READY','TUNNEL_RETRY','GPU_CHECK_FAILED','ENGINE_FAILED'];
+export const STAGES=['PROVISIONED', 'SUPERVISOR_STARTED', 'IMAGE_READY','ENGINE_STARTING','SERVER_READY','TUNNEL_RETRY','GPU_CHECK_FAILED','ENGINE_FAILED'];
 export const signStatus=(token,stage,ts)=>mac(token,`yoisaki-rendezvous-status-v1\n${stage}\n${ts}`);
 export function pickStages(body,token,now=Date.now()/1000){
  const out=[];
@@ -63,5 +64,22 @@ export function pickStages(body,token,now=Date.now()/1000){
 export async function progress(token,{fetchText=get,now}={}){
  const body=await fetchText('/'+topicFor(token)+'/json?poll=1&since=24h');
  const latest=pickLatest(body,token,now);
- return {url:latest?.url||null,url_ts:latest?.ts||null,stages:pickStages(body,token,now)};
+ return {url:latest?.url||null,url_ts:latest?.ts||null,stages:pickStages(body,token,now),diagnostics:pickDiagnostics(body,token,now)};
+}
+
+// Signed, credential-free directory/process observations from the new image. Old engines remain compatible.
+export const signDiagnostics=(token,data,ts)=>mac(token,`yoisaki-rendezvous-diagnostics-v1\n${data}\n${ts}`);
+export function pickDiagnostics(body,token,now=Date.now()/1000){
+ let best=null;
+ for(const line of String(body).split('\n')){
+  try{
+   const event=JSON.parse(line);if(event?.event!=='message')continue;const r=JSON.parse(event.message);
+   if(r.v!==1||r.kind!=='diagnostics'||typeof r.data!=='string'||r.data.length>8192||!Number.isInteger(r.ts)||r.ts<now-MAX_AGE||r.ts>now+MAX_SKEW||!/^[a-f0-9]{64}$/.test(r.sig||''))continue;
+   if(!timingSafeEqual(Buffer.from(signDiagnostics(token,r.data,r.ts),'hex'),Buffer.from(r.sig,'hex')))continue;
+   const d=JSON.parse(r.data);
+   const snapshot=sanitize({image_version:d.image_version,checked_at:d.checked_at,directories:d.directories,provisioning_completed:d.provisioning_completed,supervisor_confirmed:d.supervisor_confirmed,launcher_running:d.launcher_running,engine_health:d.engine_health,gpu_name:d.gpu_name,last_startup_error:d.last_startup_error});
+   if(!best||r.ts>=best.ts)best={ts:r.ts,snapshot};
+  }catch{}
+ }
+ return best;
 }

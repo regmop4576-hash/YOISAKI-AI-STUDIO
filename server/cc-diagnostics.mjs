@@ -33,12 +33,12 @@ export function diagnosticsReport({websiteVersion,edition,deployment,image,conne
  const d=deployment||null,info=connection?.info||null,live=!!connection?.connected;
  const host=u=>{try{return new URL(u).hostname}catch{return UNAVAILABLE}};
  const report={
-  report:'YOISAKI_CLOUDCOMPUTE_DIAGNOSTICS',format_version:1,generated_at:iso(now),
+  report:'YOISAKI_CLOUDCOMPUTE_DIAGNOSTICS',format_version:2,generated_at:iso(now),
   website:{version:or(websiteVersion),edition:or(edition)},
   engine:{version:live?or(info?.engine_version):UNAVAILABLE,api_version:live?or(info?.api_version):UNAVAILABLE,deploy_version:live?or(info?.deploy_version):UNAVAILABLE,
    health:{state:or(connection?.state),phase:or(connection?.phase),last_code:or(connection?.code,null),last_error:or(connection?.error,null),checked:live}},
   instance:d?{id:d.instance_id,pending_confirmation:String(d.instance_id).startsWith('pending-'),name:or(d.name),created_at:iso(d.created_at),adopted:!!d.adopted,
-   provider_status:or(d.instance_status),provider_phase:or(d.provider?.phase),provider_fields:d.provider?.fields||{},provider_message:or(d.provider?.message,null),provider_checked_at:iso(d.provider?.checked_at),
+   provider_status:or(d.instance_status),raw_provider_status:d.provider?.raw_status??UNAVAILABLE,provider_phase:or(d.provider?.phase),provider_fields:d.provider?.fields||{},provider_message:or(d.provider?.message,null),provider_checked_at:iso(d.provider?.checked_at),
    offer:d.offer||UNAVAILABLE,disk_gb:or(d.disk_gb),bootstrap_profile:or(d.bootstrap_profile,'not recorded (created before 1.7.7 or adopted)'),
    terminal:d.terminal||{state:'UNKNOWN',message:'not checked'}}:UNAVAILABLE,
   gpu:{model:live&&info?.gpu_name?info.gpu_name:or(d?.offer?.gpu),model_source:live&&info?.gpu_name?'engine /health':d?.offer?.gpu?'CloudCompute offer (advertised)':UNAVAILABLE,
@@ -46,7 +46,12 @@ export function diagnosticsReport({websiteVersion,edition,deployment,image,conne
    vram_available_mb:live?or(info?.vram_available_mb):UNAVAILABLE,driver:live?or(info?.driver_version||info?.nvidia_driver):UNAVAILABLE,cuda_runtime:live?or(info?.cuda_version||info?.torch_cuda):UNAVAILABLE},
   image:{reference:or(d?.image||image?.image),verification:image?{checked:image.checked,publicly_accessible:image.accessible,linux_amd64:or(image.linux_amd64,null),message:image.message,checked_at:iso(image.checked_at)}:UNAVAILABLE},
   initialization:d?{stage:d.stage,stage_message:d.stage_message||'',stage_at:iso(d.stage_at),last_verified_stage:or(d.last_verified_stage,d.stage),
-   instance_running:d.provider?.phase==='RUNNING',engine_ready:d.stage==='GPU_READY',
+   instance_running:d.provider?.phase==='RUNNING',engine_ready:live&&connection?.phase==='READY',
+   provisioning_requested:d.initialization?.requested??UNAVAILABLE,
+   provisioning_completed:d.initialization?.snapshot?.provisioning_completed??(d.gpu_stages?.some(s=>s.stage==='PROVISIONED')?true:UNAVAILABLE),
+   supervisor_confirmed:d.initialization?.snapshot?.supervisor_confirmed??d.initialization?.supervisor_confirmed??(d.gpu_stages?.some(s=>s.stage==='SUPERVISOR_STARTED')?true:UNAVAILABLE),
+   required_directories:d.initialization?.snapshot?.directories??UNAVAILABLE,
+   startup:d.initialization||UNAVAILABLE,
    stage_history:(d.stage_history||[]).map(h=>({stage:h.stage,at:iso(h.at),source:h.source,provider_status:h.provider_status||''})),
    engine_signals:(d.gpu_stages||[]).map(s=>({stage:s.stage,at:iso(s.ts*1000)})),failure:d.failure||null,error:d.error||null}:UNAVAILABLE,
   error_codes:[d?.failure?.code,connection?.code].filter(Boolean),

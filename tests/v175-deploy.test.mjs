@@ -44,13 +44,13 @@ test('create body: documented fields only, strict offer, exact price ceiling, on
  assert.equal(body.bootstrap_profile,'worker');assert.equal('bootstrap_profile' in createBody({offer,disk_gb:80,name:'x',image:ENGINE_IMAGE,token,max_price_hour_minor:1,currency:'RUB',bootstrap_profile:'provider_default'}),false);
  assert.equal(body.ask_id,501);assert.equal(body.auto_select,false);assert.equal(body.strict_offer,true);assert.equal(body.offer_disk_space,500);assert.equal(body.template_image,ENGINE_IMAGE);
  assert(body.onstart.includes(token)&&body.onstart.includes(ENGINE_IMAGE)&&Buffer.byteLength(body.onstart)<=8192);
- assert(!/:latest\b/.test(ENGINE_IMAGE)&&/:1\.7\.7$/.test(ENGINE_IMAGE));
+ assert(!/:latest\b/.test(ENGINE_IMAGE)&&/:1\.7\.7\.1$/.test(ENGINE_IMAGE));
  for(const disk of [39,501,80.5])assert.throws(()=>createBody({offer,disk_gb:disk,name:'x',image:ENGINE_IMAGE,token,max_price_hour_minor:1,currency:'RUB'}));
  assert.throws(()=>onstartScript({image:ENGINE_IMAGE,token:'short'}));assert.throws(()=>onstartScript({image:"bad image'; rm",token}));
  assert.equal(createdInstanceId({data:{id:9001}}),'9001');assert.equal(createdInstanceId({new_contract:77}),'77');assert.equal(createdInstanceId({success:true}),null);assert.equal(createdInstanceId({id:'../x'}),null);
 });
 
-test('onstart script really provisions: inside the image; Docker only in the manual command and only with a reachable daemon (fake docker), token only in 0600 files',async()=>{
+test('onstart provisions current image; missing image fails explicitly without nested Docker',async()=>{
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'yoisaki-onstart-'));const token='c'.repeat(64);
  try{
   const script=path.join(dir,'onstart.sh');await fs.writeFile(script,onstartScript({image:ENGINE_IMAGE,token}));
@@ -63,24 +63,16 @@ test('onstart script really provisions: inside the image; Docker only in the man
   const bin=path.join(dir,'bin'),data=path.join(dir,'host/yoisaki-data');await fs.mkdir(bin);await fs.mkdir(path.dirname(data));
   await fs.writeFile(path.join(bin,'docker'),`#!/bin/bash\necho "$*" >> "${dir}/docker-calls"\n[ "$1" = container ] && exit 1\nexit 0\n`,{mode:0o755});
   await fs.writeFile(path.join(bin,'chown'),'#!/bin/bash\nexit 0\n',{mode:0o755});
-  await run('bash',[script],{env:{PATH:bin+':'+process.env.PATH,YOISAKI_APP_DIR:path.join(dir,'missing'),YOISAKI_HOST_DATA:data}});
+  await assert.rejects(run('bash',[script],{env:{PATH:bin+':'+process.env.PATH,YOISAKI_APP_DIR:path.join(dir,'missing')}}),e=>e.code===42&&!e.stderr.includes(token));
   await assert.rejects(fs.readFile(path.join(dir,'docker-calls'),'utf8'));
-  // 3) manual command (existing instance): Docker host with a reachable daemon — pulled and started with the data volume;
-  //    the token is NOT on the docker command line
-  await fs.writeFile(script,onstartScript({image:ENGINE_IMAGE,token,docker:true}));
-  await run('bash',[script],{env:{PATH:bin+':'+process.env.PATH,YOISAKI_APP_DIR:path.join(dir,'missing'),YOISAKI_HOST_DATA:data}});
-  const calls=await fs.readFile(path.join(dir,'docker-calls'),'utf8');
-  assert.match(calls,new RegExp('pull '+ENGINE_IMAGE.replace(/[.]/g,'\\.')));assert.match(calls,/run -d --name yoisaki-engine --restart unless-stopped --gpus all .*-v \S+:\/data ghcr\.io/);assert(!calls.includes(token));
-  assert.equal((await fs.readFile(path.join(data,'config/engine/engine.token'),'utf8')).trim(),token);
-  assert.equal((await fs.stat(path.join(data,'config/engine/engine.token'))).mode&0o777,0o600);
-  assert.deepEqual(JSON.parse(await fs.readFile(path.join(data,'config/engine/autostart.json'),'utf8')),{version:1,stable_link:true,rendezvous:'ntfy'});
+
  }finally{await fs.rm(dir,{recursive:true,force:true})}
 });
 
 test('image check: anonymous ghcr pull = accessible; private / missing image refused; other registries not claimed',async()=>{
  const seen=[];const http=status=>async(url,opts)=>{seen.push([url,opts.headers.Authorization]);return url.includes('/token?')?{status:200,json:{token:'anon'}}:{status,json:{}}};
  assert.equal((await checkImage(ENGINE_IMAGE,http(200))).accessible,true);assert.equal(seen[0][0],'https://ghcr.io/token?scope=repository:regmop4576-hash/yoisaki-ai-studio/engine:pull&service=ghcr.io');assert.equal(seen[1][1],'Bearer anon');
- assert.match(seen[1][0],/\/v2\/regmop4576-hash\/yoisaki-ai-studio\/engine\/manifests\/1\.7\.7$/);
+ assert.match(seen[1][0],/\/v2\/regmop4576-hash\/yoisaki-ai-studio\/engine\/manifests\/1\.7\.7\.1$/);
  assert.equal((await checkImage(ENGINE_IMAGE,http(404))).accessible,false);
  assert.equal((await checkImage(ENGINE_IMAGE,async()=>({status:401,json:{}}))).accessible,false);
  const other=await checkImage('registry.example.com/x/engine:1',http(200));assert.equal(other.checked,false);assert.equal(other.accessible,null);

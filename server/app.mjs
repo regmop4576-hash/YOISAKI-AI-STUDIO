@@ -1,3 +1,4 @@
+import {initializeTerminal} from './cloudcompute-terminal.mjs';
 import {providerConfig,providerName,endpoint} from './providers.mjs';
 import {validatePreprocess,validateControlImage,compactControlRequest} from './controlnet.mjs';
 import {compactSourceRequest} from './img2img.mjs';
@@ -16,7 +17,7 @@ import {SecretStore} from './secrets.mjs';
 import {classify,components} from './connect-flow.mjs';
 import {discover,progress as rendezvousProgress,RENDEZVOUS_HOST} from './rendezvous.mjs';
 import {CloudComputeAPI,instanceList} from './cloudcompute-api.mjs';
-import {ENGINE_IMAGE,REQUIREMENTS,END_STAGES,DeploymentWatcher,createBody,createdInstanceId,checkImage,validateImage,onstartScript,newToken,instanceName,deploymentView,classifyCreateError,BOOTSTRAP_PROFILES,DEFAULT_BOOTSTRAP_PROFILE,ONSTART_BUDGET_BYTES,ONSTART_LIMIT_BYTES,bytes as utf8Bytes,normalizeStage} from './cloudcompute-deploy.mjs';
+import {ENGINE_IMAGE,REQUIREMENTS,END_STAGES,DeploymentWatcher,createBody,createdInstanceId,checkImage,validateImage,onstartScript,manualCommand,newToken,instanceName,deploymentView,classifyCreateError,BOOTSTRAP_PROFILES,DEFAULT_BOOTSTRAP_PROFILE,ONSTART_BUDGET_BYTES,ONSTART_LIMIT_BYTES,bytes as utf8Bytes,normalizeStage} from './cloudcompute-deploy.mjs';
 import {OfferMonitor,matchOffer,MONITOR_LIMITS} from './gpu-monitor.mjs';
 import {diagnosticsReport,DIAGNOSTICS_FILENAME} from './cc-diagnostics.mjs';
 import {DriveAccount} from './drive-account.mjs';
@@ -30,7 +31,7 @@ const terminal=TERMINAL_STATUSES;
 async function readBody(req,max=12582912){const chunks=[];let n=0;for await(const b of req){n+=b.length;if(n>max)fail('BODY_TOO_LARGE','Слишком большой запрос.',413);chunks.push(b)}return Buffer.concat(chunks)}
 async function jsonBody(req){try{return JSON.parse((await readBody(req)).toString())}catch(e){if(e instanceof AppError)throw e;fail('INVALID_JSON','Неверный JSON запроса.')}}
 function send(res,value,status=200){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(value))}
-export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,serviceKey='',discoverAddress=discover,discoverProgress=rendezvousProgress,exchange=exchangeCode,providerRequest=providerHttp,providerBytesRequest=providerBytes,defaultGoogle=null,sleep=ms=>new Promise(r=>setTimeout(r,ms).unref?.()),deployInterval=10000,driveInterval=3000,autoResume=true,monitorMinGap=MONITOR_LIMITS.min_gap_ms,monitorTimers}={}){
+export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,serviceKey='',discoverAddress=discover,discoverProgress=rendezvousProgress,exchange=exchangeCode,providerRequest=providerHttp,providerBytesRequest=providerBytes,defaultGoogle=null,sleep=ms=>new Promise(r=>setTimeout(r,ms).unref?.()),deployInterval=10000,driveInterval=3000,autoResume=true,terminalInitialize=initializeTerminal,monitorMinGap=MONITOR_LIMITS.min_gap_ms,monitorTimers}={}){
  const store=await new Store(dataDir).init();
  // v1.7.3: remembered connections and the Google OAuth client live in secrets.json (0600), never in state.json.
  const secrets=await new SecretStore(dataDir).init();const oauth=new OAuthFlows();let oauthResult=null,oauthGeneration=0;
@@ -271,8 +272,38 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
   connect:deployConnect,connectionState:()=>({phase:currentPhase(),origin:connection?.origin||'',token:connection?.token||''}),
   afterReady:()=>{const d=secrets.deployment();if(d?.drive?.state&&d.drive.state!=='ERROR')return Promise.resolve();return driveRoutine({download:!!d?.auto_sync,automatic:true})}});
  // A creation whose answer was lost keeps a pending record (with its token) and is resolved by name, never re-sent.
+ // One in-flight initialization per local app; retries reuse the SAME engine token.
+ let initializing=null;
+ async function initializeEngine(){
+  if(initializing)return initializing;
+  const d=secrets.deployment();
+  if(!d||String(d.instance_id).startsWith('pending-'))fail('CC_NO_DEPLOYMENT','Нет подтверждённого инстанса.',409);
+  if(d.initialization?.code==='CC_HTTP_429'&&d.initialization.retry_at>Date.now())fail('CC_INIT_WAIT','CloudCompute ограничил запросы терминала. Повторите через '+Math.ceil((d.initialization.retry_at-Date.now())/1000)+' с.',429);
+  const update=async patch=>{await secrets.change(x=>{if(x.deployment?.instance_id===d.instance_id&&x.deployment?.token===d.token)x.deployment.initialization={...(x.deployment.initialization||{}),...patch}})};
+  initializing=(async()=>{
+   await update({requested:true,method:'terminal-api',attempted_at:Date.now(),attempts:(d.initialization?.attempts||0)+1,error:null});
+   try{
+    const result=await terminalInitialize({cloud,instanceId:d.instance_id,image:d.image,token:d.token});
+    await update({...result,error:null,code:null,retry_at:null});return result;
+   }catch(e){
+    // A not-yet-published terminal is not an executed bootstrap attempt. Keep waiting while the image pulls.
+    const waiting=e.code==='CC_HTTP_409'||e.code==='CC_HTTP_429';
+    await update({error:publicError(e).error,code:e.code||'CC_INIT_FAILED',
+     ...(waiting?{attempts:d.initialization?.attempts||0,retry_at:Date.now()+Math.max(60,Number(e.retry_after)||0)*1000}:{})});throw e
+   }
+  })().finally(()=>{initializing=null});
+  return initializing;
+ }
  const resolvePending=async d=>{if(!d.instance_id.startsWith('pending-'))return;try{const found=instanceList(await cloud.request('GET','/instances')).find(i=>i.name===d.name||i.label===d.name);if(found){await secrets.change(x=>{if(x.deployment?.instance_id===d.instance_id)x.deployment.instance_id=found.id})}}catch{}};
- const originalTick=watcher.tick.bind(watcher);watcher.tick=async(d,alive)=>{if(d.instance_id.startsWith('pending-')){await resolvePending(d);if(!alive())return;d=secrets.deployment();if(!d||d.instance_id.startsWith('pending-')){if(Date.now()-d?.created_at>5*60000)await watcher.setStage('FAILED','CloudCompute не подтвердил создание и инстанс с именем '+d?.name+' не появился в списке. Проверьте панель CloudCompute; повторная попытка не выполнялась.');return}}return originalTick(d,alive)};
+ const originalTick=watcher.tick.bind(watcher);watcher.tick=async(d,alive)=>{if(d.instance_id.startsWith('pending-')){await resolvePending(d);if(!alive())return;d=secrets.deployment();if(!d||d.instance_id.startsWith('pending-')){if(Date.now()-d?.created_at>5*60000)await watcher.setStage('FAILED','CloudCompute не подтвердил создание и инстанс с именем '+d?.name+' не появился в списке. Проверьте панель CloudCompute; повторная попытка не выполнялась.');return}}await originalTick(d,alive);
+  if(!alive())return;
+  d=secrets.deployment();const init=d?.initialization;
+  if(d&&!d.adopted&&!END_STAGES.includes(d.stage)&&d.stage!=='GPU_READY'&&!d.gpu_stages?.length&&!d.url&&
+     d.provider?.phase!=='STOPPED'&&Date.now()-d.created_at>90000&&(init?.attempts||0)<3&&
+     Date.now()-(init?.attempted_at||0)>60000&&Date.now()>=(init?.retry_at||0)&&!init?.completed_at){
+    await initializeEngine().catch(()=>{});
+  }
+ };
  let creating=false;
  async function setJob(id,patch){await store.change(d=>{const j=d.history.find(j=>j.id===id);if(j)Object.assign(j,patch,{updated:Date.now()})})}
  async function collect(job,remote,c){
@@ -429,7 +460,7 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
       const token=newToken(),name=instanceName(),disk=b.disk_gb??Math.min(REQUIREMENTS.default_disk_gb,offer.disk_gb!=null?Math.floor(offer.disk_gb):REQUIREMENTS.default_disk_gb),at=Date.now();
       const body=createBody({offer,disk_gb:disk,name,image,token,max_price_hour_minor:offer.price.minor,currency:offer.price.currency,bootstrap_profile:profile});
       const record={instance_id:'pending-'+name,token,image,name,created_at:at,offer:{id:offer.id,gpu:offer.gpu,vram_mb:offer.vram_mb,price_minor:offer.price.minor,currency:offer.price.currency},disk_gb:disk,auto_sync:b.auto_sync!==false,
-       stage:'CREATING',stage_message:'Создаю GPU-сервер…',stage_at:at,stage_history:[{stage:'CREATING',at,source:'app',provider_status:''}],bootstrap_profile:profile,request_id:b.request_id||null};
+       stage:'CREATING',stage_message:'Создаю GPU-сервер…',stage_at:at,stage_history:[{stage:'CREATING',at,source:'app',provider_status:''}],bootstrap_profile:profile,initialization:{requested:true,method:'onstart',requested_at:at,completed_at:null},request_id:b.request_id||null};
       // The token is saved BEFORE the paid request: an unanswered creation can still be connected later.
       await secrets.setDeployment(record);
       let json;
@@ -461,6 +492,13 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
     }
    }
    if(route==='/api/cloudcompute/deploy/watch'&&method==='POST')return send(res,{deployment:watcher.start()});
+   if(route==='/api/cloudcompute/deploy/initialize'&&method==='POST'){
+    await initializeEngine();return send(res,{deployment:watcher.start()});
+   }
+   if(route==='/api/cloudcompute/deploy/command'&&method==='POST'){
+    const d=secrets.deployment();if(!d)fail('CC_NO_DEPLOYMENT','Нет инстанса.',409);
+    return send(res,{command:manualCommand({image:d.image,token:d.token})});
+   }
    if(route==='/api/cloudcompute/deploy/terminal'&&method==='POST'){
     // v1.7.7 manual probe of the provider web terminal (documented terminal-token endpoint; the token is discarded).
     const d=secrets.deployment();if(!d||String(d.instance_id).startsWith('pending-'))fail('CC_NO_DEPLOYMENT','Нет созданного инстанса для проверки.',409);
@@ -490,13 +528,13 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
    if(route==='/api/cloudcompute/deploy/adopt'&&method==='POST'){
     const b=await jsonBody(req);if(b.confirm!==true)fail('CC_CONFIRM_REQUIRED','Подтвердите подготовку существующего инстанса.');
     if(typeof b.instance_id!=='string'||!/^[A-Za-z0-9_-]{1,100}$/.test(b.instance_id))fail('CC_INVALID_ID','Некорректный ID инстанса.');
-    const image=b.image?validateImage(b.image):ENGINE_IMAGE,token=newToken();
+    const image=b.image?validateImage(b.image):ENGINE_IMAGE,previous=secrets.deployment(),token=previous?.instance_id===b.instance_id?previous.token:newToken();
     const view=(await import('./cloudcompute-api.mjs')).instanceView((r=>r?.data||r?.instance||r)(await cloud.detail(b.instance_id)));
     watcher.stop();
-    const at=Date.now();await secrets.setDeployment({instance_id:view.id,token,image,name:view.name,created_at:at,adopted:true,auto_sync:b.auto_sync!==false,stage:'GPU_CREATED',stage_message:'Выполните показанную команду один раз в веб-терминале инстанса (панель CloudCompute).',stage_at:at,stage_history:[{stage:'GPU_CREATED',at,source:'app',provider_status:view.status}]});
-    note('DEPLOY_ADOPTED');watcher.start();
+    const at=Date.now();await secrets.setDeployment({instance_id:view.id,token,image,name:view.name,created_at:at,adopted:true,auto_sync:b.auto_sync!==false,stage:'GPU_CREATED',initialization:{requested:true,method:'terminal-api',requested_at:at},stage_message:'Запрашиваю автоматическую инициализацию через веб-терминал CloudCompute.',stage_at:at,stage_history:[{stage:'GPU_CREATED',at,source:'app',provider_status:view.status}]});
+    note('DEPLOY_ADOPTED');await initializeEngine().catch(()=>{});watcher.start();
     // Shown once: the command contains the new engine token of this instance.
-    return send(res,{deployment:watcher.view(),command:"bash <<'YOISAKI_ONSTART'\n"+onstartScript({image,token,docker:true})+'YOISAKI_ONSTART\n'});
+    return send(res,{deployment:watcher.view(),command:manualCommand({image,token})});
    }
    const oauthView=()=>{const g=googleClient();return {configured:!!g,client_id:g?.client_id||'',redirect_uri:redirectUri(port),scope:SCOPE,last_result:oauthResult,...drive.view()}};
    if(route==='/api/drive/oauth'){

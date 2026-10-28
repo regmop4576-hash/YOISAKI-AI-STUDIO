@@ -5,7 +5,7 @@
 YOISAKI_APP=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
 export YOISAKI_DATA_ROOT=${YOISAKI_DATA_ROOT:-/workspace/yoisaki-data}
 # shellcheck disable=SC2034  # constants used by the scripts that source this file
-YOISAKI_IMAGE=yoisaki-engine:1.7.7-cloudcompute
+YOISAKI_IMAGE=yoisaki-engine:1.7.7.1-cloudcompute
 YOISAKI_CONTAINER=yoisaki-engine
 # shellcheck disable=SC2034
 YOISAKI_RUN_USER=yoisaki

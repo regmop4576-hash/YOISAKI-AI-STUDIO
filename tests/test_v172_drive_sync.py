@@ -622,7 +622,7 @@ def test_compose_dockerfile_and_start_script_policies():
     pip_layer, rclone_layer, copy_engine = docker.index('pip check'), docker.index('install -y --no-install-recommends rclone'), docker.index('COPY engine/ /opt/yoisaki/engine/')
     assert pip_layer < rclone_layer < copy_engine  # the ~7 GB dependency layer stays cached on upgrade
     assert 'drive-sync-cloudcompute.sh' in docker and '!drive-sync-cloudcompute.sh' in (APP / '.dockerignore').read_text()
-    assert (APP / 'cloudcompute/VERSION').read_text().strip() == '1.7.7'
+    assert (APP / 'cloudcompute/VERSION').read_text().strip() == '1.7.7.1'
 
 
 def test_engine_and_colab_do_not_reference_sync():

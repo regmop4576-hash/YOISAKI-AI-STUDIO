@@ -1,10 +1,10 @@
-# YOISAKI ENGINE · CloudCompute deployment 1.7.7. Use through ./start-cloudcompute.sh, which sets
+# YOISAKI ENGINE · CloudCompute deployment 1.7.7.1. Use through ./start-cloudcompute.sh, which sets
 # YOISAKI_DATA_ROOT / YOISAKI_UID / YOISAKI_GID / YOISAKI_SOURCE_HASH and builds the image only when needed.
 # No port is published: the website reaches the engine through the Cloudflare tunnel started inside.
 name: yoisaki
 
 x-engine: &engine
-  image: "${YOISAKI_IMAGE:-yoisaki-engine:1.7.7-cloudcompute}"
+  image: "${YOISAKI_IMAGE:-yoisaki-engine:1.7.7.1-cloudcompute}"
   user: "${YOISAKI_UID:-1000}:${YOISAKI_GID:-1000}"
   environment:
     YOISAKI_PORT: "${YOISAKI_PORT:-8765}"

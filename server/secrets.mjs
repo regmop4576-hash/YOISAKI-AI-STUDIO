@@ -1,3 +1,4 @@
+import {sanitize} from './cc-diagnostics.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {randomUUID} from 'node:crypto';
@@ -22,7 +23,7 @@ function cleanDeployment(d){
   gpu_stages:Array.isArray(d.gpu_stages)?d.gpu_stages.filter(x=>STAGE.test(x?.stage)&&Number.isInteger(x?.ts)).slice(-8).map(x=>({stage:x.stage,ts:x.ts})):[],
   drive:d.drive&&typeof d.drive==='object'?JSON.parse(JSON.stringify(d.drive,(k,v)=>typeof v==='string'?v.slice(0,600):v)):null,
   // v1.7.7: verified-stage evidence. Only short, credential-free strings and numbers are kept.
-  provider:cleanProvider(d.provider),failure:cleanFailure(d.failure),
+  initialization:d.initialization&&typeof d.initialization==='object'?sanitize(d.initialization):null,provider:cleanProvider(d.provider),failure:cleanFailure(d.failure),
   stage_history:Array.isArray(d.stage_history)?d.stage_history.filter(h=>STAGE.test(h?.stage)&&Number.isFinite(h?.at)).slice(-40).map(h=>({stage:h.stage,at:h.at,source:/^(app|cloudcompute|engine|health)$/.test(h.source)?h.source:'app',provider_status:short(h.provider_status,60)})):[],
   last_verified_stage:STAGE.test(d.last_verified_stage)?d.last_verified_stage:null,
   bootstrap_profile:/^(worker|access_only|full|none|provider_default)$/.test(d.bootstrap_profile)?d.bootstrap_profile:null,
@@ -33,7 +34,7 @@ const scrub=v=>short(v,400).replace(/[a-f0-9]{64}/gi,'[СКРЫТО]').replace(/
 function cleanProvider(p){
  if(!p||typeof p!=='object')return null;
  const fields={};if(p.fields&&typeof p.fields==='object')for(const [k,v] of Object.entries(p.fields).slice(0,12))if(/^[a-z_]{2,30}$/.test(k)&&typeof v==='string')fields[k]=scrub(v);
- return {status:short(p.status,60),fields,phase:/^(UNKNOWN|CREATE|BOOT|IMAGE|RUNNING|STOPPED|FAILED|GONE)$/.test(p.phase)?p.phase:'UNKNOWN',message:scrub(p.message),checked_at:Number(p.checked_at)||null};
+ return {status:short(p.status,60),raw_status:typeof p.raw_status==='number'?p.raw_status:scrub(p.raw_status),fields,phase:/^(UNKNOWN|CREATE|BOOT|IMAGE|RUNNING|STOPPED|FAILED|GONE)$/.test(p.phase)?p.phase:'UNKNOWN',message:scrub(p.message),checked_at:Number(p.checked_at)||null};
 }
 function cleanFailure(f){
  if(!f||typeof f!=='object'||!/^[a-z_]{2,20}$/.test(f.component))return null;

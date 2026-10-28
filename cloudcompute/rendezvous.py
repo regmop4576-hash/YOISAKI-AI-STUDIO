@@ -25,7 +25,7 @@ import urllib.request
 HOST_RE = re.compile(r'^[a-z0-9.-]{3,253}$')
 TOKEN_RE = re.compile(r'^[a-f0-9]{64}$')
 # Keep in sync with STAGES in server/rendezvous.mjs.
-STAGES = ('IMAGE_READY', 'ENGINE_STARTING', 'SERVER_READY', 'TUNNEL_RETRY', 'GPU_CHECK_FAILED', 'ENGINE_FAILED')
+STAGES = ('PROVISIONED', 'SUPERVISOR_STARTED', 'IMAGE_READY', 'ENGINE_STARTING', 'SERVER_READY', 'TUNNEL_RETRY', 'GPU_CHECK_FAILED', 'ENGINE_FAILED')
 
 
 def _mac(token, text):
@@ -74,6 +74,15 @@ def publish_status(token, stage, host='ntfy.sh', timeout=10, opener=urllib.reque
     return _post(token, status_record(token, stage), host, timeout, opener)
 
 
+def publish_diagnostics(token, data, host='ntfy.sh', timeout=10, opener=urllib.request.urlopen):
+    # Sign the exact serialized bytes: Node does not need to reproduce Python's JSON formatting.
+    payload = json.dumps(data, ensure_ascii=True, separators=(',', ':'))
+    ts = int(time.time())
+    record = {'v': 1, 'kind': 'diagnostics', 'data': payload, 'ts': ts,
+              'sig': _mac(token, f'yoisaki-rendezvous-diagnostics-v1\n{payload}\n{ts}')}
+    return _post(token, record, host, timeout, opener)
+
+
 def main(argv, environ=os.environ):
     """CLI for the shell autostart: `rendezvous.py status STAGE`. Exit 0 = published, 1 = not published."""
     if len(argv) != 3 or argv[1] != 'status' or argv[2] not in STAGES:
@@ -88,7 +97,14 @@ def main(argv, environ=os.environ):
         print('Статус не опубликован: нет токена движка.', file=sys.stderr)
         return 1
     try:
-        publish_status(token, argv[2], host=environ.get('YOISAKI_RENDEZVOUS_HOST', 'ntfy.sh').strip().lower())
+        host = environ.get('YOISAKI_RENDEZVOUS_HOST', 'ntfy.sh').strip().lower()
+        publish_status(token, argv[2], host=host)
+        if argv[2] in ('PROVISIONED', 'SUPERVISOR_STARTED', 'IMAGE_READY'):
+            try:
+                from launcher import Config, startup_diagnostics
+                publish_diagnostics(token, startup_diagnostics(Config(environ)), host=host)
+            except Exception:
+                pass  # optional diagnostics never invalidate a successfully published stage
         return 0
     except Exception as exc:  # optional signal: never fatal for the caller
         print(f'Статус не опубликован: {type(exc).__name__}', file=sys.stderr)

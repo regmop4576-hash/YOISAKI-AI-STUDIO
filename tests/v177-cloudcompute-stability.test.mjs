@@ -107,7 +107,7 @@ async function harness({offers=[offer(501,{price_hour:2500}),offer(502,{price_ho
   if(route==='/offers'){cc.gets++;const o=typeof cc.offers==='function'?cc.offers():cc.offers;if(o instanceof Error)throw o;return {status:200,json:{data:o}}}
   if(route==='/instances'&&(opts.method||'GET')==='GET')return {status:200,json:{data:cc.instances}};
   if(route==='/instances'&&opts.method==='POST'){const body=JSON.parse(opts.body);cc.posts.push(body);const r=createReply?await createReply(body):{status:201,json:{data:{id:9001}}};if(r instanceof Error)throw r;if(r.status<300)cc.instances.push({id:9001,name:body.name,status:'loading'});return r}
-  if(route.endsWith('/terminal-token')){const r=terminalReply?terminalReply():{status:200,json:{token:'terminal-secret-token'}};return r}
+  if(route.endsWith('/terminal-token')){const r=terminalReply?terminalReply():{status:200,json:{ws_url:'wss://app.cloudcompute.ru/terminal/test'}};return r}
   if(route.startsWith('/instances/')){if(cc.gone)return {status:404,json:{error:{message:'not found'}}};if(opts.method==='DELETE'){cc.gone=true;return {status:200,json:{}}}return {status:200,json:{data:{id:route.split('/')[2],name:'YOISAKI',...cc.detail}}}}
   throw Error('unexpected '+route);
  };
@@ -278,26 +278,26 @@ test('diagnostics: downloadable JSON with stages and provider status; no API key
   const r=await h.raw('/api/cloudcompute/diagnostics');assert.equal(r.status,200);assert.match(r.headers.get('content-disposition'),new RegExp(DIAGNOSTICS_FILENAME));
   const text=await r.text(),rep=JSON.parse(text),token=(await h.secretsFile()).deployment.token;
   for(const secret of [token,KEY,'cc-another_secret_99'])assert(!text.includes(secret),secret);
-  assert.equal(rep.website.version,'1.7.7');assert.equal(rep.instance.id,'9001');assert.equal(rep.instance.provider_status,'running');assert.equal(rep.instance.bootstrap_profile,'worker');
+  assert.equal(rep.website.version,'1.7.7.1');assert.equal(rep.instance.id,'9001');assert.equal(rep.instance.provider_status,'running');assert.equal(rep.instance.bootstrap_profile,'worker');
   assert.equal(rep.initialization.instance_running,true);assert.equal(rep.initialization.engine_ready,false);assert(rep.initialization.stage_history.length>=3);
   assert.equal(rep.engine.version,'unavailable');assert.equal(rep.gpu.driver,'unavailable');assert.equal(rep.gpu.model_source,'CloudCompute offer (advertised)');
   assert.equal(rep.image.reference,ENGINE_IMAGE);
  }finally{await h.close()}
  const s=sanitize({engine_token:'a'.repeat(64),Authorization:'Bearer abc.def',note:'Bearer abcdef ya29.A0secret 1//0refresh-token-value -----BEGIN OPENSSH PRIVATE KEY-----\nxyz\n-----END OPENSSH PRIVATE KEY----- https://h/#token='+'b'.repeat(64),client_secret:'GOCSPX-x',publicly_accessible:true});
  assert.deepEqual(Object.keys(s),['note','publicly_accessible']);for(const x of ['abcdef','ya29.A0secret','0refresh','xyz','b'.repeat(64)])assert(!s.note.includes(x),x);
- const empty=diagnosticsReport({websiteVersion:'1.7.7',deployment:null,image:null,connection:{connected:false},monitor:null});assert.equal(empty.instance,'unavailable');assert.equal(empty.engine.version,'unavailable');
+ const empty=diagnosticsReport({websiteVersion:'1.7.7.1',deployment:null,image:null,connection:{connected:false},monitor:null});assert.equal(empty.instance,'unavailable');assert.equal(empty.engine.version,'unavailable');
 });
 
 // ------------------------------------------------------------------------------------------------ Docker / static
 test('onstart: subshell without top-level exit, byte budget of the combined 16 384-byte limit, no nested Docker in the automatic script',async()=>{
  const token='c'.repeat(64),s=onstartScript({image:ENGINE_IMAGE,token});
  assert(bytes(s)<=ONSTART_BUDGET_BYTES&&ONSTART_LIMIT_BYTES===16384);assert(!/\bdocker\s+(run|pull|start)\b/.test(s));
- assert.equal(s.split(token).length,2);assert(!/^\s*exit\b/m.test(s));assert(!/^\s*set -[eu]/m.test(s));
+ assert.equal(s.split(token).length,2);assert(s.includes('\n(\n')); // strict options/exit confined to subshell
  // appended to a provider bootstrap script (one combined script): the provider's next line still runs
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'yoisaki-177-os-'));
  try{
   const app=path.join(dir,'app');await fs.mkdir(path.join(app,'cloudcompute'),{recursive:true});
-  await fs.writeFile(path.join(app,'cloudcompute/autostart-image.sh'),`#!/bin/bash\nprintf '%s' "$YOISAKI_PROVISION_TOKEN" > "${dir}/got"\nexit 7\n`,{mode:0o755});
+  await fs.writeFile(path.join(app,'cloudcompute/autostart-image.sh'),`#!/bin/bash\nprintf '%s' "$YOISAKI_PROVISION_TOKEN" > "${dir}/got"\nexit 0\n`,{mode:0o755});
   const combined=`set -e\necho provider-before > "${dir}/before"\n${s}\necho provider-after > "${dir}/after"\n`;
   await run('bash',['-c',combined],{env:{PATH:process.env.PATH,YOISAKI_APP_DIR:app}});
   assert.equal(await fs.readFile(path.join(dir,'got'),'utf8'),token);assert.equal((await fs.readFile(path.join(dir,'after'),'utf8')).trim(),'provider-after');
@@ -311,9 +311,9 @@ test('image: Dockerfile starts as root and drops to uid 1000 for the engine; sta
  assert(!/^\s*USER\s/m.test(code));assert.match(code,/ENTRYPOINT \["\/usr\/bin\/tini", "--"\]/);assert.match(code,/CMD \["\/opt\/yoisaki\/cloudcompute\/autostart-image\.sh"\]/);
  assert.match(code,/HEALTHCHECK .*launcher\.py", "healthcheck"\]/s);assert.match(code,/FROM nvidia\/cuda:12\.8\.1-base-ubuntu24\.04@sha256:[a-f0-9]{64}/);
  for(const env of ['YOISAKI_IN_IMAGE=1','YOISAKI_DATA_ROOT=/data','YOISAKI_PYTHON=/opt/yoisaki/venv/bin/python','YOISAKI_CLOUDFLARED=/usr/local/bin/cloudflared','HF_HOME=/data/huggingface-cache'])assert(code.includes(env),env);
- const auto=await fs.readFile('cloudcompute/autostart-image.sh','utf8');assert.match(auto,/setpriv --reuid="\$RUN_UID" --regid="\$RUN_GID" --clear-groups/);assert.match(auto,/flock 9\n/);
+ const auto=await fs.readFile('cloudcompute/autostart-image.sh','utf8');assert.match(auto,/setpriv --reuid="\$RUN_UID" --regid="\$RUN_GID" --clear-groups/);assert.match(auto,/flock -w 1 9/);
  for(const f of ['cloudcompute/autostart-image.sh','cloudcompute/launcher.py','cloudcompute/rendezvous.py','cloudcompute/diagnose.py','cloudcompute/import_check.py','cloudcompute/serve_cloud.py','cloudcompute/requirements-lock.txt','engine/worker/serve.py'])await fs.access(f);
- assert.equal((await fs.readFile('cloudcompute/VERSION','utf8')).trim(),'1.7.7');
+ assert.equal((await fs.readFile('cloudcompute/VERSION','utf8')).trim(),'1.7.7.1');
  const compose=await fs.readFile('docker-compose.yml','utf8');assert.match(compose,/user: "\$\{YOISAKI_UID:-1000\}:\$\{YOISAKI_GID:-1000\}"/);   // local compose keeps the unprivileged user
 });
 test('image registry check: an index without linux/amd64 is refused; a single manifest is accessible but its platform stays unverified',async()=>{

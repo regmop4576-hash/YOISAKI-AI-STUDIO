@@ -247,7 +247,7 @@ class Launcher:
     def save_state(self, phase, **extra):
         children = [p.pid for p in (self.server, self.tunnel) if p is not None and p.poll() is None]
         state = {'pid': os.getpid(), 'phase': phase, 'port': self.cfg.port, 'deploy_version': VERSION,
-                 'public_origin': self.url or None, 'children': children, 'updated_unix': time.time(),
+                 'public_origin': self.url or None, 'children': children, 'updated_unix': time.time(), 'last_startup_error': getattr(self, 'last_startup_error', None),
                  # PIDs are only meaningful in the PID namespace that wrote them (container vs host).
                  'in_image': os.environ.get('YOISAKI_IN_IMAGE') == '1', **extra}
         write_private(self.cfg.state / 'launcher.json', json.dumps(state) + '\n')
@@ -487,7 +487,8 @@ class Launcher:
                 log('Движок работает, туннель переподключается автоматически.')
             self.supervise()
             return 0
-        except LaunchError:
+        except LaunchError as exc:
+            self.last_startup_error = str(exc)[:400]
             if not self.failure_signalled and not self.stopping:
                 sent = self.signal('ENGINE_FAILED')
                 if sent:
@@ -573,14 +574,40 @@ def local_status(cfg):
     return out
 
 
+def startup_diagnostics(cfg):
+    """Credential-free observations only. A saved PID alone is never proof of a live supervisor."""
+    def locked(name):
+        try:
+            with open(cfg.state / name, 'r') as handle:
+                try:
+                    fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    fcntl.flock(handle, fcntl.LOCK_UN)
+                    return False
+                except BlockingIOError:
+                    return True
+        except OSError:
+            return False
+    state = local_status(cfg)
+    health = state.get('health') or {}
+    return {'image_version': VERSION, 'checked_at': int(time.time() * 1000),
+            'directories': {name: (cfg.data / name).is_dir() for name in ('config', 'logs', 'runtime', 'models')},
+            'provisioning_completed': (cfg.secrets / 'autostart.json').is_file() and (cfg.secrets / 'engine.token').is_file(),
+            'supervisor_confirmed': locked('autostart.lock'), 'launcher_running': locked('launcher.lock'),
+            'engine_health': health.get('state'), 'gpu_name': health.get('gpu_name'),
+            'last_startup_error': (state.get('launcher') or {}).get('last_startup_error')}
+
+
 def main(argv):
     command = argv[1] if len(argv) > 1 else 'run'
     try:
         cfg = Config()
+        if command == 'diagnostics':
+            print('YOISAKI_DIAGNOSTICS ' + json.dumps(startup_diagnostics(cfg), ensure_ascii=True))
+            return 0
         if command == 'healthcheck':
             token = read_private(cfg, 'token')
-            state = request_json(cfg.local + '/health', token, timeout=8).get('state') if token else None
-            return 0 if state in ('READY', 'BUSY') else 1
+            health = request_json(cfg.local + '/health', token, timeout=8) if token else {}
+            return 0 if health.get('engine') == 'YOISAKI_ENGINE' and health.get('state') in ('READY', 'BUSY') else 1
         if command == 'link':
             link = read_private(cfg, 'link.txt')
             if not link:
