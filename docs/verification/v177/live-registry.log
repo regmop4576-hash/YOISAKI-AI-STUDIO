@@ -1,0 +1,16 @@
+TAP version 13
+# Subtest: LIVE registry (opt-in: YOISAKI_LIVE_REGISTRY=1): the configured engine image is publicly pullable
+ok 1 - LIVE registry (opt-in: YOISAKI_LIVE_REGISTRY=1): the configured engine image is publicly pullable
+  ---
+  duration_ms: 349.321808
+  type: 'test'
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 1
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 421.827987

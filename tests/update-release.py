@@ -34,8 +34,8 @@ try:
  print(f'PASS baseline old server {old_version} on port 3000')
  run(['bash',str(new/'update.sh'),str(archive),str(app)])
  with urllib.request.urlopen(request) as response:
-  assert json.load(response)['version']=='1.7.6';cookie=response.headers['Set-Cookie'].split(';')[0]
- with urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:3000/api/version',headers={'X-Yoisaki-Local':'1','Cookie':cookie})) as response:assert json.load(response)['studio_version']=='1.7.6'
+  assert json.load(response)['version']=='1.7.7';cookie=response.headers['Set-Cookie'].split(';')[0]
+ with urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:3000/api/version',headers={'X-Yoisaki-Local':'1','Cookie':cookie})) as response:assert json.load(response)['studio_version']=='1.7.7'
  actual=json.loads((data/'state.json').read_text());assert actual==state
  assert json.loads((app/'config/google-desktop-client.json').read_text())==public_client
  assert json.loads((data/'secrets.json').read_text())==legacy_secrets
@@ -45,7 +45,7 @@ try:
  with urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:3000/api/drive/library',headers={'X-Yoisaki-Local':'1','Cookie':cookie})) as response:
   lib=json.load(response);assert lib['state']=='NONE' and lib['account']['folder']['id']=='keep-folder' and lib['selection'] is None
  with urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:3000/api/sync/monitor',headers={'X-Yoisaki-Local':'1','Cookie':cookie})) as response:assert json.load(response)['state']=='IDLE'
- print('PASS 1.7.5 Google sign-in, selected folder and CloudCompute key kept: no re-authorization; 1.7.6 library/monitor start empty')
+ print('PASS 1.7.5 Google sign-in, selected folder and CloudCompute key kept: no re-authorization; update to the new release keeps them; Drive library/sync monitor of this fixture start empty')
  assert (data/'images'/image_id).read_bytes()==b'user-image-preservation-test'
  backups=list(base.glob('installed.backup-*'));assert len(backups)==1
  assert (backups[0]/'my-custom-file.txt').read_text()=='user content kept in code backup'

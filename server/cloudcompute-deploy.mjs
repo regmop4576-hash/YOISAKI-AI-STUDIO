@@ -10,7 +10,9 @@ import {gpuAssessment} from './gpu-catalog.mjs';
 // currency, onstart). The OpenAPI file describes no success response schemas, so every response is parsed
 // defensively: an unknown shape is an explicit error, never a guess presented as fact.
 
-export const ENGINE_IMAGE='ghcr.io/regmop4576-hash/yoisaki-ai-studio/engine:1.7.5';
+// v1.7.7: published by .github/workflows/engine-image.yml (run 40633281336), anonymous pull verified (HTTP 200),
+// digest sha256:c10d8d6dcd179020850cece5fe937a25032e78804d99277a10a1d426466d1fcd, linux/amd64. Engine inside: 1.7.0.
+export const ENGINE_IMAGE='ghcr.io/regmop4576-hash/yoisaki-ai-studio/engine:1.7.7';
 // Known deployment images: the engine protocol stays 1.7.0 in all of them (engine/ is unchanged).
 export const IMAGE_NOTES={
  'ghcr.io/regmop4576-hash/yoisaki-ai-studio/engine:1.7.5':'Образ 1.7.5 запускается от uid 1000 и отклоняет RTX 4090/Ada (sm_89) при проверке GPU; исправлено в 1.7.7.',

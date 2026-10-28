@@ -42,4 +42,4 @@ if ! (cd "$APP_DIR" && bash start.sh); then
 fi
 echo "Обновлено. Резервная копия кода: $BACKUP"
 echo "Резервная копия данных (если существовали): $DATA_BACKUP"
-echo 'Откройте http://127.0.0.1:3000/engine и проверьте версию 1.7.6 (AMBER CORE · v1.7.6 ZERO-TERMINAL CLOUDCOMPUTE EDITION).'
+echo 'Откройте http://127.0.0.1:3000/engine и проверьте версию 1.7.7 (AMBER CORE · v1.7.7 CLOUDCOMPUTE STABILITY EDITION).'

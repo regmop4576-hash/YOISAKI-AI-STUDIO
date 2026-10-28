@@ -14,7 +14,7 @@ try{
  assert.equal(received.length,1);assert.equal(received[0].regions.length,2);assert.equal(received[0].regions[0].trigger,'amber_character');assert.equal(received[0].regions[0].prompt,'white sweater');assert(received[0].regions.every(r=>r.mask.startsWith('data:image/png;base64,')));
  assert(!await page.getByText('Regional Control требует YOISAKI ENGINE v1.5.0',{exact:true}).count());
  health={...health,capabilities:{controlnet:true,sdpose:true,img2img:true,regional_control:false}};await page.evaluate(()=>fetch('/api/gpu/status',{headers:{'X-Yoisaki-Local':'1'}}));
- await page.getByRole('button',{name:'Создать изображение',exact:true}).click();await page.getByText('Движок не объявляет поддержку Regional Control и не распознан как совместимый YOISAKI ENGINE 1.7.0.').waitFor();assert.equal(received.length,1);
+ await page.getByRole('button',{name:'Создать изображение',exact:true}).click();await page.getByText('Движок не объявляет поддержку Regional Control и не распознан как совместимый YOISAKI ENGINE 1.7.0 / 1.7.6.').waitFor();assert.equal(received.length,1);
  await page.getByLabel('Regional mode',{exact:true}).selectOption('OFF');await page.getByRole('button',{name:'Создать изображение',exact:true}).click();await page.waitForFunction(()=>document.body.textContent.includes('Всего: 2'));assert.equal(received.length,2);assert.deepEqual(received[1].regions,[]);assert.equal(received[1].prompt,received[0].prompt);assert.deepEqual(errors,[]);
  console.log('PASS Chromium mobile: Regional UI, v1.7.0 request with PNG masks, explicit unavailable warning, plain Text2Img preserved. Synthetic upstream; NOT T4 inference.');
 }finally{await browser.close();await app.close();await fs.rm(dir,{recursive:true,force:true})}

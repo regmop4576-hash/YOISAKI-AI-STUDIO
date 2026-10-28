@@ -44,7 +44,7 @@ test('create body: documented fields only, strict offer, exact price ceiling, on
  assert.equal(body.bootstrap_profile,'worker');assert.equal('bootstrap_profile' in createBody({offer,disk_gb:80,name:'x',image:ENGINE_IMAGE,token,max_price_hour_minor:1,currency:'RUB',bootstrap_profile:'provider_default'}),false);
  assert.equal(body.ask_id,501);assert.equal(body.auto_select,false);assert.equal(body.strict_offer,true);assert.equal(body.offer_disk_space,500);assert.equal(body.template_image,ENGINE_IMAGE);
  assert(body.onstart.includes(token)&&body.onstart.includes(ENGINE_IMAGE)&&Buffer.byteLength(body.onstart)<=8192);
- assert(!/:latest\b/.test(ENGINE_IMAGE)&&/:1\.7\.5$/.test(ENGINE_IMAGE));
+ assert(!/:latest\b/.test(ENGINE_IMAGE)&&/:1\.7\.7$/.test(ENGINE_IMAGE));
  for(const disk of [39,501,80.5])assert.throws(()=>createBody({offer,disk_gb:disk,name:'x',image:ENGINE_IMAGE,token,max_price_hour_minor:1,currency:'RUB'}));
  assert.throws(()=>onstartScript({image:ENGINE_IMAGE,token:'short'}));assert.throws(()=>onstartScript({image:"bad image'; rm",token}));
  assert.equal(createdInstanceId({data:{id:9001}}),'9001');assert.equal(createdInstanceId({new_contract:77}),'77');assert.equal(createdInstanceId({success:true}),null);assert.equal(createdInstanceId({id:'../x'}),null);
@@ -80,7 +80,7 @@ test('onstart script really provisions: inside the image; Docker only in the man
 test('image check: anonymous ghcr pull = accessible; private / missing image refused; other registries not claimed',async()=>{
  const seen=[];const http=status=>async(url,opts)=>{seen.push([url,opts.headers.Authorization]);return url.includes('/token?')?{status:200,json:{token:'anon'}}:{status,json:{}}};
  assert.equal((await checkImage(ENGINE_IMAGE,http(200))).accessible,true);assert.equal(seen[0][0],'https://ghcr.io/token?scope=repository:regmop4576-hash/yoisaki-ai-studio/engine:pull&service=ghcr.io');assert.equal(seen[1][1],'Bearer anon');
- assert.match(seen[1][0],/\/v2\/regmop4576-hash\/yoisaki-ai-studio\/engine\/manifests\/1\.7\.5$/);
+ assert.match(seen[1][0],/\/v2\/regmop4576-hash\/yoisaki-ai-studio\/engine\/manifests\/1\.7\.7$/);
  assert.equal((await checkImage(ENGINE_IMAGE,http(404))).accessible,false);
  assert.equal((await checkImage(ENGINE_IMAGE,async()=>({status:401,json:{}}))).accessible,false);
  const other=await checkImage('registry.example.com/x/engine:1',http(200));assert.equal(other.checked,false);assert.equal(other.accessible,null);
