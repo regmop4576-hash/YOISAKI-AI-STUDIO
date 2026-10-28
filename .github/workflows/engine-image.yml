@@ -7,6 +7,15 @@ on:
   push:
     paths:
       - cloudcompute/VERSION
+      # 1.7.7.1: image inputs and the gate test too, so a fixed source re-runs the build without a version bump;
+      # an already published version is still never rebuilt (see "Refuse to overwrite").
+      - Dockerfile
+      - .dockerignore
+      - cloudcompute/**
+      - engine/**
+      - '*-cloudcompute.sh'
+      - tests/docker-startup-1771.sh
+      - .github/workflows/engine-image.yml
 permissions:
   contents: read
   packages: write
@@ -74,30 +83,69 @@ jobs:
             YOISAKI_REVISION=${{ github.sha }}
           tags: ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}
 
+      # The runtime test generates the website's onstart script with server/cloudcompute-deploy.mjs (Node >= 22).
+      - uses: actions/setup-node@v4
+        if: steps.exists.outputs.published == 'false'
+        with:
+          node-version: 22
+
       - name: CPU runtime startup checks (not GPU validation)
         if: steps.exists.outputs.published == 'false'
         shell: bash
         run: bash tests/docker-startup-1771.sh "${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}"
 
       - name: Publish validated immutable candidate
+        id: push
         if: steps.exists.outputs.published == 'false'
         shell: bash
-        run: docker push "${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}"
+        run: |
+          set -euo pipefail
+          ref="${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}"
+          echo "image_id=$(docker image inspect --format '{{.Id}}' "$ref")" >> "$GITHUB_OUTPUT"
+          docker push "$ref" | tee "$RUNNER_TEMP/push.log"
+          # The image is published at this point: a missing digest is reported, the next step still verifies the registry.
+          digest=$(grep -oE 'digest: sha256:[a-f0-9]{64}' "$RUNNER_TEMP/push.log" | tail -n1 | cut -d' ' -f2 || true)
+          [[ -n $digest ]] || digest=$(docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$ref" | grep -oE "^${{ steps.meta.outputs.image }}@sha256:[a-f0-9]{64}$" | head -n1 | cut -d@ -f2 || true)
+          [[ -n $digest ]] || echo "::warning::docker push reported no manifest digest"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
 
       - name: Check anonymous pull access (what CloudCompute needs)
         shell: bash
+        env:
+          BUILT_HERE: ${{ steps.exists.outputs.published == 'false' }}
+          PUSHED_DIGEST: ${{ steps.push.outputs.digest }}
+          IMAGE_ID: ${{ steps.push.outputs.image_id }}
         run: |
           set -euo pipefail
           image="${{ steps.meta.outputs.image }}"; repo=${image#ghcr.io/}; tag="${{ steps.meta.outputs.version }}"
           token=$(curl -fsS "https://ghcr.io/token?scope=repository:${repo}:pull&service=ghcr.io" | python3 -c 'import json,sys;print(json.load(sys.stdin).get("token",""))' || true)
-          code=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer ${token}" \
-            -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json' \
+          accept='application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json'
+          code=$(curl -s -o "$RUNNER_TEMP/manifest.json" -D "$RUNNER_TEMP/manifest.headers" -w '%{http_code}' -H "Authorization: Bearer ${token}" -H "Accept: ${accept}" \
             "https://ghcr.io/v2/${repo}/manifests/${tag}")
+          registry_digest=$(tr -d '\r' < "$RUNNER_TEMP/manifest.headers" | awk 'tolower($1)=="docker-content-digest:" {print $2}' | tail -n1)
+          # 1.7.7.1: prove the anonymous manifest is the tested candidate built from this commit (config read anonymously too).
+          verdict=""
+          if [[ $code == 200 ]]; then
+            config_digest=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["config"]["digest"])' "$RUNNER_TEMP/manifest.json")
+            curl -fsSL -o "$RUNNER_TEMP/config.json" -H "Authorization: Bearer ${token}" "https://ghcr.io/v2/${repo}/blobs/${config_digest}"
+            echo "${config_digest#sha256:}  $RUNNER_TEMP/config.json" | sha256sum -c - >/dev/null
+            read -r platform version revision < <(python3 -c 'import json,sys;c=json.load(open(sys.argv[1]));l=c["config"].get("Labels") or {};print(c["os"]+"/"+c["architecture"],l.get("org.opencontainers.image.version","-"),l.get("org.opencontainers.image.revision","-"))' "$RUNNER_TEMP/config.json")
+            [[ $platform == linux/amd64 ]] || verdict+=" platform=${platform}"
+            [[ $version == "$tag" ]] || verdict+=" version-label=${version}"
+            if [[ $BUILT_HERE == true ]]; then
+              [[ -z $PUSHED_DIGEST || $registry_digest == "$PUSHED_DIGEST" ]] || verdict+=" registry-digest=${registry_digest}≠pushed=${PUSHED_DIGEST}"
+              [[ $revision == "$GITHUB_SHA" ]] || verdict+=" revision=${revision}≠${GITHUB_SHA}"
+            fi
+          fi
           {
             echo "### YOISAKI ENGINE image"
             echo "Reference: \`${image}:${tag}\`"
-            [[ -n "${{ steps.build.outputs.digest }}" ]] && echo "Digest: \`${{ steps.build.outputs.digest }}\`"
+            [[ -n $registry_digest ]] && echo "Registry manifest digest: \`${registry_digest}\` (pull by digest: \`${image}@${registry_digest}\`)"
+            [[ -n $PUSHED_DIGEST ]] && echo "Pushed by this run: \`${PUSHED_DIGEST}\` · local candidate image ID: \`${IMAGE_ID}\`"
+            [[ $code == 200 ]] && echo "Config: \`${config_digest}\` · platform \`${platform}\` · version label \`${version}\` · source revision \`${revision}\`"
             if [[ $code == 200 ]]; then echo "Anonymous pull: OK (public)."
             else echo "Anonymous pull: HTTP ${code}. Make the package public: GitHub → Your profile → Packages → engine → Package settings → Change visibility → Public."; fi
-          } >> "$GITHUB_STEP_SUMMARY"
+            [[ -z $verdict ]] || echo "Consistency check FAILED:${verdict}"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
           [[ $code == 200 ]] || { echo "::error::Image is not publicly pullable (HTTP ${code})."; exit 1; }
+          [[ -z $verdict ]] || { echo "::error::Published image does not match this run:${verdict}"; exit 1; }
