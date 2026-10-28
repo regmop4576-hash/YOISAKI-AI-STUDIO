@@ -17,7 +17,7 @@ const RULES={
  INVALID_RESPONSE:{component:'engine',retry:true,message:'По адресу отвечает не движок YOISAKI (возможно, страница ошибки туннеля). Жду запуска движка.'},
  AUTH_REJECTED:{component:'auth',retry:false,message:'Сервер отклонил токен: на GPU сменили токен (ротация) или по этому адресу другой сервер. Вставьте новую ссылку один раз.'},
  GPU_NOT_READY:{component:'gpu',retry:false,message:'Движок отвечает, но CUDA/GPU недоступны. Проверьте инстанс: ./check-cloudcompute.sh (CloudCompute) или среду T4 (Colab).'},
- ENGINE_UPGRADE_REQUIRED:{component:'engine',retry:false,message:'Версия движка несовместима: нужен YOISAKI ENGINE 1.7.0 с ControlNet, SDPose и Img2Img.'},
+ ENGINE_UPGRADE_REQUIRED:{component:'engine',retry:false,message:'Версия движка несовместима: нужен YOISAKI ENGINE 1.7.0 или 1.7.6 (API 1.7.0) с ControlNet, SDPose и Img2Img.'},
  PRIVATE_DESTINATION:{component:'tunnel',retry:false,message:'Адрес указывает на частную сеть. Нужен публичный HTTPS-адрес.'},
  REDIRECT_REJECTED:{component:'tunnel',retry:false,message:'Адрес перенаправляет запрос (например, на страницу входа). Нужен прямой адрес движка.'},
  PROXY_DENIED:{component:'tunnel',retry:false,message:'Запрос к этому адресу запрещён политикой безопасности.'},

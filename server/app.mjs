@@ -172,10 +172,14 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
  const monitorView=()=>monitor.view({connected:connection?.provider==='cloudcompute',origin:connection?.origin||'',selectionPending:selectionPending()});
  const libraryView=(extra={})=>{
   const v={...library.view(),...extra},sel=library.selection(),d=secrets.deployment(),live=connection?.provider==='cloudcompute'&&monitor.data.last?.origin===connection.origin;
+  // Colab has no /sync service: never reuse another provider's saved sync rows.
+  const freshModels=!status().models_stale;
+  const freshSync=!!live&&!monitor.data.gpu_error&&Date.now()-monitor.data.last.observed_at<60000;
+  const gpuItems=freshSync?monitor.lastItems():[];
   v.selection=sel;
-  v.estimate=selectionEstimate(sel,v.inventory,{gpuItems:monitor.lastItems(),disk:live?monitor.lastDisk():null,plannedDiskGb:d?.disk_gb??REQUIREMENTS.default_disk_gb,imageGb:REQUIREMENTS.image_size_note_gb});
-  v.comparison=compareSources({inventory:v.inventory,gpuItems:monitor.lastItems(),gpuModels:store.data.models,currentPath:monitor.running()?monitor.data.last?.status?.job?.current?.path:null,selection:sel});
-  v.gpu={connected:!!connection,provider:connection?.provider||null,sync_observed_at:monitor.data.last?.observed_at||null,sync_live:!!live&&!monitor.data.gpu_error,models_updated_at:store.data.inventory?.updated_at||null,models_stale:status().models_stale};
+  v.estimate=selectionEstimate(sel,v.inventory,{gpuItems,disk:freshSync?monitor.lastDisk():null,plannedDiskGb:d?.disk_gb??REQUIREMENTS.default_disk_gb,imageGb:REQUIREMENTS.image_size_note_gb});
+  v.comparison=compareSources({inventory:v.inventory,gpuItems,gpuModels:freshModels?store.data.models:[],currentPath:freshSync&&monitor.running()?monitor.data.last?.status?.job?.current?.path:null,selection:sel});
+  v.gpu={connected:!!connection,provider:connection?.provider||null,sync_observed_at:monitor.data.last?.observed_at||null,sync_live:freshSync,models_updated_at:store.data.inventory?.updated_at||null,models_stale:status().models_stale};
   return v;
  };
  const requireCloudGpu=()=>{const c=connection;if(!c)fail('GPU_OFFLINE','GPU не подключён. Подключите CloudCompute в разделе GPU; выбор моделей сохранён и будет использован.',409);if(c.provider!=='cloudcompute')fail('DRIVE_CLOUDCOMPUTE_ONLY','Синхронизация Google Drive доступна только для CloudCompute.',409);return c};
@@ -476,7 +480,7 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
    if(route==='/api/gpu/status'&&method==='GET')return send(res,await refresh(u.searchParams.get('models')==='1'));
    if(route==='/api/gpu/controlnet/preprocess'&&method==='POST'){
     if(!connection||!['READY','BUSY'].includes(state))fail('GPU_OFFLINE','GPU отключён. Подключитесь в разделе GPU.',409);
-    if(engineCompatibility(info)!=='COMPATIBLE')fail('ENGINE_UPGRADE_REQUIRED','Несовместимая версия движка. Требуется YOISAKI ENGINE v1.7.0.',409);
+    if(engineCompatibility(info)!=='COMPATIBLE')fail('ENGINE_UPGRADE_REQUIRED','Несовместимая версия движка. Требуется YOISAKI ENGINE v1.7.0 или v1.7.6 с API 1.7.0.',409);
     const request=validatePreprocess(await jsonBody(req));
     // AUD-006: each hop stays below the browser (95 s) and Cloudflare (~100 s) limits; the engine answers
     // PENDING after 60 s and the page repeats the identical request to resume the same operation.
@@ -488,7 +492,7 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
    if(route==='/api/gpu/generate'&&method==='POST'){
     if(!connection||!['READY','BUSY'].includes(state))fail('GPU_OFFLINE','GPU отключён. Подключитесь в разделе GPU.',409);
     const request=validateGeneration(await jsonBody(req),store.data.models);
-    if(request.regions?.some(r=>r.enabled)&&!supportsRegionalControl(info))fail('ENGINE_UPGRADE_REQUIRED','Движок не объявляет поддержку Regional Control и не распознан как совместимый YOISAKI ENGINE 1.7.0.',409);
+    if(request.regions?.some(r=>r.enabled)&&!supportsRegionalControl(info))fail('ENGINE_UPGRADE_REQUIRED','Движок не объявляет поддержку Regional Control и не распознан как совместимый YOISAKI ENGINE 1.7.0 / 1.7.6.',409);
     request.client_request_id ||= randomUUID();
     const c=connection,requestEpoch=epoch;
     // AUD-002: ControlNet map and Img2Img source go to the GPU only; history/gallery keep digests.

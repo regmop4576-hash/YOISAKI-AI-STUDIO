@@ -289,7 +289,7 @@ export const COMPARE_CATEGORIES=['DRIVE_ONLY','INSTALLED','UPDATE','DOWNLOADING'
 export function compareSources({inventory,gpuItems,gpuModels,currentPath=null,selection=null}){
  const gpu=new Map((gpuItems||[]).map(i=>[i.path,i]));const models=gpuModels||[];const chosen=new Set(Object.keys(selection?.items||{}));const matched=new Set();
  const rows=(inventory?.items||[]).map(i=>{
-  const g=gpu.get(i.path),m=models.find(x=>x.name===i.name&&x.kind===i.kind);if(m)matched.add(m.id);
+  const g=gpu.get(i.path),m=models.find(x=>x.kind===i.kind&&(x.relative_path?x.relative_path===i.path&&x.size_bytes===i.size:x.name===i.name));if(m)matched.add(m.id);
   let category,reason='';
   if(currentPath===i.path||g&&['DOWNLOADING','VERIFYING'].includes(g.state))category='DOWNLOADING';
   else if(g&&['FAILED','CONFLICT','REJECTED'].includes(g.state)){category='FAILED';reason=g.reason}

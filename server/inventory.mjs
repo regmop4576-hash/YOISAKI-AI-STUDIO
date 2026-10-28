@@ -46,6 +46,7 @@ export function parseInventory(x){
   if(problem){rejected.push({name:text(m?.name,300)||'(без имени)',kind:MODEL_KINDS.includes(m?.kind)?m.kind:null,reason:problem});continue}
   seen.add(m.id);
   const item={id:m.id,name:m.name,kind:m.kind,architecture:text(m.architecture,80),compatible:m.compatible,size_bytes:m.size_bytes};
+  if(typeof m.relative_path==='string'&&m.relative_path.length<=1000&&!m.relative_path.startsWith('/')&&!m.relative_path.split('/').some(p=>!p||p==='..'||p==='.')&&!/[\\\u0000-\u001f]/.test(m.relative_path))item.relative_path=m.relative_path;
   const base=baseModelHint(m);if(base)item.base_model=base;
   const detail=text(m.detail,300).replace(/[a-f0-9]{64}/g,'[СКРЫТО]').replace(/(?:\/[\w.-]+){2,}/g,'[путь]');if(detail)item.detail=detail;
   const reason=compatibilityReason(item);if(reason)item.compatibility_reason=reason;

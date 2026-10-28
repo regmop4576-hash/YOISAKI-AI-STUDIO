@@ -1,3 +1,4 @@
+import {engineCompatibility} from './release.mjs';
 import {validateControl} from './controlnet.mjs';
 import {MODES,validateImg2Img} from './img2img.mjs';
 import https from 'node:https';
@@ -51,7 +52,7 @@ export async function requestUpstream(connection,route,{method='GET',body,timeou
  req.end(body);
  });
 }
-export function validateHealth(x){if(!x||x.engine!=='YOISAKI_ENGINE'||typeof x.engine_version!=='string'||!['READY','BUSY','LOADING','ERROR'].includes(x.state)||!(x.gpu_name===null||typeof x.gpu_name==='string')||!['vram_total_mb','vram_available_mb'].every(k=>x[k]===null||Number.isFinite(x[k])&&x[k]>=0))fail('INVALID_RESPONSE','Неверный ответ health от GPU.',502);if(x.state==='ERROR')fail('GPU_NOT_READY','Движок отвечает, но GPU не готов. Проверьте CUDA на GPU-сервере.',503);if((x.api_version!==undefined&&x.api_version!=='1.7.0')||x.engine_version!=='1.7.0'||x.capabilities?.controlnet!==true||x.capabilities?.sdpose!==true||x.capabilities?.img2img!==true)fail('ENGINE_UPGRADE_REQUIRED','Несовместимая версия движка. Требуется YOISAKI ENGINE v1.7.0.',409);return x}
+export function validateHealth(x){if(!x||x.engine!=='YOISAKI_ENGINE'||typeof x.engine_version!=='string'||!['READY','BUSY','LOADING','ERROR'].includes(x.state)||!(x.gpu_name===null||typeof x.gpu_name==='string')||!['vram_total_mb','vram_available_mb'].every(k=>x[k]===null||Number.isFinite(x[k])&&x[k]>=0))fail('INVALID_RESPONSE','Неверный ответ health от GPU.',502);if(x.state==='ERROR')fail('GPU_NOT_READY','Движок отвечает, но GPU не готов. Проверьте CUDA на GPU-сервере.',503);if(engineCompatibility(x)!=='COMPATIBLE')fail('ENGINE_UPGRADE_REQUIRED','Несовместимая версия движка. Требуется YOISAKI ENGINE v1.7.0 или v1.7.6 с API 1.7.0.',409);return x}
 export function engineDetail(data){
  let detail;try{detail=JSON.parse(data.toString()).detail}catch{return ''}
  if(Array.isArray(detail))detail=detail.find(d=>typeof d?.msg==='string')?.msg;
