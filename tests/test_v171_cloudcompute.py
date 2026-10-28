@@ -283,8 +283,19 @@ def test_prefetch_sets_match_engine_sources():
     assert "variant']='fp16'" in controlnet.replace(' ', '') or "kwargs['variant']='fp16'" in controlnet
 
 # ---------------------------------------------------------------- diagnostics
+TORCH_210_CU128 = ['sm_70', 'sm_75', 'sm_80', 'sm_86', 'sm_90', 'sm_100', 'sm_120']  # measured in the image build
+
+
 @pytest.mark.parametrize('cap,arch,ok', [((7, 5), ['sm_75', 'sm_80'], True), ((12, 0), ['sm_75', 'sm_120'], True),
-    ((12, 0), ['sm_75', 'sm_90'], False), ((12, 0), ['sm_90', 'compute_90'], True), ((8, 6), ['sm_90'], False)])
+    ((12, 0), ['sm_75', 'sm_90'], False), ((12, 0), ['sm_90', 'compute_90'], True), ((8, 6), ['sm_90'], False),
+    # 1.7.7: CUDA binary compatibility within a major version (sm_86 SASS runs on sm_89), never across majors
+    ((8, 9), TORCH_210_CU128, True),    # RTX 4090 / 4080 / L4 / L40S — rejected by 1.7.5
+    ((7, 0), TORCH_210_CU128, True),    # Tesla V100
+    ((7, 5), TORCH_210_CU128, True),    # Tesla T4
+    ((8, 6), TORCH_210_CU128, True),    # RTX 3090
+    ((12, 0), TORCH_210_CU128, True),   # RTX 5060 Ti / 5090
+    ((6, 1), TORCH_210_CU128, False),   # Pascal (GTX 1080, P40): no kernels in this wheel
+    ((8, 9), ['sm_90'], False), ((12, 1), ['sm_100'], False), ((9, 0), ['sm_90a'], False)])
 def test_arch_support(cap, arch, ok):
     assert diagnose.arch_supported(*cap, arch) is ok
 
@@ -295,7 +306,7 @@ def test_diagnostics_report_without_gpu(tmp_path, monkeypatch, capsys):
     safetensors(cfg.models / 'checkpoints/a.safetensors')
     assert diagnose.main(['diagnose.py', '--json']) == 0
     data = json.loads(capsys.readouterr().out)
-    assert data['engine_version'] == '1.7.0' and data['deploy_version'] == '1.7.5'
+    assert data['engine_version'] == '1.7.0' and data['deploy_version'] == '1.7.7'
     assert data['models'] == {'checkpoint': 1} and data['paths']['models'] == str(cfg.models)
     assert data['disk']['free_gb'] > 0 and data['memory']['ram_total_gb'] > 0
     assert any('CUDA недоступна' in w for w in diagnose.warnings(data))
@@ -361,8 +372,8 @@ def test_pins_are_consistent():
     req = (APP / 'cloudcompute/requirements-cloud.txt').read_text()
     assert 'torch==2.10.0' in req and 'torchvision==0.25.0' in req
     assert 'torch' not in re.sub(r'#.*', '', (APP / 'engine/requirements.txt').read_text()).split()  # Colab keeps its own torch
-    assert (APP / 'cloudcompute/VERSION').read_text().strip() == '1.7.5'
-    assert 'yoisaki-engine:1.7.5-cloudcompute' in lib and 'yoisaki-engine:1.7.5-cloudcompute' in (APP / 'docker-compose.yml').read_text()
+    assert (APP / 'cloudcompute/VERSION').read_text().strip() == '1.7.7'
+    assert 'yoisaki-engine:1.7.7-cloudcompute' in lib and 'yoisaki-engine:1.7.7-cloudcompute' in (APP / 'docker-compose.yml').read_text()
 
 def test_dockerfile_policies():
     docker = (APP / 'Dockerfile').read_text()

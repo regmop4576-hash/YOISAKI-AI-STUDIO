@@ -218,7 +218,9 @@ test('browser Google Drive authorization: offline account → folder → explici
   assert.equal(JSON.parse(forwarded.token).refresh_token,'1//refresh-secret');assert.equal(forwarded.client_id,'123456789-abcdefghij.apps.googleusercontent.com');
   assert.equal((await h.call('/api/drive/oauth')).body.last_result.ok,true);
   assert.equal((await fetch(h.base+'/?state='+state+'&code=again',{headers:{'Sec-Fetch-Site':'cross-site'},redirect:'manual'})).status,403);  // single use
-  for(const f of await fs.readdir(h.dataDir))if(f!=='secrets.json'&&(await fs.stat(path.join(h.dataDir,f))).isFile())assert(!(await fs.readFile(path.join(h.dataDir,f),'utf8')).includes('refresh-secret'),f);
+  // 1.7.7: a temporary file of an atomic write may vanish between readdir and read (rename): skip only that case.
+  const gone=e=>{if(e.code!=='ENOENT')throw e;return null};
+  for(const f of await fs.readdir(h.dataDir)){if(f==='secrets.json')continue;const full=path.join(h.dataDir,f);const st=await fs.stat(full).catch(gone);if(!st?.isFile())continue;const text=await fs.readFile(full,'utf8').catch(gone);if(text!==null)assert(!text.includes('refresh-secret'),f)}
  }finally{await h.close()}
 });
 

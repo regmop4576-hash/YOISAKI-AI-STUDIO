@@ -58,10 +58,18 @@ def compiled_arch_list(torch):
 
 
 def arch_supported(major, minor, arch_list):
-    """Native SASS for this capability, or PTX of an equal/lower compute capability (JIT)."""
+    """Native SASS for this capability, SASS of the same major and a lower minor (CUDA binary compatibility:
+    an sm_86 cubin runs on sm_89, e.g. RTX 4090 / L4 / L40S with the torch 2.10 cu128 wheel, which ships
+    sm_70 sm_75 sm_80 sm_86 sm_90 sm_100 sm_120 and no sm_89), or PTX of an equal/lower capability (JIT).
+    Arch-specific targets (sm_90a, sm_100a ...) are not forward compatible and are ignored for other GPUs."""
     cap = major * 10 + minor
     if f'sm_{cap}' in arch_list:
         return True
+    for a in arch_list:
+        if a.startswith('sm_') and a[3:].isdigit():
+            value = int(a[3:])
+            if value // 10 == major and value % 10 <= minor:
+                return True
     return any(a.startswith('compute_') and a[8:].isdigit() and int(a[8:]) <= cap for a in arch_list)
 
 

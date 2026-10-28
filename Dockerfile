@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# YOISAKI ENGINE · CloudCompute deployment 1.7.5 (engine protocol 1.7.0, engine/ unchanged).
+# YOISAKI ENGINE · CloudCompute deployment 1.7.7 (engine protocol 1.7.0, engine/ unchanged since 1.7.4).
 # Model weights, API keys and Google credentials are NEVER part of the image: models live on the data volume (/data),
 # the engine token is issued per instance by YOISAKI AI STUDIO at creation time (cloudcompute/autostart-image.sh).
 #
@@ -69,8 +69,8 @@ RUN cd /opt/yoisaki/engine && /opt/yoisaki/venv/bin/python /opt/yoisaki/cloudcom
 # /data belongs to it, so a fresh volume (provider runtime or `docker run -v`) is writable without root.
 RUN userdel -r ubuntu 2>/dev/null || true \
  && useradd --uid 1000 --create-home --shell /usr/sbin/nologin yoisaki \
- && mkdir -p /data \
- && chown 1000:1000 /data
+ && mkdir -p /data/runtime/home \
+ && chown -R 1000:1000 /data
 
 ENV PATH=/opt/yoisaki/venv/bin:$PATH \
     YOISAKI_IN_IMAGE=1 \
@@ -81,7 +81,12 @@ ENV PATH=/opt/yoisaki/venv/bin:$PATH \
     HF_HOME=/data/huggingface-cache \
     HOME=/data/runtime/home
 
-USER 1000:1000
+# 1.7.7: no `USER 1000:1000`. The container starts as root, the Docker default that provider bootstraps (SSH / web
+# terminal / monitoring agents, the "onstart" script) are normally written for. 1.7.5 started as uid 1000, so a
+# bootstrap that installs or starts such services inside the container would fail (not confirmed for CloudCompute:
+# its bootstrap scripts are not published; see YOISAKI_DOCKER_AUDIT.md). The ENGINE itself
+# still runs as uid 1000: autostart-image.sh drops privileges with setpriv (--clear-groups) before it starts
+# launcher.py. `docker run --user 1000:1000` and docker-compose.yml (user: 1000:1000) keep working unchanged.
 WORKDIR /opt/yoisaki
 VOLUME ["/data"]
 
@@ -92,10 +97,11 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=300s --retries=3 \
 STOPSIGNAL SIGTERM
 ENTRYPOINT ["/usr/bin/tini", "--"]
 # 1.7.5: a small supervisor around launcher.py. Without the website-issued provisioning it behaves exactly like 1.7.4.
+# 1.7.7: it never exits while another supervisor of the same container runs (onstart before CMD keeps PID 1 alive).
 CMD ["/opt/yoisaki/cloudcompute/autostart-image.sh"]
 LABEL org.opencontainers.image.title="YOISAKI ENGINE CloudCompute" \
       org.opencontainers.image.description="YOISAKI ENGINE 1.7.0 (SDXL / Illustrious XL, Multi-LoRA, ControlNet, Regional Control, Img2Img, Google Drive sync) for CloudCompute GPUs. No models or credentials inside." \
-      org.opencontainers.image.version="1.7.5" \
+      org.opencontainers.image.version="1.7.7" \
       org.opencontainers.image.revision="${YOISAKI_REVISION}" \
       org.opencontainers.image.source="https://github.com/regmop4576-hash/YOISAKI-AI-STUDIO" \
       org.opencontainers.image.licenses="NOASSERTION"

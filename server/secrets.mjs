@@ -18,9 +18,26 @@ function cleanDeployment(d){
  const offer=d.offer&&typeof d.offer==='object'?{id:Number.isSafeInteger(d.offer.id)?d.offer.id:null,gpu:short(d.offer.gpu,120),vram_mb:Number.isFinite(d.offer.vram_mb)?d.offer.vram_mb:null,price_minor:Number.isSafeInteger(d.offer.price_minor)?d.offer.price_minor:null,currency:/^[A-Z]{3}$/.test(d.offer.currency)?d.offer.currency:''}:null;
  let url=null;try{const u=new URL(d.url);if(u.protocol==='https:'&&u.pathname==='/'&&!u.search&&!u.hash&&u.origin===d.url)url=d.url}catch{}
  return {instance_id:d.instance_id,token:d.token,image:d.image,name:short(d.name,255),created_at:Number(d.created_at)||Date.now(),adopted:d.adopted===true,offer,disk_gb:Number.isSafeInteger(d.disk_gb)?d.disk_gb:null,auto_sync:d.auto_sync===true,
-  stage:STAGE.test(d.stage)?d.stage:'GPU_CREATED',stage_message:short(d.stage_message,600),stage_at:Number(d.stage_at)||null,error:short(d.error,600),instance_status:short(d.instance_status,60),url,
+  stage:STAGE.test(d.stage)?(d.stage==='INSTANCE_INITIALIZING'?'PROVIDER_BOOTSTRAPPING':d.stage):'GPU_CREATED',stage_message:short(d.stage_message,600),stage_at:Number(d.stage_at)||null,error:short(d.error,600),instance_status:short(d.instance_status,60),url,
   gpu_stages:Array.isArray(d.gpu_stages)?d.gpu_stages.filter(x=>STAGE.test(x?.stage)&&Number.isInteger(x?.ts)).slice(-8).map(x=>({stage:x.stage,ts:x.ts})):[],
-  drive:d.drive&&typeof d.drive==='object'?JSON.parse(JSON.stringify(d.drive,(k,v)=>typeof v==='string'?v.slice(0,600):v)):null};
+  drive:d.drive&&typeof d.drive==='object'?JSON.parse(JSON.stringify(d.drive,(k,v)=>typeof v==='string'?v.slice(0,600):v)):null,
+  // v1.7.7: verified-stage evidence. Only short, credential-free strings and numbers are kept.
+  provider:cleanProvider(d.provider),failure:cleanFailure(d.failure),
+  stage_history:Array.isArray(d.stage_history)?d.stage_history.filter(h=>STAGE.test(h?.stage)&&Number.isFinite(h?.at)).slice(-40).map(h=>({stage:h.stage,at:h.at,source:/^(app|cloudcompute|engine|health)$/.test(h.source)?h.source:'app',provider_status:short(h.provider_status,60)})):[],
+  last_verified_stage:STAGE.test(d.last_verified_stage)?d.last_verified_stage:null,
+  bootstrap_profile:/^(worker|access_only|full|none|provider_default)$/.test(d.bootstrap_profile)?d.bootstrap_profile:null,
+  terminal:d.terminal&&/^(AVAILABLE|UNAVAILABLE|UNKNOWN)$/.test(d.terminal.state)?{state:d.terminal.state,message:short(d.terminal.message,300),checked_at:Number(d.terminal.checked_at)||null}:null,
+  request_id:/^[A-Za-z0-9-]{8,64}$/.test(d.request_id)?d.request_id:null};
+}
+const scrub=v=>short(v,400).replace(/[a-f0-9]{64}/gi,'[СКРЫТО]').replace(/cc-[A-Za-z0-9._~-]{8,}/g,'[СКРЫТО]');
+function cleanProvider(p){
+ if(!p||typeof p!=='object')return null;
+ const fields={};if(p.fields&&typeof p.fields==='object')for(const [k,v] of Object.entries(p.fields).slice(0,12))if(/^[a-z_]{2,30}$/.test(k)&&typeof v==='string')fields[k]=scrub(v);
+ return {status:short(p.status,60),fields,phase:/^(UNKNOWN|CREATE|BOOT|IMAGE|RUNNING|STOPPED|FAILED|GONE)$/.test(p.phase)?p.phase:'UNKNOWN',message:scrub(p.message),checked_at:Number(p.checked_at)||null};
+}
+function cleanFailure(f){
+ if(!f||typeof f!=='object'||!/^[a-z_]{2,20}$/.test(f.component))return null;
+ return {component:f.component,code:/^[A-Z0-9_]{2,40}$/.test(f.code)?f.code:'UNKNOWN',message:scrub(f.message),provider_status:short(f.provider_status,60),terminal:f.terminal===true,at:Number(f.at)||null};
 }
 function clean(raw){
  const data=EMPTY();

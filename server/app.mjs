@@ -10,13 +10,15 @@ import path from 'node:path';
 import {randomBytes,randomUUID} from 'node:crypto';
 import {Store} from './storage.mjs';
 import {parseTunnel,requestUpstream,validateHealth,validateGeneration,supportsRegionalControl} from './upstream.mjs';
-import {AppError,fail,publicError} from './errors.mjs';
+import {AppError,fail,failWith,publicError} from './errors.mjs';
 import {parseInventory} from './inventory.mjs';
 import {SecretStore} from './secrets.mjs';
 import {classify,components} from './connect-flow.mjs';
 import {discover,progress as rendezvousProgress,RENDEZVOUS_HOST} from './rendezvous.mjs';
 import {CloudComputeAPI,instanceList} from './cloudcompute-api.mjs';
-import {ENGINE_IMAGE,REQUIREMENTS,END_STAGES,DeploymentWatcher,offerList,createBody,createdInstanceId,checkImage,validateImage,onstartScript,newToken,instanceName,deploymentView} from './cloudcompute-deploy.mjs';
+import {ENGINE_IMAGE,REQUIREMENTS,END_STAGES,DeploymentWatcher,createBody,createdInstanceId,checkImage,validateImage,onstartScript,newToken,instanceName,deploymentView,classifyCreateError,BOOTSTRAP_PROFILES,DEFAULT_BOOTSTRAP_PROFILE,ONSTART_BUDGET_BYTES,ONSTART_LIMIT_BYTES,bytes as utf8Bytes,normalizeStage} from './cloudcompute-deploy.mjs';
+import {OfferMonitor,matchOffer,MONITOR_LIMITS} from './gpu-monitor.mjs';
+import {diagnosticsReport,DIAGNOSTICS_FILENAME} from './cc-diagnostics.mjs';
 import {DriveAccount} from './drive-account.mjs';
 import {providerHttp,providerBytes} from './provider-http.mjs';
 import {DriveLibrary,selectionEstimate,compareSources} from './drive-library.mjs';
@@ -28,11 +30,14 @@ const terminal=TERMINAL_STATUSES;
 async function readBody(req,max=12582912){const chunks=[];let n=0;for await(const b of req){n+=b.length;if(n>max)fail('BODY_TOO_LARGE','Слишком большой запрос.',413);chunks.push(b)}return Buffer.concat(chunks)}
 async function jsonBody(req){try{return JSON.parse((await readBody(req)).toString())}catch(e){if(e instanceof AppError)throw e;fail('INVALID_JSON','Неверный JSON запроса.')}}
 function send(res,value,status=200){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(value))}
-export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,serviceKey='',discoverAddress=discover,discoverProgress=rendezvousProgress,exchange=exchangeCode,providerRequest=providerHttp,providerBytesRequest=providerBytes,defaultGoogle=null,sleep=ms=>new Promise(r=>setTimeout(r,ms).unref?.()),deployInterval=10000,driveInterval=3000,autoResume=true}={}){
+export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,serviceKey='',discoverAddress=discover,discoverProgress=rendezvousProgress,exchange=exchangeCode,providerRequest=providerHttp,providerBytesRequest=providerBytes,defaultGoogle=null,sleep=ms=>new Promise(r=>setTimeout(r,ms).unref?.()),deployInterval=10000,driveInterval=3000,autoResume=true,monitorMinGap=MONITOR_LIMITS.min_gap_ms,monitorTimers}={}){
  const store=await new Store(dataDir).init();
  // v1.7.3: remembered connections and the Google OAuth client live in secrets.json (0600), never in state.json.
  const secrets=await new SecretStore(dataDir).init();const oauth=new OAuthFlows();let oauthResult=null,oauthGeneration=0;
  const cloud=new CloudComputeAPI(secrets,providerRequest),drive=new DriveAccount(secrets,providerRequest,providerBytesRequest);
+ // v1.7.7 GPU availability monitor: one shared, rate-limited snapshot of GET /offers; settings (no secrets) in state.json.
+ const gpuMonitor=new OfferMonitor({fetchOffers:()=>cloud.offers(),settings:store.data.preferences?.gpu_monitor,minGapMs:monitorMinGap,...(monitorTimers||{}),
+  saveSettings:settings=>store.change(d=>{d.preferences={...d.preferences,gpu_monitor:settings}})});
  // v1.7.6: Drive model library (no GPU needed) and the real-time sync monitor, each in its own 0600 file.
  const library=await new DriveLibrary({drive,dir:dataDir}).init(),monitor=await new SyncMonitor({dir:dataDir}).init();
  const googleClient=()=>secrets.google()||defaultGoogle;
@@ -195,6 +200,19 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
  const imageChecks=new Map();
  async function imageStatus(image){const hit=imageChecks.get(image);if(hit&&Date.now()-hit.at<(hit.result.accessible?300000:30000))return hit.result;const result={...await checkImage(image,providerRequest),checked_at:Date.now()};imageChecks.set(image,{at:Date.now(),result});return result}
  const gb=n=>(n/1073741824).toFixed(n>=10737418240?0:1)+' ГБ';
+ const bootstrapProfile=v=>{if(v===undefined||v===null||v==='')return DEFAULT_BOOTSTRAP_PROFILE;if(!BOOTSTRAP_PROFILES.includes(v))fail('CC_INVALID_CREATE','Неизвестный профиль инициализации CloudCompute.');return v};
+ // v1.7.7: the offer is re-read from CloudCompute right before it is shown for confirmation and again right before the
+ // paid request. A refresh is not a reservation: the host can still be taken in between (handled at creation).
+ async function freshOffer(id,outcome){
+  try{await gpuMonitor.refresh({force:true,reason:'verify'})}
+  catch(e){if(e.code==='CC_RATE_LIMITED')fail('CC_RATE_LIMITED',publicError(e).error+' Предложение сейчас нельзя перепроверить. '+outcome+'.',429);throw e}
+  const offer=gpuMonitor.offers.find(o=>o.id===id);
+  if(!offer)failWith('CC_OFFER_GONE',`Это предложение больше не доступно (исчезло из списка CloudCompute). ${outcome}. Список обновлён, фильтры сохранены.`,409,{offer_id:id,alternatives:gpuMonitor.alternatives(id)});
+  const taken=gpuMonitor.taken.get(id);
+  if(taken)failWith('CC_OFFER_TAKEN',`CloudCompute недавно отказал в создании на этом хосте: «${taken.message}». ${outcome}. Выберите другое предложение.`,409,{offer_id:id,alternatives:gpuMonitor.alternatives(id)});
+  if(offer.unavailable)failWith('CC_OFFER_TAKEN',`CloudCompute отмечает это предложение как занятое. ${outcome}.`,409,{offer_id:id,alternatives:gpuMonitor.alternatives(id)});
+  return offer;
+ }
  // Connects this app to the engine address the GPU published (signed with the deployment token).
  async function deployConnect(url,token,{automatic=false}={}){
   endpoint(url,'cloudcompute');
@@ -253,8 +271,8 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
   connect:deployConnect,connectionState:()=>({phase:currentPhase(),origin:connection?.origin||'',token:connection?.token||''}),
   afterReady:()=>{const d=secrets.deployment();if(d?.drive?.state&&d.drive.state!=='ERROR')return Promise.resolve();return driveRoutine({download:!!d?.auto_sync,automatic:true})}});
  // A creation whose answer was lost keeps a pending record (with its token) and is resolved by name, never re-sent.
- const resolvePending=async d=>{if(!d.instance_id.startsWith('pending-'))return;try{const found=instanceList(await cloud.request('GET','/instances')).find(i=>i.name===d.name);if(found){await secrets.change(x=>{if(x.deployment?.instance_id===d.instance_id)x.deployment.instance_id=found.id})}}catch{}};
- const originalTick=watcher.tick.bind(watcher);watcher.tick=async(d,alive)=>{if(d.instance_id.startsWith('pending-')){await resolvePending(d);d=secrets.deployment();if(!d||d.instance_id.startsWith('pending-')){if(Date.now()-d?.created_at>5*60000)await watcher.setStage('FAILED','CloudCompute не подтвердил создание и инстанс с именем '+d?.name+' не появился в списке. Проверьте панель CloudCompute; повторная попытка не выполнялась.');return}}return originalTick(d,alive)};
+ const resolvePending=async d=>{if(!d.instance_id.startsWith('pending-'))return;try{const found=instanceList(await cloud.request('GET','/instances')).find(i=>i.name===d.name||i.label===d.name);if(found){await secrets.change(x=>{if(x.deployment?.instance_id===d.instance_id)x.deployment.instance_id=found.id})}}catch{}};
+ const originalTick=watcher.tick.bind(watcher);watcher.tick=async(d,alive)=>{if(d.instance_id.startsWith('pending-')){await resolvePending(d);if(!alive())return;d=secrets.deployment();if(!d||d.instance_id.startsWith('pending-')){if(Date.now()-d?.created_at>5*60000)await watcher.setStage('FAILED','CloudCompute не подтвердил создание и инстанс с именем '+d?.name+' не появился в списке. Проверьте панель CloudCompute; повторная попытка не выполнялась.');return}}return originalTick(d,alive)};
  let creating=false;
  async function setJob(id,patch){await store.change(d=>{const j=d.history.find(j=>j.id===id);if(j)Object.assign(j,patch,{updated:Date.now()})})}
  async function collect(job,remote,c){
@@ -353,7 +371,31 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
      if(secrets.deployment()?.instance_id===ccMatch[1]){watcher.stop();await watcher.setStage('INSTANCE_GONE','Инстанс удалён по вашей команде. Оплата GPU прекращена; данные его диска удалены провайдером.')}
      return send(res,{ok:true})}
    }
-   if(route==='/api/cloudcompute/offers'&&method==='GET')return send(res,{...offerList(await cloud.offers()),requirements:REQUIREMENTS,updated_at:Date.now()});
+   // 1.7.5 contract kept; since 1.7.7 served from the shared, rate-limited monitor snapshot.
+   if(route==='/api/cloudcompute/offers'&&method==='GET'){const v=await gpuMonitor.refresh();return send(res,{offers:gpuMonitor.offers,rejected:gpuMonitor.rejected,requirements:REQUIREMENTS,updated_at:v.updated_at,cached:!!v.cached})}
+   // ---- v1.7.7 GPU availability monitor ----
+   if(route==='/api/cloudcompute/monitor'){
+    if(method==='GET')return send(res,gpuMonitor.view());
+    if(method==='PUT')return send(res,await gpuMonitor.configure(await jsonBody(req)));
+   }
+   if(route==='/api/cloudcompute/monitor/refresh'&&method==='POST'){if(!secrets.cloudKey())fail('CC_NOT_CONFIGURED','Сначала сохраните API-ключ CloudCompute.',409);return send(res,await gpuMonitor.refresh())}
+   if(route==='/api/cloudcompute/monitor/auto'&&method==='POST'){const b=await jsonBody(req);if(b.on===true){if(!secrets.cloudKey())fail('CC_NOT_CONFIGURED','Сначала сохраните API-ключ CloudCompute.',409);return send(res,gpuMonitor.start())}return send(res,gpuMonitor.stop())}
+   if(route==='/api/cloudcompute/monitor/ack'&&method==='POST'){const b=await jsonBody(req);return send(res,gpuMonitor.acknowledge(b.keys))}
+   if(route==='/api/cloudcompute/deploy/prepare'&&method==='POST'){
+    // Step "final configuration": fresh offer data, verified price/disk/image, nothing is created or reserved.
+    const b=await jsonBody(req),image=b.image===undefined||b.image===''?ENGINE_IMAGE:validateImage(b.image),profile=bootstrapProfile(b.bootstrap_profile);
+    if(!Number.isSafeInteger(b.offer_id))fail('CC_INVALID_CREATE','Выберите предложение GPU.');
+    const check=await imageStatus(image),offer=await freshOffer(b.offer_id,'Проверка');
+    const disk=b.disk_gb??Math.min(REQUIREMENTS.default_disk_gb,offer.disk_gb!=null?Math.floor(offer.disk_gb):REQUIREMENTS.default_disk_gb);
+    const issues=[...offer.reasons];
+    if(!Number.isSafeInteger(disk)||disk<REQUIREMENTS.min_disk_gb||offer.disk_gb!=null&&disk>offer.disk_gb)issues.push(`Диск ${disk} ГБ вне допустимого: от ${REQUIREMENTS.min_disk_gb}${offer.disk_gb!=null?' до '+Math.floor(offer.disk_gb):''} ГБ.`);
+    if(check.accessible!==true&&b.skip_image_check!==true)issues.push(check.message);
+    const script=utf8Bytes(onstartScript({image,token:'0'.repeat(64)}));
+    return send(res,{quote:{offer_id:offer.id,gpu:offer.gpu,gpus:offer.gpus,vram_mb:offer.vram_mb,model:offer.model,cuda:offer.cuda,reliability:offer.reliability,location:offer.location,
+     price:offer.price,storage:offer.storage,disk_gb:disk,offer_disk_gb:offer.disk_gb,image,image_check:check,bootstrap_profile:profile,onstart_bytes:script,onstart_budget_bytes:ONSTART_BUDGET_BYTES,onstart_limit_bytes:ONSTART_LIMIT_BYTES,
+     warnings:offer.warnings,issues,can_create:!issues.length&&!!offer.price?.verified&&offer.price.minor!=null,match:matchOffer(offer,gpuMonitor.settings.filters),checked_at:Date.now(),
+     note:'Проверка не резервирует GPU: до нажатия «Создать» предложение может занять другой пользователь.'}});
+   }
    if(route==='/api/cloudcompute/image'&&method==='GET'){const image=u.searchParams.get('image')||ENGINE_IMAGE;return send(res,await imageStatus(validateImage(image)))}
    if(route==='/api/cloudcompute/deploy'){
     if(method==='GET')return send(res,{deployment:watcher.view(),default_image:ENGINE_IMAGE,requirements:REQUIREMENTS});
@@ -361,39 +403,80 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
     if(method==='POST'){
      const b=await jsonBody(req);
      if(b.confirm!==true)fail('CC_CONFIRM_REQUIRED','Подтвердите создание платного GPU-сервера.');
-     if(creating)fail('CC_BUSY','Создание уже выполняется.',409);
+     // v1.7.7 duplicate-billing guards, in this order: one request at a time; a repeated submission of the SAME request
+     // (request_id) returns the existing deployment; a previous creation whose answer was lost must be resolved first.
+     if(creating)fail('CC_BUSY','Создание уже выполняется. Повторная отправка не выполняется.',409);
+     if(b.request_id!==undefined&&!/^[A-Za-z0-9-]{8,64}$/.test(b.request_id))fail('CC_INVALID_CREATE','Некорректный идентификатор запроса.');
      const existing=secrets.deployment();
-     if(existing&&!END_STAGES.includes(existing.stage)&&b.additional!==true)fail('CC_DEPLOYMENT_EXISTS',`Уже есть GPU-сервер YOISAKI #${existing.instance_id}. Удалите его или подтвердите создание ещё одного (он тоже оплачивается).`,409);
-     const image=b.image===undefined||b.image===''?ENGINE_IMAGE:validateImage(b.image);
+     if(b.request_id&&existing?.request_id===b.request_id){note('DEPLOY_DUPLICATE_SUBMIT');return send(res,{deployment:watcher.view(),duplicate:true},200)}
+     const image=b.image===undefined||b.image===''?ENGINE_IMAGE:validateImage(b.image),profile=bootstrapProfile(b.bootstrap_profile);
      if(!Number.isSafeInteger(b.offer_id)||!Number.isSafeInteger(b.accepted_price_minor)||typeof b.currency!=='string')fail('CC_INVALID_CREATE','Выберите предложение GPU и подтвердите его цену.');
      creating=true;
      try{
+      if(existing&&String(existing.instance_id).startsWith('pending-')){
+       let found=null;
+       try{found=instanceList(await cloud.request('GET','/instances')).find(i=>i.name===existing.name||i.label===existing.name)}
+       catch(e){fail('CC_PREVIOUS_UNVERIFIED',`Не удалось проверить, создал ли CloudCompute предыдущий сервер ${existing.name}: ${publicError(e).error} Новый сервер не создаётся, пока это неизвестно.`,409)}
+       if(found){await secrets.change(x=>{if(x.deployment?.token===existing.token)x.deployment.instance_id=found.id});watcher.start();fail('CC_PREVIOUS_CREATED',`Предыдущий запрос всё-таки создал сервер #${found.id} (${existing.name}); он оплачивается. Новый сервер НЕ создан.`,409)}
+       if(b.previous_unconfirmed_ack!==true)fail('CC_PREVIOUS_UNCONFIRMED',`Ответ CloudCompute на прошлое создание (${existing.name}) был потерян, и в списке инстансов его сейчас нет. Проверьте панель CloudCompute и подтвердите, чтобы создать новый сервер.`,409);
+      }
+      else if(existing&&!END_STAGES.includes(existing.stage)&&b.additional!==true)fail('CC_DEPLOYMENT_EXISTS',`Уже есть GPU-сервер YOISAKI #${existing.instance_id}. Удалите его или подтвердите создание ещё одного (он тоже оплачивается).`,409);
       const check=await imageStatus(image);
       if(check.accessible!==true&&b.skip_image_check!==true)fail('CC_IMAGE_UNAVAILABLE',check.message+' Инстанс НЕ создан, деньги не списаны.',409);
-      const offer=offerList(await cloud.offers()).offers.find(o=>o.id===b.offer_id);
-      if(!offer)fail('CC_OFFER_GONE','Это предложение больше не доступно. Обновите список GPU. Инстанс не создан.',409);
+      const offer=await freshOffer(b.offer_id,'Инстанс не создан');
       if(!offer.compatible)fail('CC_OFFER_INCOMPATIBLE',offer.reasons.join(' ')+' Инстанс не создан.',409);
-      if(offer.price.minor!==b.accepted_price_minor||offer.price.currency!==b.currency)fail('CC_PRICE_CHANGED',`Цена изменилась: сейчас ${(offer.price.minor/100).toFixed(2)} ${offer.price.currency}/час. Подтвердите новую цену. Инстанс не создан.`,409);
-      const token=newToken(),name=instanceName(),disk=b.disk_gb??REQUIREMENTS.default_disk_gb;
-      const body=createBody({offer,disk_gb:disk,name,image,token,max_price_hour_minor:offer.price.minor,currency:offer.price.currency});
-      const record={instance_id:'pending-'+name,token,image,name,created_at:Date.now(),offer:{id:offer.id,gpu:offer.gpu,vram_mb:offer.vram_mb,price_minor:offer.price.minor,currency:offer.price.currency},disk_gb:disk,auto_sync:b.auto_sync!==false,stage:'CREATING',stage_message:'Создаю GPU-сервер…',stage_at:Date.now()};
+      if(offer.price.minor!==b.accepted_price_minor||offer.price.currency!==b.currency)failWith('CC_PRICE_CHANGED',`Цена изменилась: сейчас ${(offer.price.minor/100).toFixed(2)} ${offer.price.currency}/час. Подтвердите новую цену. Инстанс не создан.`,409,{offer_id:offer.id,price_minor:offer.price.minor,currency:offer.price.currency});
+      const token=newToken(),name=instanceName(),disk=b.disk_gb??Math.min(REQUIREMENTS.default_disk_gb,offer.disk_gb!=null?Math.floor(offer.disk_gb):REQUIREMENTS.default_disk_gb),at=Date.now();
+      const body=createBody({offer,disk_gb:disk,name,image,token,max_price_hour_minor:offer.price.minor,currency:offer.price.currency,bootstrap_profile:profile});
+      const record={instance_id:'pending-'+name,token,image,name,created_at:at,offer:{id:offer.id,gpu:offer.gpu,vram_mb:offer.vram_mb,price_minor:offer.price.minor,currency:offer.price.currency},disk_gb:disk,auto_sync:b.auto_sync!==false,
+       stage:'CREATING',stage_message:'Создаю GPU-сервер…',stage_at:at,stage_history:[{stage:'CREATING',at,source:'app',provider_status:''}],bootstrap_profile:profile,request_id:b.request_id||null};
       // The token is saved BEFORE the paid request: an unanswered creation can still be connected later.
       await secrets.setDeployment(record);
       let json;
       try{json=await cloud.deploy(body)}
       catch(e){
-       if(/^CC_HTTP_4/.test(e.code||'')){await secrets.setDeployment(existing||null);throw e}
-       await watcher.setStage('CREATING','Ответ CloudCompute не получен. Ищу инстанс '+name+' в списке; повторное создание не выполняется.');watcher.start();note('DEPLOY_UNCONFIRMED');
+       const kind=classifyCreateError(e);
+       if(kind!=='UNKNOWN_OUTCOME'){
+        // A definite refusal from CloudCompute: nothing was created and nothing is retried.
+        await secrets.setDeployment(existing||null);note('DEPLOY_REFUSED_'+kind);
+        const provider=e.provider_message||'';
+        if(kind==='OFFER_TAKEN'){
+         gpuMonitor.markTaken(offer.id,provider||e.message);
+         try{await gpuMonitor.refresh({force:true,reason:'after-conflict'})}catch{}
+         failWith('CC_OFFER_TAKEN',`CloudCompute отказал: этот GPU-хост уже занят. Ответ провайдера: «${provider||e.message}». Инстанс НЕ создан, оплата не началась. Предложение помечено как недоступное, список обновлён, ваши фильтры сохранены. Повторная попытка автоматически не выполнялась.`,e.status||409,
+          {provider_message:provider,http_status:e.http_status||null,offer_id:offer.id,alternatives:gpuMonitor.alternatives(offer.id)});
+        }
+        if(kind==='INSUFFICIENT_BALANCE')failWith('CC_INSUFFICIENT_BALANCE',`Недостаточно средств на балансе CloudCompute. Ответ провайдера: «${provider||e.message}». Инстанс НЕ создан. Пополните баланс в панели CloudCompute.`,e.status||402,{provider_message:provider,http_status:e.http_status||null});
+        if(kind==='RATE_LIMITED')failWith('CC_RATE_LIMITED',`CloudCompute ограничил частоту запросов${e.retry_after?` (повтор через ${e.retry_after} с)`:''}. Инстанс НЕ создан; повторите вручную позже.`,429,{retry_after:e.retry_after??null});
+        throw e;
+       }
+       await watcher.setStage('CREATING','Ответ CloudCompute не получен. Ищу инстанс '+name+' в списке; повторное создание не выполняется.',{failure:{component:'cloudcompute',code:'CREATION_UNCONFIRMED',message:publicError(e).error,terminal:false,at:Date.now()}});watcher.start();note('DEPLOY_UNCONFIRMED');
        fail(e.code||'PROVIDER_NETWORK',publicError(e).error+' Повторное создание не выполнялось: проверьте список инстансов.',502);
       }
-      const id=createdInstanceId(json);
-      await secrets.change(d=>{if(d.deployment?.token===token){if(id)d.deployment.instance_id=id;Object.assign(d.deployment,{stage:'GPU_CREATED',stage_message:'GPU-сервер создан. Оплата идёт с этого момента.',stage_at:Date.now()})}});
+      const id=createdInstanceId(json),created=Date.now();
+      await secrets.change(d=>{if(d.deployment?.token===token){if(id)d.deployment.instance_id=id;Object.assign(d.deployment,{stage:'GPU_CREATED',stage_message:'CloudCompute принял заказ: инстанс создан. Оплата идёт с этого момента.',stage_at:created,stage_history:[...(d.deployment.stage_history||[]),{stage:'GPU_CREATED',at:created,source:'cloudcompute',provider_status:''}]})}});
       note('DEPLOY_CREATED');watcher.start();
       return send(res,{deployment:watcher.view()},201);
      }finally{creating=false}
     }
    }
    if(route==='/api/cloudcompute/deploy/watch'&&method==='POST')return send(res,{deployment:watcher.start()});
+   if(route==='/api/cloudcompute/deploy/terminal'&&method==='POST'){
+    // v1.7.7 manual probe of the provider web terminal (documented terminal-token endpoint; the token is discarded).
+    const d=secrets.deployment();if(!d||String(d.instance_id).startsWith('pending-'))fail('CC_NO_DEPLOYMENT','Нет созданного инстанса для проверки.',409);
+    let terminal;
+    try{await cloud.terminalProbe(d.instance_id);terminal={state:'AVAILABLE',message:'CloudCompute выдал доступ к веб-терминалу (токен терминала не сохраняется).',checked_at:Date.now()}}
+    catch(e){if(e.code==='CC_NOT_CONFIGURED')throw e;terminal={state:'UNAVAILABLE',message:(e.provider_message||publicError(e).error).slice(0,300),checked_at:Date.now()}}
+    await watcher.update({terminal});note('TERMINAL_'+terminal.state);return send(res,{deployment:watcher.view()});
+   }
+   if(route==='/api/cloudcompute/diagnostics'&&method==='GET'){
+    const d=secrets.deployment(),st=status();
+    const report=diagnosticsReport({websiteVersion:WEBSITE_VERSION,edition:STUDIO_EDITION,
+     deployment:d?{...deploymentView(d,{watching:watcher.running}),url:d.url||null}:null,image:imageChecks.get(d?.image||ENGINE_IMAGE)?.result||null,
+     connection:{connected:!!connection,provider:connection?.provider||null,origin:connection?.origin||null,info:connection?info:null,state,phase:st.phase,code:lastCode,error:lastError},monitor:gpuMonitor.view()});
+    note('DIAGNOSTICS_EXPORTED');
+    res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','Content-Disposition':`attachment; filename="${DIAGNOSTICS_FILENAME}"`});return res.end(JSON.stringify(report,null,2));
+   }
    if(route==='/api/cloudcompute/deploy/connect'&&method==='POST'){
     const d=secrets.deployment();if(!d)fail('CC_NO_DEPLOYMENT','Сначала создайте GPU-сервер YOISAKI.',409);
     if(!d.url){if(secrets.connection('cloudcompute')?.token===d.token){await startAutoconnect('cloudcompute',10);return send(res,{deployment:watcher.view(),status:status()},202)}fail('CC_NOT_READY','Движок ещё не сообщил свой адрес. Дождитесь этапа «Проверка движка» или нажмите «Инициализировать движок».',409)}
@@ -410,10 +493,10 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
     const image=b.image?validateImage(b.image):ENGINE_IMAGE,token=newToken();
     const view=(await import('./cloudcompute-api.mjs')).instanceView((r=>r?.data||r?.instance||r)(await cloud.detail(b.instance_id)));
     watcher.stop();
-    await secrets.setDeployment({instance_id:view.id,token,image,name:view.name,created_at:Date.now(),adopted:true,auto_sync:b.auto_sync!==false,stage:'INSTANCE_INITIALIZING',stage_message:'Выполните показанную команду один раз в веб-терминале инстанса (панель CloudCompute).',stage_at:Date.now()});
+    const at=Date.now();await secrets.setDeployment({instance_id:view.id,token,image,name:view.name,created_at:at,adopted:true,auto_sync:b.auto_sync!==false,stage:'GPU_CREATED',stage_message:'Выполните показанную команду один раз в веб-терминале инстанса (панель CloudCompute).',stage_at:at,stage_history:[{stage:'GPU_CREATED',at,source:'app',provider_status:view.status}]});
     note('DEPLOY_ADOPTED');watcher.start();
     // Shown once: the command contains the new engine token of this instance.
-    return send(res,{deployment:watcher.view(),command:"bash <<'YOISAKI_ONSTART'\n"+onstartScript({image,token})+'YOISAKI_ONSTART\n'});
+    return send(res,{deployment:watcher.view(),command:"bash <<'YOISAKI_ONSTART'\n"+onstartScript({image,token,docker:true})+'YOISAKI_ONSTART\n'});
    }
    const oauthView=()=>{const g=googleClient();return {configured:!!g,client_id:g?.client_id||'',redirect_uri:redirectUri(port),scope:SCOPE,last_result:oauthResult,...drive.view()}};
    if(route==='/api/drive/oauth'){
@@ -591,7 +674,7 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
  server.requestTimeout=100000;server.headersTimeout=10000;
  // v1.7.5: after a restart of this app an unfinished initialization continues; a finished one reconnects by itself.
  if(autoResume){const d=secrets.deployment();
-  if(d&&!END_STAGES.includes(d.stage)&&d.stage!=='GPU_READY')watcher.start();
+  if(d&&!END_STAGES.includes(d.stage)&&normalizeStage(d.stage)!=='GPU_READY')watcher.start();
   else if(d?.stage==='GPU_READY'&&providers.selected==='cloudcompute'&&secrets.connection('cloudcompute')?.token===d.token)startAutoconnect('cloudcompute',3).catch(()=>{});}
- return {server,store,status,pollJobs,async close(){closed=true;watcher.stop();clearInterval(pollTimer);clearInterval(syncTimer);await Promise.allSettled([...background,syncPolling].filter(Boolean));connection=null;jobs.clear();acknowledgements.clear();await new Promise(resolve=>{server.close(resolve);server.closeAllConnections()});while(polling)await new Promise(r=>setTimeout(r,20));await store.chain;monitor.closed=library.closed=true;await monitor.chain;await library.chain}};
+ return {server,store,status,pollJobs,async close(){closed=true;watcher.stop();gpuMonitor.stop('Приложение остановлено.');clearInterval(pollTimer);clearInterval(syncTimer);await Promise.allSettled([...background,syncPolling].filter(Boolean));connection=null;jobs.clear();acknowledgements.clear();await new Promise(resolve=>{server.close(resolve);server.closeAllConnections()});while(polling)await new Promise(r=>setTimeout(r,20));await store.chain;await secrets.chain;monitor.closed=library.closed=true;await monitor.chain;await library.chain}};
 }

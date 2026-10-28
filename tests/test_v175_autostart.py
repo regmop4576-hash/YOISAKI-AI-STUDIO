@@ -122,9 +122,18 @@ def test_new_provisioning_restarts_running_engine_and_sigterm_stops_cleanly(env)
     proc = subprocess.Popen(['bash', str(AUTOSTART)], env={**env, 'FAKE_RUN_SLEEP': '60'}, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     try:
         wait_for(lambda: any('launcher.py run' in line for line in calls(env)))
-        # a second start in the same container does not start a second engine
-        again = subprocess.run(['bash', str(AUTOSTART)], env=env, capture_output=True, text=True, timeout=30)
-        assert again.returncode == 0 and 'уже работает' in again.stdout
+        # a second start in the same container does not start a second engine; 1.7.7: it waits instead of exiting
+        # (an exiting image CMD would end PID 1 and stop the container)
+        again = subprocess.Popen(['bash', str(AUTOSTART)], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                                 start_new_session=True)
+        try:
+            time.sleep(1.5)
+            assert again.poll() is None
+            assert sum('launcher.py run' in line for line in calls(env)) == 1
+        finally:
+            os.killpg(again.pid, signal.SIGKILL)  # bash and its waiting flock
+            out, _ = again.communicate(timeout=10)
+        assert 'уже работает' in out
         provisioned_files(env, 'b' * 64)
         Path(env['YOISAKI_DATA_ROOT'], 'runtime/state/autostart.restart').touch()
         wait_for(lambda: any('TOKEN=' + 'b' * 64 in line and 'launcher.py run' in line for line in calls(env)))
@@ -134,6 +143,28 @@ def test_new_provisioning_restarts_running_engine_and_sigterm_stops_cleanly(env)
     finally:
         if proc.poll() is None:
             proc.kill()
+
+
+def test_177_image_cmd_after_onstart_waits_instead_of_stopping_the_container(env):
+    """Provider order onstart → image CMD: the onstart supervisor holds the lock. The CMD (PID 1 child under tini)
+    must neither start a second engine nor exit (exit = container stop); it takes over when the first one ends."""
+    r = subprocess.run(['bash', str(AUTOSTART), '--provision'], env={**env, 'YOISAKI_PROVISION_TOKEN': TOKEN, 'FAKE_RUN_SLEEP': '3'},
+                       capture_output=True, text=True, timeout=30)
+    assert r.returncode == 0, r.stderr
+    wait_for(lambda: any('launcher.py run' in line for line in calls(env)))
+    cmd = subprocess.Popen(['bash', str(AUTOSTART)], env={**env, 'FAKE_RUN_SLEEP': '1'}, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    try:
+        time.sleep(1)
+        assert cmd.poll() is None  # the container keeps running
+        assert sum('launcher.py run' in line for line in calls(env)) == 1  # still one engine
+        out, _ = cmd.communicate(timeout=30)  # first supervisor ends → CMD takes over, its engine exits 0
+    finally:
+        if cmd.poll() is None:
+            cmd.kill()
+    assert cmd.returncode == 0 and 'уже работает' in out and 'продолжаю наблюдение' in out
+    runs = [line for line in calls(env) if 'launcher.py run' in line]
+    assert len(runs) == 2 and all('TOKEN=' + TOKEN in line and 'STABLE=1' in line for line in runs)
+    assert TOKEN not in out
 
 
 def test_launcher_signals_stages_only_with_rendezvous_and_stable_token(tmp_path, monkeypatch):
@@ -196,8 +227,12 @@ def test_image_policies_175():
     docker = (APP / 'Dockerfile').read_text()
     code = re.sub(r'#.*', '', docker)
     assert '--require-hashes --no-deps -r /opt/yoisaki/cloudcompute/requirements-lock.txt' in docker and 'pip check' in docker and 'check_lock.py' in docker
-    assert 'CMD ["/opt/yoisaki/cloudcompute/autostart-image.sh"]' in docker and 'chown 1000:1000 /data' in docker
-    assert 'org.opencontainers.image.version="1.7.5"' in docker and ':latest' not in code
+    assert 'CMD ["/opt/yoisaki/cloudcompute/autostart-image.sh"]' in docker and 'chown -R 1000:1000 /data' in docker
+    assert 'org.opencontainers.image.version="1.7.7"' in docker and ':latest' not in code
+    # 1.7.7: the container starts as root (provider bootstraps need it); the engine drops to uid 1000 in autostart
+    assert not re.search(r'^\s*USER\s', code, re.M)
+    autostart = AUTOSTART.read_text()
+    assert 'setpriv --reuid="$RUN_UID" --regid="$RUN_GID" --clear-groups' in autostart
     assert 'COPY config' not in code and 'secrets.json' not in code and 'extra_ca' not in code.split('RUN apt-get update')[0]
     # the optional build CA is a BuildKit secret mount, never COPY/ENV/ARG
     assert all('extra_ca' in line and '--mount=type=secret' in line for line in code.splitlines() if 'extra_ca' in line and 'RUN' in line)
@@ -205,7 +240,7 @@ def test_image_policies_175():
     assert '!config/' not in ignore and '!server/' not in ignore
     workflow = (APP / '.github/workflows/engine-image.yml').read_text()
     assert ':latest' not in re.sub(r'#.*', '', workflow) and 'steps.meta.outputs.version' in workflow and 'Refuse to overwrite' in workflow
-    assert (APP / 'cloudcompute/VERSION').read_text().strip() == '1.7.5'
+    assert (APP / 'cloudcompute/VERSION').read_text().strip() == '1.7.7'
     assert os.access(AUTOSTART, os.X_OK) or AUTOSTART.read_text().startswith('#!/usr/bin/env bash')
 
 

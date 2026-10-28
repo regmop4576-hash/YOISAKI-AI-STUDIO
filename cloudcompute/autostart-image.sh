@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# YOISAKI ENGINE 1.7.5 · automatic start inside the prebuilt image (no SSH, pip or Termux for the user).
+# YOISAKI ENGINE deployment 1.7.7 · automatic start inside the prebuilt image (no SSH, pip or Termux for the user).
 #
 #   autostart-image.sh               Image CMD (foreground). Supervises cloudcompute/launcher.py.
 #                                    Without a saved provisioning it starts the launcher exactly as 1.7.4 did
@@ -99,18 +99,24 @@ on_signal() { log 'Остановка по сигналу.'; stop_child; exit 0;
 supervise() {
   exec 9>"$STATE/autostart.lock"
   if ! flock -n 9; then
-    log 'Автозапуск уже работает в этом контейнере: он сам применит новый токен.'
-    return 0
+    # 1.7.7: never exit here. When the provider runs "onstart" before the image CMD, the onstart-started supervisor
+    # already holds the lock; an exiting CMD would end PID 1 (tini) and stop the whole container with the engine.
+    # Wait instead and take over only if that supervisor ends (its own restart limit still applies to it).
+    log 'Автозапуск уже работает в этом контейнере: он сам применит новый токен. Ожидаю его завершения.'
+    flock 9
+    log 'Предыдущий автозапуск завершился: продолжаю наблюдение за движком.'
   fi
   trap on_signal TERM INT HUP
   local restarts=0 code managed
   set +e
   while :; do
     rm -f "$RESTART_FLAG"
+    # 1.7.7: always, not only when provisioned. Started as root (the 1.7.7 image default, or a provider that runs the
+    # container as root), this script creates the data folders as root; the engine runs as uid 1000 and needs them.
+    fix_owner
     if provisioned; then
       managed=1
       export YOISAKI_STABLE_LINK=1 YOISAKI_RENDEZVOUS=ntfy
-      fix_owner
       stage IMAGE_READY
       log "Запуск YOISAKI ENGINE (автоматическая инициализация, данные: $DATA)…"
     else

@@ -40,16 +40,17 @@ test('offers: verified price units only, VRAM/CUDA/disk compatibility, sorted, u
 test('create body: documented fields only, strict offer, exact price ceiling, onstart with token, disk bounds',()=>{
  const offer=offerView(OFFERS[0]),token='b'.repeat(64);
  const body=createBody({offer,disk_gb:80,name:'YOISAKI-ABC123',image:ENGINE_IMAGE,token,max_price_hour_minor:4520,currency:'RUB'});
- assert.deepEqual(Object.keys(body).sort(),['ask_id','auto_select','currency','disk_gb','max_price_hour_minor','name','offer_disk_space','onstart','strict_offer','template_image']);
+ assert.deepEqual(Object.keys(body).sort(),['ask_id','auto_select','bootstrap_profile','currency','disk_gb','max_price_hour_minor','name','offer_disk_space','onstart','strict_offer','template_image']);
+ assert.equal(body.bootstrap_profile,'worker');assert.equal('bootstrap_profile' in createBody({offer,disk_gb:80,name:'x',image:ENGINE_IMAGE,token,max_price_hour_minor:1,currency:'RUB',bootstrap_profile:'provider_default'}),false);
  assert.equal(body.ask_id,501);assert.equal(body.auto_select,false);assert.equal(body.strict_offer,true);assert.equal(body.offer_disk_space,500);assert.equal(body.template_image,ENGINE_IMAGE);
- assert(body.onstart.includes(token)&&body.onstart.includes(ENGINE_IMAGE)&&body.onstart.length<50000);
+ assert(body.onstart.includes(token)&&body.onstart.includes(ENGINE_IMAGE)&&Buffer.byteLength(body.onstart)<=8192);
  assert(!/:latest\b/.test(ENGINE_IMAGE)&&/:1\.7\.5$/.test(ENGINE_IMAGE));
  for(const disk of [39,501,80.5])assert.throws(()=>createBody({offer,disk_gb:disk,name:'x',image:ENGINE_IMAGE,token,max_price_hour_minor:1,currency:'RUB'}));
  assert.throws(()=>onstartScript({image:ENGINE_IMAGE,token:'short'}));assert.throws(()=>onstartScript({image:"bad image'; rm",token}));
  assert.equal(createdInstanceId({data:{id:9001}}),'9001');assert.equal(createdInstanceId({new_contract:77}),'77');assert.equal(createdInstanceId({success:true}),null);assert.equal(createdInstanceId({id:'../x'}),null);
 });
 
-test('onstart script really provisions: inside the image and on a Docker host (fake docker), token only in 0600 files',async()=>{
+test('onstart script really provisions: inside the image; Docker only in the manual command and only with a reachable daemon (fake docker), token only in 0600 files',async()=>{
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'yoisaki-onstart-'));const token='c'.repeat(64);
  try{
   const script=path.join(dir,'onstart.sh');await fs.writeFile(script,onstartScript({image:ENGINE_IMAGE,token}));
@@ -58,10 +59,15 @@ test('onstart script really provisions: inside the image and on a Docker host (f
   await fs.writeFile(path.join(app,'cloudcompute/autostart-image.sh'),`#!/bin/bash\nprintf '%s|%s' "$1" "$YOISAKI_PROVISION_TOKEN" > "${dir}/image-call"\n`,{mode:0o755});
   await run('bash',[script],{env:{PATH:process.env.PATH,YOISAKI_APP_DIR:app}});
   assert.equal(await fs.readFile(path.join(dir,'image-call'),'utf8'),'--provision|'+token);
-  // 2) Docker host: the image is pulled and started with the data volume; the token is NOT on the docker command line
+  // 2) 1.7.7: the automatic (create) script never starts Docker, even when a docker CLI exists
   const bin=path.join(dir,'bin'),data=path.join(dir,'host/yoisaki-data');await fs.mkdir(bin);await fs.mkdir(path.dirname(data));
   await fs.writeFile(path.join(bin,'docker'),`#!/bin/bash\necho "$*" >> "${dir}/docker-calls"\n[ "$1" = container ] && exit 1\nexit 0\n`,{mode:0o755});
   await fs.writeFile(path.join(bin,'chown'),'#!/bin/bash\nexit 0\n',{mode:0o755});
+  await run('bash',[script],{env:{PATH:bin+':'+process.env.PATH,YOISAKI_APP_DIR:path.join(dir,'missing'),YOISAKI_HOST_DATA:data}});
+  await assert.rejects(fs.readFile(path.join(dir,'docker-calls'),'utf8'));
+  // 3) manual command (existing instance): Docker host with a reachable daemon — pulled and started with the data volume;
+  //    the token is NOT on the docker command line
+  await fs.writeFile(script,onstartScript({image:ENGINE_IMAGE,token,docker:true}));
   await run('bash',[script],{env:{PATH:bin+':'+process.env.PATH,YOISAKI_APP_DIR:path.join(dir,'missing'),YOISAKI_HOST_DATA:data}});
   const calls=await fs.readFile(path.join(dir,'docker-calls'),'utf8');
   assert.match(calls,new RegExp('pull '+ENGINE_IMAGE.replace(/[.]/g,'\\.')));assert.match(calls,/run -d --name yoisaki-engine --restart unless-stopped --gpus all .*-v \S+:\/data ghcr\.io/);assert(!calls.includes(token));
@@ -157,7 +163,7 @@ test('deploy → signed stages → automatic connection → GPU_READY → Drive 
   assert.equal((await fs.stat(path.join(h.dir,'secrets.json'))).mode&0o777,0o600);
   // second paid server needs an explicit confirmation
   assert.equal((await h.call('/api/cloudcompute/deploy','POST',createRequest)).body.code,'CC_DEPLOYMENT_EXISTS');assert.equal(h.cc.posts.length,1);
-  await until(async()=>(await h.call('/api/cloudcompute/deploy')).body.deployment.stage==='INSTANCE_INITIALIZING');
+  await until(async()=>(await h.call('/api/cloudcompute/deploy')).body.deployment.stage==='IMAGE_PREPARING');  // provider status 'loading'
   h.setGpu({url:null,stages:[{stage:'IMAGE_READY',ts:1}]});await until(async()=>(await h.call('/api/cloudcompute/deploy')).body.deployment.stage==='DOCKER_IMAGE_READY');
   h.setGpu({url:null,stages:[{stage:'IMAGE_READY',ts:1},{stage:'ENGINE_STARTING',ts:2}]});await until(async()=>(await h.call('/api/cloudcompute/deploy')).body.deployment.stage==='ENGINE_STARTING');
   assert.equal((await h.call('/api/gpu/status')).body.url,'');
