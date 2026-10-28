@@ -4,7 +4,7 @@
 
 Инструкция: [Запуск 1.7.7.1](docs/CLOUDCOMPUTE_STARTUP_FIX_1771_RU.md). [Расследование](YOISAKI_STARTUP_ROOT_CAUSE_REPORT.md), [результаты проверок](YOISAKI_V1.7.7.1_TEST_RESULTS.md).
 
-**Образ 1.7.7.1 не опубликован (GitHub write: HTTP 403; manifest: 404). Docker runtime и CloudCompute/GPU ещё не проверены.** Исходники Docker и workflow приложены. Проверка образа перед платной арендой остаётся включена.
+**Образ 1.7.7.1 опубликован** 28.10.2026 через GitHub Actions ([run 40701192429](https://github.com/regmop4576-hash/YOISAKI-AI-STUDIO/actions/runs/40701192429)): `ghcr.io/regmop4576-hash/yoisaki-ai-studio/engine:1.7.7.1`, digest `sha256:a148c0e8f5df410454c33dc4bef902fbfad412ddfc9b357e487f02a9ce4964dc`, linux/amd64, анонимная загрузка — OK ([страница версии](https://github.com/users/regmop4576-hash/packages/container/yoisaki-ai-studio%2Fengine/1461324402?tag=1.7.7.1)). Docker CPU runtime-тест пройден на этом образе до публикации. **Реальный CloudCompute/GPU ещё не проверен.** Первая попытка публикации (HTTP 403 у подключения GitHub, manifest 404) описана в [результатах проверок](YOISAKI_V1.7.7.1_TEST_RESULTS.md). Проверка образа перед платной арендой остаётся включена.
 
 Ниже — исторические сведения предыдущих выпусков; их заявления о публикации не относятся к 1.7.7.1.
 

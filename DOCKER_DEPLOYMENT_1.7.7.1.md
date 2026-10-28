@@ -2,7 +2,13 @@
 
 Target: `ghcr.io/regmop4576-hash/yoisaki-ai-studio/engine:1.7.7.1`, platform `linux/amd64`.
 
-**NOT PUBLISHED.** Connected GitHub write failed with HTTP 403; anonymous manifest returned 404. Neither a Docker runtime test nor a real GPU deployment was performed for this version in the repair environment. Do not disable the website's image check to rent an instance with a missing tag.
+**PUBLISHED** on 2026-10-28 by GitHub Actions run [40701192429](https://github.com/regmop4576-hash/YOISAKI-AI-STUDIO/actions/runs/40701192429) from commit `1166a784d42f8b1e7f618c46eb8ecb01987f28e3` (branch `ccr-cd7a1445-guevci`):
+
+- manifest digest `sha256:a148c0e8f5df410454c33dc4bef902fbfad412ddfc9b357e487f02a9ce4964dc` (pull by digest: `ghcr.io/regmop4576-hash/yoisaki-ai-studio/engine@sha256:a148c0e8f5df410454c33dc4bef902fbfad412ddfc9b357e487f02a9ce4964dc`);
+- config `sha256:8a1385c1adcffbb32d0876c4e462ee854e2f8c812c70d3c44b11aac17168bb03` = the image ID of the candidate that passed `tests/docker-startup-1771.sh` in the same run; config read anonymously: `linux/amd64`, version label `1.7.7.1`, revision label `1166a784d42f8b1e7f618c46eb8ecb01987f28e3`;
+- anonymous manifest request: HTTP 200; tags in the registry: `1.7.5`, `1.7.7`, `1.7.7.1` (1.7.5 and 1.7.7 digests unchanged, no `latest`).
+
+A real GPU deployment was **not** performed. The first attempt (before this run) was rejected by the connected GitHub integration with HTTP 403 while writing the source (`create-tree`); no workflow ran then, hence the 404. Do not disable the website's image check to rent an instance with a missing tag.
 
 The installation ZIP contains the complete project. The separate Docker source ZIP contains Dockerfile, .dockerignore, engine/, cloudcompute/, server/ (used by the runtime test's onstart generator), required shell scripts, the runtime test and GitHub workflow. Models, keys and credentials are absent.
 

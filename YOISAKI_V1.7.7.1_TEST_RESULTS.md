@@ -18,9 +18,9 @@
 | Python requirements hash lock | **PASS** | `cloudcompute/check_lock.py`; зависимости не менялись |
 | `engine/` | **BYTE IDENTICAL** | Сравнение с исходным ZIP; inference и Colab engine не изменены |
 | Установочный ZIP / updater | **PASS**, manifest и существующий update.sh | Содержимое и сохранение пользовательских данных |
-| Docker runtime | **NOT RUN / BLOCKED** | Docker daemon отсутствует; локальная среда без capabilities, запуск namespace запрещён |
-| Публикация образа | **BLOCKED** | GitHub create-tree: HTTP 403, `Resource not accessible by integration` |
-| Анонимный manifest `engine:1.7.7.1` | **404 — NOT PUBLISHED** | Проверен через существующий checkImage/providerHttp; доступность не заявляется |
+| Docker runtime | **PASS (CPU)**, 9/9 в GitHub Actions на реальном кандидате 1.7.7.1 до публикации | [run 40701192429](https://github.com/regmop4576-hash/YOISAKI-AI-STUDIO/actions/runs/40701192429); GPU в контейнере нет. В первой редакции тест не мог пройти без CUDA — см. «Docker runtime» ниже |
+| Публикация образа | **PASS**, `engine:1.7.7.1`, digest `sha256:a148c0e8f5df410454c33dc4bef902fbfad412ddfc9b357e487f02a9ce4964dc` | Первая попытка: GitHub create-tree HTTP 403 `Resource not accessible by integration` (запись исходников подключением GitHub, workflow не запускался). Опубликовано через git push → GitHub Actions (`GITHUB_TOKEN`, `packages: write`) |
+| Анонимный manifest `engine:1.7.7.1` | **HTTP 200** (до публикации: 404) | Workflow и независимая проверка; checkImage сайта: «Образ опубликован и доступен…»; config: linux/amd64, version 1.7.7.1, revision `1166a784d42f8b1e7f618c46eb8ecb01987f28e3` |
 | Реальный CloudCompute / GPU | **UNVERIFIED** | Платный инстанс не создавался, #10766 не использовался |
 
 Полный Python regression с inference-модулями не выполнен: отдельная попытка collection `test_v170_img2img.py` остановилась из-за отсутствия torch. Это ограничение среды, не успешный тест. После этого выполнен перечисленный CloudCompute suite, который явно отмечает отсутствующие зависимости как skips. Предыдущие неуспешные итерации разработки исправлены; таблица отражает окончательные результаты указанного набора.
@@ -32,7 +32,7 @@
 - DockerfileParser подтверждает `ENTRYPOINT ["/usr/bin/tini","--"]`, `CMD ["/opt/yoisaki/cloudcompute/autostart-image.sh"]`, image label 1.7.7.1. Workflow явно задаёт linux/amd64.
 - package.json, оба version-поля package-lock.json, cloudcompute/VERSION, Dockerfile label, стандартный registry reference, compose/lib image references согласованы.
 - ShellCheck 0.11.0 с `-S error`. Замечания меньшей серьёзности не объявляются проверенными/устранёнными.
-- Workflow regex принимает четвёртый hotfix-сегмент; существующий тег не перезаписывается. Build candidate → CPU runtime checks → push → anonymous manifest check. Сам workflow не был выполнен из-за отказа записи GitHub.
+- Workflow regex принимает четвёртый hotfix-сегмент; существующий тег не перезаписывается. Build candidate → CPU runtime checks → push → anonymous manifest check. В первой попытке workflow не выполнялся из-за отказа записи GitHub; 28.10.2026 выполнен успешно (run 40701192429, 14 мин 28 с). Workflow дополнительно настраивает Node 22 для генератора onstart в тесте, фиксирует digest после push и сверяет анонимный manifest/config с этим запуском.
 
 ## Мок провайдера и реальный локальный сервер сайта
 
@@ -61,22 +61,28 @@ Python tests/test_v175_autostart.py и test_v1771_startup.py запускают 
 
 Настоящий bash в PTY исполняет сгенерированный onstart, отключает echo до передачи токена, затем закрывается. Отдельный супервизор продолжает работу; токен отсутствует в выводе PTY. Это доказывает поведение локального POSIX-пути, **не** поведение CloudCompute cgroup/ttyd/container runtime и **не** успешную загрузку GPU модели.
 
-## Docker runtime: приготовленные, но не исполненные проверки
+## Docker runtime
 
-`tests/docker-startup-1771.sh` включён в архив и вызывается новым workflow до публикации:
+**Исполнено 28.10.2026** в GitHub Actions ([run 40701192429](https://github.com/regmop4576-hash/YOISAKI-AI-STUDIO/actions/runs/40701192429), ubuntu-24.04, без GPU) на собранном кандидате `engine:1.7.7.1` до `docker push`: 9 PASS, затем `RESULT: Docker CPU smoke passed; CloudCompute / real GPU inference UNVERIFIED`. Опубликован именно этот кандидат: config `sha256:8a1385c1adcffbb32d0876c4e462ee854e2f8c812c70d3c44b11aac17168bb03` совпадает с его image ID.
 
-| Требуемая проверка | Сценарий в script | Выполнено здесь |
+Исправление теста перед запуском: первая редакция ждала `launcher.py healthcheck` (state READY). Неизменённый движок отвечает READY только при наличии CUDA (`engine/worker/direct_server.py`: `'READY' if gpu_name else 'ERROR'`), поэтому на хосте без GPU тест не мог пройти и публикация была бы заблокирована. Теперь тест проверяет настоящий FastAPI через аутентифицированный `/health` (без токена 401; с токеном `engine=YOISAKI_ENGINE`, `state=ERROR`, `gpu_name=null`) и требует, чтобы healthcheck без GPU оставался NOT READY; `YOISAKI_SERVER_TIMEOUT=900` держит сервер запущенным на время проверок. Движок и launcher не менялись.
+
+Фактический вывод: `engine /health: {"engine": "YOISAKI_ENGINE", "engine_version": "1.7.0", "api_version": "1.7.0", "state": "ERROR", "gpu_name": null}` (обычный CMD и после onstart).
+
+Сценарии `tests/docker-startup-1771.sh`:
+
+| Требуемая проверка | Сценарий в script | Выполнено (run 40701192429) |
 |---|---|---|
-| Normal ENTRYPOINT/CMD | Реальный образ, tini, FastAPI на CPU с явным отключением GPU preflight | Нет |
-| Override ENTRYPOINT/CMD | /bin/sh + keepalive вместо CMD; затем onstart через docker exec | Нет |
-| `/.launch` существует | Marker создан до проверки; engine не запускается сам по этому факту | Нет |
-| Нет `/data/config` | Чистый контейнер, затем provisioning | Нет |
-| Initial/repeated provisioning | Token mode/uid, четыре каталога, пять повторов, один PID | Нет |
-| Lifecycle | Процесс uid 1000, supervisor lock, отдельный background start | Нет |
-| Missing GPU | Обычный CMD с включённым preflight обязан завершиться кодом 3 | Нет |
-| Health failure | До запуска и после остановки healthcheck обязан отказать | Нет |
-| Safe shutdown | docker stop → exit 0; SIGTERM detached supervisor → server down | Нет |
-| Files/permissions/platform | inspect + проверка нужных файлов/executable | Нет |
+| Normal ENTRYPOINT/CMD | Реальный образ, tini, FastAPI на CPU с явным отключением GPU preflight; аутентифицированный /health без GPU = ERROR | PASS |
+| Override ENTRYPOINT/CMD | /bin/sh + keepalive вместо CMD; затем onstart через docker exec | PASS |
+| `/.launch` существует | Marker создан до проверки; engine не запускается сам по этому факту | PASS |
+| Нет `/data/config` | Чистый контейнер, затем provisioning | PASS |
+| Initial/repeated provisioning | Token mode/uid, четыре каталога, пять повторов, один PID | PASS |
+| Lifecycle | Процесс uid 1000, supervisor lock, отдельный background start | PASS |
+| Missing GPU | Обычный CMD с включённым preflight обязан завершиться кодом 3 | PASS |
+| Health failure | До запуска и после остановки healthcheck обязан отказать | PASS |
+| Safe shutdown | docker stop → exit 0; SIGTERM detached supervisor → server down | PASS |
+| Files/permissions/platform | inspect + проверка нужных файлов/executable | PASS |
 
 Скрипт эмулирует возможность override, **не воспроизводит недоступную внутреннюю реализацию CloudCompute**. Сценарий CPU FastAPI также не заменяет GPU smoke test.
 

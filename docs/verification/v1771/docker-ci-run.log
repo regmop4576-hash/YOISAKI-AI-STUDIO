@@ -1,0 +1,21 @@
+# GitHub Actions run 40701192429 (job 122861148986), commit 1166a784d42f8b1e7f618c46eb8ecb01987f28e3, ubuntu-24.04, no GPU
+# https://github.com/regmop4576-hash/YOISAKI-AI-STUDIO/actions/runs/40701192429
+# Step "CPU runtime startup checks (not GPU validation)": bash tests/docker-startup-1771.sh ghcr.io/regmop4576-hash/yoisaki-ai-studio/engine:1.7.7.1
+PASS: amd64, ENTRYPOINT, CMD and version
+PASS: required files and executable permissions
+PASS: normal CMD missing GPU: exit 3
+engine /health: {"engine": "YOISAKI_ENGINE", "engine_version": "1.7.0", "api_version": "1.7.0", "state": "ERROR", "gpu_name": null}
+PASS: normal ENTRYPOINT/CMD real FastAPI on CPU, privilege drop, authenticated health (no GPU: not READY)
+PASS: SIGTERM normal supervisor: graceful exit 0
+PASS: provider-style override + existing marker + missing config reproduce no engine
+engine /health: {"engine": "YOISAKI_ENGINE", "engine_version": "1.7.0", "api_version": "1.7.0", "state": "ERROR", "gpu_name": null}
+PASS: initial + repeated provisioning, directories, 0600 token, website token in use, one detached supervisor, no credential logs
+PASS: detached supervisor shutdown removes server, failed health is not READY
+RESULT: Docker CPU smoke passed; CloudCompute / real GPU inference UNVERIFIED
+# Step "Publish validated immutable candidate"
+1.7.7.1: digest: sha256:a148c0e8f5df410454c33dc4bef902fbfad412ddfc9b357e487f02a9ce4964dc size: 3882
+# Step "Check anonymous pull access (what CloudCompute needs)"
+Registry manifest digest: sha256:a148c0e8f5df410454c33dc4bef902fbfad412ddfc9b357e487f02a9ce4964dc
+Pushed by this run: sha256:a148c0e8f5df410454c33dc4bef902fbfad412ddfc9b357e487f02a9ce4964dc · local candidate image ID: sha256:8a1385c1adcffbb32d0876c4e462ee854e2f8c812c70d3c44b11aac17168bb03
+Config: sha256:8a1385c1adcffbb32d0876c4e462ee854e2f8c812c70d3c44b11aac17168bb03 · platform linux/amd64 · version label 1.7.7.1 · source revision 1166a784d42f8b1e7f618c46eb8ecb01987f28e3
+Anonymous pull: OK (public).
