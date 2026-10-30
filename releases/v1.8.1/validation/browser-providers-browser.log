@@ -1,0 +1,18 @@
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+
+  assert((await page.getByRole('dialog').innerText()).includes('AMBER CORE · v1.7.7 CLOUDCOMPUTE STABILITY EDITION'))
+
+    at file:///tmp/claude-0/-home-user-YOISAKI-AI-STUDIO/a9a74c62-eeeb-5697-b417-ff8c1661a045/scratchpad/work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/providers-browser.mjs:22:112 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v22.22.0

@@ -1,0 +1,1945 @@
+diff --git a/CHANGELOG_RU.md b/CHANGELOG_RU.md
+index b24260b..fa113e9 100644
+--- a/CHANGELOG_RU.md
++++ b/CHANGELOG_RU.md
+@@ -1,3 +1,15 @@
++# v1.8.1 SMART FACE FIX
++
++Сайт 1.8.1, Colab-движок 1.8.1 (`colab/YOISAKI_ENGINE_V1.8.1_SMART_FACE_FIX.ipynb`), протокол API 1.7.0 без изменений. Отчёты: `YOISAKI_V1.8.1_FACE_DETECTION_REPORT.md`, `YOISAKI_V1.8.1_RESOURCE_REPORT.md`, `YOISAKI_V1.8.1_TEST_RESULTS.md`, установка: `YOISAKI_V1.8.1_INSTALL_GUIDE_RU.md`.
++
++- **Автоматический поиск лиц:** CPU-детекторы OpenCV (аниме LBP + YuNet, MIT), вложены в движок, проверка SHA-256, ленивая загрузка; маршрут `POST /facefix/detect`; capability `auto_facefix`.
++- **Простой экран FACE FIX:** загрузка → лицо найдено автоматически → «Исправить лицо» → «До / После» → сохранить. Несколько лиц — выбор касанием или «Исправить все» (по очереди). Нет лица — понятное сообщение и ручное выделение пальцем.
++- **Маска и качество:** мягкий овал вместо прямоугольника, расширение, контекст вокруг лица, рабочий размер по пропорциям лица (по умолчанию до 1024 вместо 512 с полями), растушёвка относительно размера лица.
++- **Безопасность выбора:** движок повторно находит лица на том же исходнике и принимает только известные id; неуверенные варианты никогда не выбираются автоматически.
++- **Расширенные настройки** (свёрнуты): детектор, порог, маска, контекст, растушёвка, Steps, CFG, Sampler, Scheduler, рабочий размер, seed, промпты; классический ручной редактор v1.8.0.
++- **Совместимость:** со старым движком v1.8.0 сайт показывает предупреждение и работает только ручной Face Fix; `face_detection`/`face_options` старому движку не отправляются.
++- **Исправлено попутно:** диагностика памяти и `stress_memory` больше не отклоняют движок 1.8.1; устаревший текст версии в `update.sh`.
++
+ # v1.7.7 CLOUDCOMPUTE STABILITY EDITION
+ 
+ Студия 1.7.7, CloudCompute deployment 1.7.7 (образ `engine:1.7.7`). Движок и API — 1.7.0: `engine/` и Colab-блокнот не изменены. Отчёты: `YOISAKI_DOCKER_AUDIT.md`, `YOISAKI_GPU_MONITOR_REPORT.md`, `YOISAKI_V1.7.7_TEST_RESULTS.md`.
+diff --git a/README_RU.md b/README_RU.md
+index 38cfda0..c9a8d5a 100644
+--- a/README_RU.md
++++ b/README_RU.md
+@@ -1,4 +1,18 @@
+-# YOISAKI AI STUDIO v1.8.0 — EDITOR COMPLETION EDITION
++# YOISAKI AI STUDIO v1.8.1 — SMART FACE FIX
++
++Рабочий блокнот: `colab/YOISAKI_ENGINE_V1.8.1_SMART_FACE_FIX.ipynb`. Установка и обновление на Android: `YOISAKI_V1.8.1_INSTALL_GUIDE_RU.md`.
++
++**Face Fix стал автоматическим:** Редактор → FACE FIX → загрузите изображение → лицо находится само → «Исправить лицо» → сравните «До / После» → «Сохранить результат». Если лиц несколько, коснитесь нужного или отметьте «Исправить все найденные лица». Если лицо не найдено (часто бывает с мордами антро-персонажей), выделите его пальцем. Все параметры — в свёрнутых «Расширенных настройках»; там же классический ручной редактор v1.8.0.
++
++Checkpoint, VAE, LoRA с весами и промпты берутся со страницы Generate без изменений; скрытые теги не добавляются. Профиль Face Fix (сила 0.30, 25 шагов, CFG 5.5, рабочий размер до 1024) — стартовый и на T4 ещё не подобран.
++
++Читайте `YOISAKI_V1.8.1_FACE_DETECTION_REPORT.md`, `YOISAKI_V1.8.1_RESOURCE_REPORT.md`, `YOISAKI_V1.8.1_TEST_RESULTS.md`.
++
++**Tesla T4 и полноразмерный Illustrious в среде разработки отсутствовали.** Качество исправления лица, сохранность черт персонажа и потребление памяти Colab не проверены на GPU. Сравнение с Civitai не проводилось.
++
++---
++
++## v1.8.0 — EDITOR COMPLETION EDITION (история)
+ 
+ Рабочий блокнот: `colab/YOISAKI_ENGINE_V1.8.0_EDITOR_COMPLETION.ipynb`.
+ 
+diff --git a/YOISAKI_V1.8.1_FACE_DETECTION_REPORT.md b/YOISAKI_V1.8.1_FACE_DETECTION_REPORT.md
+new file mode 100644
+index 0000000..d534a05
+--- /dev/null
++++ b/YOISAKI_V1.8.1_FACE_DETECTION_REPORT.md
+@@ -0,0 +1,98 @@
++# YOISAKI v1.8.1 SMART FACE FIX — отчёт по детекции лиц
++
++Дата: 30 октября 2026. Сайт 1.8.1, Colab-движок 1.8.1, API 1.7.0.
++
++Отчёт разделяет три вещи: **найдено ли лицо** (проверено на CPU), **верно ли выбрана область** (проверено визуально и тестами) и **хорошо ли исправлено лицо** (не проверено: нет T4 и полноразмерного checkpoint).
++
++## 1. Исследование существующих решений
++
++| Проект | Что взято как идея | Лицензия | Решение |
++|---|---|---|---|
++| ADetailer (Bing-su/adetailer) | Цепочка детекция → маска → inpaint только области → композит. Дефолты из `adetailer/args.py`: confidence 0.3, dilate/erode 4, mask blur 4, denoise 0.4, inpaint only masked = true, padding 32 px, inpaint 512 px; фильтры min/max area ratio и top-k; merge-режимы масок | AGPL-3.0 | Код **не копировался**. Использованы только общие принципы. |
++| ComfyUI Impact Pack, FaceDetailer | BBOX/SEGS, crop_factor (контекст), guide_size (рабочий размер), feather, denoise, отдельная обработка каждого SEG, возврат в исходник. Дефолты из `impact_pack.py`: guide_size 512, denoise 0.5, feather 5, drop_size 10 | GPL-3.0; Ultralytics-детекторы вынесены в отдельный Subpack | Код и фреймворк **не устанавливались**. |
++| Fuyucch1/yolov8_animeface | YOLOv8 аниме-лица (обучен на 10 000 изображений safebooru) | Репозиторий AGPL-3.0; требует Ultralytics (AGPL-3.0); лицензия весов отдельно не указана; права на датасет не описаны | **Не интегрирован**: AGPL-обязательства для всей сетевой службы и неясные права на веса/данные. |
++| deepghs anime face detection (Hugging Face) | Возможная альтернатива YOLO | — | Hugging Face недоступен из среды разработки (HTTP 403 на прокси); **не оценивался**. |
++| nagadomi/lbpcascade_animeface | LBP-каскад для аниме-лиц, 247 КБ, OpenCV | MIT (уведомление внутри XML) | **Интегрирован** как детектор `anime`. |
++| OpenCV Zoo YuNet 2023mar | Лёгкий CNN-детектор лиц, 233 КБ ONNX, OpenCV `FaceDetectorYN` | MIT (Shiqi Yu) | **Интегрирован** как детектор `human`. |
++
++Обоснование: оба выбранных детектора — MIT, крошечные, работают на CPU через уже закреплённый `opencv-python-headless==4.11.0.86` (Apache-2.0), без новых pip-зависимостей, без Ultralytics/AGPL и без GPU. Файлы вложены в движок без изменений, проверяются по SHA-256 перед загрузкой (`engine/inference/face_models/LICENSES.md`).
++
++Реализация Civitai неизвестна; этот релиз **не воспроизводит** её и не заявляет эквивалентного качества.
++
++## 2. Устройство
++
++`engine/inference/facedetect.py` — модульная абстракция:
++
++- `detect(image, detector, min_confidence)` → документ: `faces[]` с `id`, `x`, `y`, `width`, `height` (целые пиксели EXIF-ориентированного исходника), `confidence` (0–1), `detector`, `label='face'`, `auto_selectable`; плюс `image{width,height}`, `selected`, `selection_required`, `detectors_run`, `duration_ms`. Тензоры детекторов наружу не выходят.
++- `auto` = аниме-LBP (вход до 1600 px по длинной стороне, minSize 24) + YuNet (масштабы 640 и 1280 px, т.к. YuNet видит лица ~10–300 px). Перекрывающиеся рамки разных детекторов сливаются: рамка — взвешенная по уверенности, уверенность — noisy-OR (согласие двух детекторов повышает её).
++- LBP не даёт вероятности: вес последней стадии каскада переводится логистикой `1/(1+e^(-1.5·(w−0.5)))`, откалиброванной на наборе ниже. Это эвристика, а не вероятность.
++- Порог показа 0.35 (настраивается 0.05–0.95). **Автовыбор** — только если ровно одно лицо с уверенностью ≥ 0.6. Иначе — выбор пользователем. Неуверенные (< 0.6) варианты скрыты по умолчанию и никогда не выбираются автоматически.
++- Максимум 12 лиц (крупнейшие первыми). Рамки обрезаются краями изображения; лица меньше 8 px отбрасываются.
++- `id` = SHA-256 от версии, пикселей изображения, детектора и рамки. При `/generate` движок **повторно** запускает детекцию на точном исходнике задания и принимает только существующие `id`; координаты от клиента для автоматического режима не используются.
++
++## 3. Оценочный набор и результаты (реальные модели, CPU)
++
++Набор: 36 аниме-портретов (сетка `assets/input.jpg` из MIT-репозитория hysts/anime-face-detector, разрезана на тайлы 512×512; только для локальной оценки, в релиз не включена), фотографии `lena.jpg` и `messi5.jpg` и 8 изображений без лиц из `opencv/samples/data` (в том числе морда бабуина). Разметка лиц — визуальная, по наложению рамок на изображения (наложения не распространяются: права на сами рисунки не установлены).
++
++### Аниме-портреты (39 лиц на 36 изображениях, из них 3 изображения с двумя лицами)
++
++| Показатель | Значение |
++|---|---:|
++| Уверенно найдено (≥ 0.6), верно | **38 из 39** |
++| Уверенные ложные срабатывания | 1 (рука, t45, 0.67, только YuNet) |
++| Найдено только неуверенно | 1 (t41, 0.40) |
++| Неуверенные ложные (скрыты по умолчанию) | 5 (фон/надписи, 0.38–0.53) |
++| Одиночные портреты: автовыбор / верный | 31 / 31 из 33 |
++| Одиночные портреты: требуется выбор | 2 (t41 — только неуверенно; t45 — из-за ложного второго кандидата) |
++| Два лица: найдены оба, выбор пользователем | 3 из 3 |
++| Вклад детекторов в 38 верных | оба 29, только аниме-LBP 7, только YuNet 2 |
++| Время 512×512, медиана / максимум | 48 мс / 106 мс |
++
++### Маленькие лица (портрет уменьшен и помещён в холст 1024×1536)
++
++| Размер лица | Найдено | Автовыбор верен |
++|---|---:|---:|
++| 43–86 px | 11/12 | 11/12 |
++| 31–39 px | 5/6 | 4/6 |
++| 17–28 px | 5/6 | 0/6 (найденные — только «неуверенно») |
++
++Ложных срабатываний в холсте не было. Вывод: лица от ~40 px обычно выбираются автоматически; меньше ~30 px — только «неуверенно» или вручную.
++
++### Без лиц и фотографии
++
++- 8 изображений без лиц: **0** найденных лиц (включая морду бабуина — это ожидаемо и важно для антро, см. ниже).
++- `lena.jpg`: 1 лицо, 0.91, автовыбор. `messi5.jpg`: главное лицо 0.92 (автовыбор) + 9 мелких фоновых 0.36–0.51 (скрыты как неуверенные; часть — реальные лица зрителей).
++- Отдельно: плоский белый и градиентный холст — 0 лиц (автотест).
++
++Исходные данные: `validation/detection-metrics.json`, `validation/small-faces.json`, `validation/detect_run.log`.
++
++## 4. Антро, чиби, профили — что НЕ проверено
++
++Авторизованные референсы пользователя (лиса, летучая мышь, рептилия, профиль, чиби, полный рост) **не были предоставлены**, а внешние фотобанки недоступны из среды. Поэтому:
++
++| Категория | Статус |
++|---|---|
++| Аниме-человек | проверено (выше) |
++| Два лица | проверено (3 аниме-изображения + синтетический UI-тест) |
++| Маленькое лицо в полный рост | проверено синтетически (уменьшенные портреты в большом холсте) |
++| Без лица | проверено (8 изображений) |
++| Чиби | частично: t01, t04 (чиби-пропорции) — найдены LBP уверенно |
++| Профиль | **не проверено** (нет изображений) |
++| Антро лиса / летучая мышь / рептилия | **не проверено**. Оба детектора обучены на человеческих/аниме-человеческих лицах; морда реального животного (бабуин) не найдена. Ожидается частый промах на мордах с выраженной мордой/клювом/чешуёй — в этом случае сайт сообщает «Лицо не найдено» и предлагает ручное выделение. |
++
++Для своих персонажей добавьте в Colab ячейку после «ПОДГОТОВИТЬ ПАНЕЛЬ»:
++`!python /content/yoisaki_engine/face_eval.py /content/drive/MyDrive/ПАПКА_С_РЕФЕРЕНСАМИ`
++Скрипт (`engine/face_eval.py`) только печатает найденные рамки и уверенность; ничего не записывает, никуда не отправляет и не запускает SDXL. Он показывает, какие персонажи находятся автоматически.
++
++## 5. Маска и композит
++
++- Из рамки строится **овал** (не прямоугольник), расширенный на 8 % размера рамки с каждой стороны и обрезанный краями изображения. Углы рамки — волосы, уши, фон — не редактируются (проверено тестом и визуально на оценочных портретах: кошачьи уши остаются вне маски).
++- Растушёвка внутрь существующим `feather_mask` (ноль на границе, наружу не расширяется); по умолчанию 8 % меньшей стороны лица, 2–32 px.
++- Контекст (padding) 0.5 размера маски с каждой стороны (≈ crop_factor 2 у FaceDetailer); обрезается краями.
++- Рабочий размер — по пропорциям crop внутри 1024×1024 (кратно 8), **без белых полей letterbox**; при слишком вытянутом crop — прежний letterbox.
++- Композит: вне поддержки маски пиксели и альфа-канал исходника сохраняются точно (тесты сравнивают массивы).
++- Ограничения: точной сегментации нет — маска консервативная по рамке; у лица на краю изображения растушёвка гасит редактирование у самой границы; рука перед подбородком попадает в маску; при «исправить все» второе лицо обрабатывается уже поверх результата первого.
++
++## 6. Качество исправления
++
++Не измерялось: нет T4 и полноразмерного Illustrious. Значения профиля (сила 0.30, 25 шагов, CFG 5.5, до 1024 px) — **стартовые**, выбраны по причинам: SDXL обучен около 1024 px (v1.8.0 по умолчанию работал в 512×512 с полями — вероятная причина слабых результатов); низкая сила снижает риск потери черт; ADetailer/FaceDetailer используют 0.4–0.5 — выше, поэтому при недостаточном эффекте пользователь может поднять ползунок до 0.6. Подбор на T4 и сравнение с Civitai остаются открытыми задачами.
+diff --git a/YOISAKI_V1.8.1_INSTALL_GUIDE_RU.md b/YOISAKI_V1.8.1_INSTALL_GUIDE_RU.md
+new file mode 100644
+index 0000000..c2e8627
+--- /dev/null
++++ b/YOISAKI_V1.8.1_INSTALL_GUIDE_RU.md
+@@ -0,0 +1,97 @@
++# YOISAKI AI STUDIO v1.8.1 SMART FACE FIX — установка и обновление (Android / Termux)
++
++Нужно два файла:
++
++- `YOISAKI_AI_STUDIO_V1.8.1_SMART_FACE_FIX.zip` — сайт для телефона;
++- `YOISAKI_ENGINE_V1.8.1_SMART_FACE_FIX.ipynb` — движок для Google Colab (он же лежит в архиве в папке `colab/`).
++
++Ваши настройки, галерея, история и Google-вход хранятся отдельно от папки приложения (`~/.local/share/yoisaki-ai-studio`) и при обновлении не удаляются. Старая версия кода сохраняется резервной копией.
++
++## 1. Скопировать архив в Termux
++
++Android не разрешает запускать приложение из «Загрузок», поэтому архив сначала копируется в домашнюю папку Termux.
++
++```bash
++termux-setup-storage
++cp ~/storage/downloads/YOISAKI_AI_STUDIO_V1.8.1_SMART_FACE_FIX.zip ~/
++```
++
++(`termux-setup-storage` нужен один раз; разрешите доступ к файлам.)
++
++Необязательная проверка целостности скачанного файла — сравните с `SHA256SUMS.txt`, который приложен рядом с архивом:
++
++```bash
++sha256sum ~/YOISAKI_AI_STUDIO_V1.8.1_SMART_FACE_FIX.zip
++```
++
++## 2А. Обновление уже установленного сайта (рекомендуется)
++
++Найдите папку установленного приложения (обычно `~/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION` — историческое имя, это нормально):
++
++```bash
++ls ~
++cd ~/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION
++bash update.sh ~/YOISAKI_AI_STUDIO_V1.8.1_SMART_FACE_FIX.zip
++```
++
++Что делает `update.sh`, по порядку:
++
++1. Распаковывает новый архив во временную папку и **проверяет SHA-256 всех файлов** (`verify-package`) и production-сборку. Если что-то не совпадает — обновление прекращается, работающая версия не тронута.
++2. Останавливает старую версию.
++3. Делает резервные копии: кода (`…_LOCAL_EDITION.backup-ДАТА`) и данных (`yoisaki-ai-studio.backup-ДАТА`).
++4. Ставит новую версию на место старой и запускает её. Если запуск не удался — автоматически возвращает прежний код.
++
++После сообщения «Обновлено» откройте в браузере `http://127.0.0.1:3000/engine` — внизу должна быть версия **1.8.1**.
++
++## 2Б. Установка в новую папку (если сайта ещё нет или нужно не трогать старый)
++
++```bash
++mkdir -p ~/yoisaki-181 && cd ~/yoisaki-181
++unzip -q ~/YOISAKI_AI_STUDIO_V1.8.1_SMART_FACE_FIX.zip
++cd YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION
++bash install.sh
++bash start.sh
++```
++
++Если старая версия запущена, сначала остановите её из её папки: `bash stop.sh`. Обе версии используют одни и те же данные; одновременно запускайте только одну.
++
++Готовая сборка уже внутри архива: npm и компилятор не нужны. Нужен Node.js 22–26 (`pkg install nodejs-lts`, если `install.sh` попросит).
++
++## 3. Если установка сообщает об ошибке целостности
++
++Сообщение «Файлы приложения отсутствуют или повреждены» с перечнем файлов означает, что архив скачался не полностью или был изменён. Ничего не отключайте — скачайте архив заново и сравните `sha256sum` с `SHA256SUMS.txt`. Проверка в v1.8.1 выполнялась по точному выпущенному ZIP после чистой распаковки, включая имитацию путей Termux (см. TEST_RESULTS) — ошибка v1.8.0 с устаревшим манифестом исключена тем же способом сборки.
++
++## 4. Новый движок в Google Colab
++
++1. Откройте `YOISAKI_ENGINE_V1.8.1_SMART_FACE_FIX.ipynb` в Google Colab (Файл → Загрузить блокнот).
++2. Среда выполнения → Сменить среду выполнения → **T4 GPU**.
++3. Запустите ячейку **«1. ПОДГОТОВИТЬ ПАНЕЛЬ»** (несколько минут), подключите Google Drive.
++4. Нажмите **«ЗАПУСТИТЬ ДВИЖОК»**, скопируйте защищённую ссылку целиком.
++5. На сайте: раздел **GPU** → вставьте ссылку → «Подключиться».
++
++Старый блокнот v1.8.0 тоже подключится, но автоматический поиск лиц будет недоступен: сайт покажет предупреждение и оставит ручное выделение.
++
++## 5. Как пользоваться Smart Face Fix
++
++1. На странице **Generate** выберите Checkpoint, LoRA и напишите Positive Prompt с описанием персонажа (глаза, мех, форма мордочки) — Face Fix использует их как есть.
++2. **Редактор → FACE FIX** → «Загрузить изображение».
++3. Лицо найдётся само. Если лиц несколько — коснитесь нужного или отметьте «Исправить все найденные лица».
++4. Если лицо не найдено (часто у антро-морд) — проведите пальцем по изображению вокруг лица.
++5. Ползунок «Сила исправления»: 0.3 — бережно; больше — сильнее перерисовка.
++6. **«Исправить лицо»** → ползунок «До / После» → «Сохранить результат». Не понравилось — «Оставить оригинал / попробовать снова». Результат также сохраняется в галерею.
++
++Остальные параметры — в «Расширенных настройках» (свёрнуты). Там же «Классический редактор Face Fix (v1.8.0)».
++
++## 6. Откат
++
++Если что-то не так после обновления через `update.sh`:
++
++```bash
++cd ~
++bash YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/stop.sh
++mv YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION.v181
++mv YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION.backup-ДАТА YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION
++bash YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/start.sh
++```
++
++(`ДАТА` — из сообщения `update.sh`; список: `ls ~ | grep backup`.)
+diff --git a/YOISAKI_V1.8.1_RESOURCE_REPORT.md b/YOISAKI_V1.8.1_RESOURCE_REPORT.md
+new file mode 100644
+index 0000000..c6acf27
+--- /dev/null
++++ b/YOISAKI_V1.8.1_RESOURCE_REPORT.md
+@@ -0,0 +1,65 @@
++# YOISAKI v1.8.1 SMART FACE FIX — отчёт по ресурсам
++
++Среда разработки: 4 CPU, без CUDA (`torch.cuda.is_available() = False`), Python 3.13, PyTorch 2.6.0, Diffusers 0.36.0, OpenCV 4.11.0. **Tesla T4 и полноразмерный Illustrious отсутствовали. Чисел VRAM, скорости Colab и пиков SDXL на T4 в этом отчёте нет.**
++
++## 1. Что сохранено без изменений
++
++- Одна FIFO-очередь (`ThreadPoolExecutor(max_workers=1)`) и `InferenceAdapter.lock` для всех SDXL-задач.
++- Один набор UNet / VAE / двух text encoder на checkpoint; `from_pipe(torch_dtype=None)` для Inpaint-view с проверкой storage pointers; кэш модели и VAE; LoRA на тех же модулях.
++- CPU Offload, VAE slicing/tiling, allocator RAM FIX (`allocator_policy.py` не изменён), MemoryLog, Memory Profiler, result ACK, очистка после отмены/ошибки.
++- Новых вызовов `torch.cuda.empty_cache()` нет. Checkpoint не перезагружается между задачами Face Fix.
++
++## 2. Детекция лиц: только CPU, вне GPU-очереди
++
++- Детекторы — OpenCV (LBP-каскад 247 КБ, YuNet 233 КБ). Загружаются **лениво** при первом `POST /facefix/detect` (или при повторной проверке внутри `/generate`), кэшируются в процессе. При старте сервера не загружаются. При установке Colab выполняется однократная проверка загрузки в отдельном подпроцессе `bootstrap`.
++- Детекция не импортирует torch и не обращается к CUDA (проверено: `torch_imported: false`). Поэтому одновременная резидентность детектора и SDXL в VRAM исключена.
++- `POST /facefix/detect` выполняется в пуле потоков FastAPI с собственной блокировкой (одна детекция за раз), **не** в SDXL-очереди: пользователь видит лица, даже пока идёт генерация (проверено тестом при занятом воркере). Внутри задачи Face Fix повторная детекция выполняется последовательно перед первым проходом SDXL.
++- Временные массивы удаляются после детекции; идентификатор изображения считается по уже созданному BGR-буферу без дополнительной копии (на 3072×3072 это экономит ~37 МБ на запрос).
++
++### Измерения детекции (CPU, `validation/detector-resources.json`)
++
++| Показатель | Значение |
++|---|---:|
++| RSS после импорта numpy + OpenCV | 73.5 МиБ |
++| RSS после загрузки изображения 3072×3072 RGBA | 111.3 МиБ |
++| Первая детекция 3072×3072 (оба детектора) | 0.66 с |
++| Медиана детекции 3072×3072 (20 повторов) | 0.57 с |
++| Медиана детекции 512×512 | 0.04 с |
++| RSS после 1-й / 20-й детекции 3072² | 361.6 / 338.4 МиБ |
++| Пиковый RSS процесса | 411.7 МиБ |
++
++Рост RSS после первой детекции большого изображения — внутренние буферы OpenCV и удержание аллокатора. С политикой RAM FIX (`MALLOC_MMAP_THRESHOLD_=131072`, как в воркере Colab) отдельно для каждого детектора на 3072²: +88 МиБ (LBP) и +99 МиБ (YuNet) после первого вызова, далее **без роста** за 3 повтора; без политики `malloc_trim` возвращает часть памяти. Накопления от повторных детекций не наблюдалось (20 повторов: 410 → 336 → 341 МиБ). Это CPU RAM; на T4/Colab не измерялось.
++
++## 3. Исправление нескольких лиц
++
++- Одна задача `/generate` → повторная детекция → для каждого выбранного лица по очереди: crop + маска → тот же `StableDiffusionXLInpaintPipeline`-view → композит → результат становится исходником для следующего лица. Промпт кодируется один раз на задачу. Параллельных SDXL-вызовов нет.
++- Прогресс охватывает все лица: `total_steps = int(steps × denoise) × число лиц`; ETA и отмена работают на всём диапазоне. Отмена проверяется в callback каждого шага; при отмене во втором лице `finally` закрывает все временные изображения и возвращает базовый pipeline.
++- Минимальная проверка RAM (`check_budget`) не изменена: оценивает исходник, результат, маску и рабочий RGB; при многолицевой обработке одновременно живут текущий результат и один crop.
++
++### Реальные CPU-прогоны tiny SDXL (случайные веса, 2 лица, рабочий размер до 64 px, 4 шага, denoise 0.5)
++
++Источник: `validation/cpu-facefix-resources.json`. Детекторы в этом тесте подменены фиксированными рамками (чтобы проверить последовательность SDXL, а не детекцию); SDXL-компоненты, Diffusers и композит — настоящие.
++
++| № | Режим | Время, с | RSS до, МиБ | Выборочный пик, МиБ | RSS после cleanup, МиБ | Лиц исправлено | Cleanup |
++|---|---|---:|---:|---:|---:|---:|---|
++| 1 | facefix ×2 лица | 1.239 | 1201.12 | 1249.73 | 1249.73 | 2 | ok |
++| 2 | facefix ×2 лица | 1.171 | 1249.73 | 1249.98 | 1249.97 | 2 | ok |
++| 3 | facefix ×2 лица | 1.198 | 1249.97 | 1250.01 | 1250.00 | 2 | ok |
++| 4 | facefix ×2 лица | 1.299 | 1250.00 | 1250.01 | 1250.00 | 2 | ok |
++| 5 | facefix, отмена во 2-м лице | 1.097 | 1250.00 | 1250.01 | 1250.00 | 1 | ok |
++| 6 | facefix после отмены | 1.139 | 1250.00 | 1250.08 | 1250.07 | 2 | ok |
++
++Первый прогон прогревает runtime. После него RSS стабилен (±0.1 МиБ за 5 задач, включая отмену). Тесты также подтверждают: те же объекты UNet/VAE/энкодеров и тот же объём параметров после каждой задачи, возврат к базовому `StableDiffusionXLPipeline`, отсутствие удерживаемых editor-view (weakref). Это **не** доказательство отсутствия накопления на T4 и не прогноз пиков VRAM для 1024 px.
++
++## 4. Диагностика
++
++- `/jobs/{id}` и `/memory` → `job_resources` для Face Fix содержат блок `face_fix`: детектор, запущенные детекторы, число найденных лиц, время повторной детекции, число запрошенных и реально исправленных лиц, плюс прежние поля (время задачи, RAM/VRAM до и после cleanup, пики аллокатора CUDA, выборочный пик RSS, model_reused, тип pipeline, исход cleanup).
++- `/memory` → `face_detection`: последняя детекция — детектор, число лиц, длительность, загруженные модели, RSS и CUDA allocated до/после.
++- В логи не пишутся изображения, промпты, токены и OAuth-данные. Последняя ячейка блокнота скачивает `YOISAKI_RESOURCES_V1.8.1.zip`.
++
++## 5. Что проверить на T4
++
++1. Smart Face Fix на одном изображении 5–10 раз подряд с тем же checkpoint/LoRA → сравнить RSS и allocated VRAM после cleanup (последняя ячейка).
++2. «Исправить все» на изображении с 2–3 лицами; затем отмена во время второго лица и следующая задача.
++3. Рабочий размер 1024 против 768: время на лицо и пик VRAM; при OOM — уменьшить «Рабочую ширину/высоту» в расширенных настройках (автоматически ничего не уменьшается).
++4. Text2Img → Img2Img → Inpaint → Smart Face Fix в одной сессии.
+diff --git a/YOISAKI_V1.8.1_TEST_RESULTS.md b/YOISAKI_V1.8.1_TEST_RESULTS.md
+new file mode 100644
+index 0000000..5987637
+--- /dev/null
++++ b/YOISAKI_V1.8.1_TEST_RESULTS.md
+@@ -0,0 +1,77 @@
++# YOISAKI v1.8.1 SMART FACE FIX — результаты тестирования
++
++Дата: 30 октября 2026. Среда: Linux x64, 4 CPU, **без GPU**; Node.js 22.22.0; Python 3.13; PyTorch 2.6.0 (CUDA недоступна); Diffusers 0.36.0; OpenCV 4.11.0.86; Chromium (Playwright 1.56.1). Реальное Android-устройство не подключалось.
++
++## Сводка
++
++| Проверка | Результат |
++|---|---|
++| TypeScript typecheck (`tsc --noEmit`) | PASS |
++| Production build + build identity | PASS (1.8.1) |
++| Node `npm test` | **152 pass, 0 fail, 5 skipped** (157); пропуски — прежние внешние интеграции |
++| Python регресс + v1.8.1 (img2img, ControlNet CPU, prompt fidelity, regional, memory, editor v1.8.0, Smart Face Fix) | **68 passed** (59 прежних + 9 новых) |
++| Те же тесты редактора и Face Fix на пакете, **извлечённом из блокнота** | **17 passed** |
++| Весь каталог Python-тестов | 274 passed, 16 failed, 21 skipped — **набор из 16 падений идентичен исходному v1.8.0** (265 passed, те же 16) |
++| Браузер, Smart Face Fix (390 и 360 px, touch) | PASS |
++| Браузер, прежние сценарии | v1.8.0 editor, img2img, ui-check, browser-e2e, controlnet, memory-ui, mobile (360/390/430) — PASS |
++| Блокнот Colab: nbformat, AST, SHA-256 пакета, побайтовое совпадение | PASS |
++| Детекция на реальных изображениях (CPU) | см. FACE_DETECTION_REPORT |
++| Реальный выпущенный ZIP: проверка, чистая/повторная установка, запуск, обновление | PASS |
++| **Tesla T4 / Colab / pretrained Illustrious / качество лица** | **НЕ ВЫПОЛНЯЛОСЬ (UNVERIFIED)** |
++
++## Новые тесты
++
++**`tests/test_v181_facefix.py`** (реальные модели OpenCV и tiny SDXL на CPU):
++
++1. Модели проверяются по SHA-256 и загружаются лениво; белый и градиентный холсты — 0 лиц.
++2. Подменённый хеш или отсутствующий файл модели → понятная ошибка, детекция не выполняется.
++3. Правила выбора: одно уверенное лицо — автовыбор; два — выбор обязателен; неуверенное — никогда не автовыбирается; слияние двух детекторов (noisy-OR); воспроизводимые id, привязанные к изображению; обрезка рамки краем.
++4. Валидация `/facefix/detect` и выбора: неизвестный/повторный/пустой id, неверный детектор/порог, лишние поля.
++5. Маска: овал оставляет углы рамки, расширение, край изображения; рабочий размер по пропорциям.
++6. Композит с овальной маской: пиксели вне маски и альфа точно сохранены; без полей letterbox.
++7. Контракт `AdapterRequest`: ручная рамка XOR выбранные лица, проверка `face_options`, прогресс = шаги × число лиц.
++8. HTTP: авторизация 401, ошибка 422, capability `auto_facefix`, детекция отвечает **пока GPU-воркер занят**, задача с двумя лицами, неизвестный id в `/generate` → 422.
++9. Настоящий Diffusers `StableDiffusionXLInpaintPipeline` (tiny, случайные веса): 4 задачи по 2 лица, отмена во втором лице, восстановление; общие модули, неизменный объём параметров, отсутствие удерживаемых view; ресурсы — `validation/cpu-facefix-resources.json`.
++
++**`tests/v181-facefix.test.mjs`** (Node): сохранение запроса без изменений и удаление исходника из истории; отклонение неверных выборов/опций/режимов; валидация ответа детектора (рамки внутри изображения, формат id, выбранный id существует); совместимость 1.8.1 и `supportsAutoFaceFix`; локальный сервер проксирует детекцию для движка 1.8.1 и **не отправляет** `face_detection`/`face_options` движку 1.8.0 (тот молча проигнорировал бы неизвестные поля), а ручной Face Fix v1.8.0 продолжает работать.
++
++**`tests/v181-facefix-browser.mjs`** (Chromium, 390×844 и 360×780, isMobile + touch; **GPU-ответы синтетические**):
++
++- Расширенные параметры скрыты по умолчанию.
++- Одно лицо: автовыбор, «Исправить лицо» без рамки; запрос содержит выбранный id, овальную маску, 1024, 25 шагов, CFG 5.5, силу 0.3, авто-растушёвку; промпты, LoRA и checkpoint без изменений; детекция и исправление используют одни и те же байты исходника.
++- Результат: «До / После», скачивание совпадает с ответом движка, запись в галерее, в истории нет base64-исходника.
++- Два лица: ничего не выбрано молча, кнопка неактивна; зона касания ≥ 44 px; касание выбирает лицо без прокрутки страницы; «Исправить все» отправляет оба id.
++- Нет уверенного лица: сообщение, автоматической отправки нет; неуверенный вариант виден только по запросу и не выбран; ручное выделение пальцем без прокрутки страницы.
++- Расширенные настройки работают (смена детектора → повторный поиск); настройки страницы Generate не изменяются.
++- Нет горизонтального переполнения на 390 и 360 px; нет ошибок страницы.
++
++Изменён `tests/v180-editor-browser.mjs`: классический редактор Face Fix теперь открывается через «Расширенные настройки»; при движке 1.8.0 проверяется предупреждение о совместимости. Все прежние проверки рамки сохранены. В нескольких тестах обновлены ожидаемые номера текущей версии (1.8.0 → 1.8.1); контрактные проверки не удалялись.
++
++## Падения, существовавшие до v1.8.1
++
++Проверено запуском тех же тестов на нетронутом v1.8.0 в той же среде — падают одинаково:
++
++- Python (16): `test_controlnet.py::test_authenticated_api_real_canny`, `test_engine.py` (2), `test_ui_release_metadata.py` (1), `test_v171_cloudcompute.py` (4), `test_v172_drive_sync.py` (1), `test_v175_autostart.py` (3), `test_v1771_startup.py` (4). Причины — устаревшие ожидания версий 1.7.x и CloudCompute/launcher-окружение.
++- Браузер: `history-browser`, `regional-compatibility-browser`, `providers-browser`, `drive-sync-browser` — ищут тексты интерфейса v1.7.x.
++
++Они не исправлялись, чтобы не трогать CloudCompute и не менять чужие контракты без подтверждённого дефекта.
++
++## Блокнот Colab
++
++`colab/YOISAKI_ENGINE_V1.8.1_SMART_FACE_FIX.ipynb`: nbformat валиден, AST всех ячеек, выводы очищены. Встроенный пакет: 32 файла, SHA-256 `fa9f5283eed2fb164e1f1712bb79c3a8add91b9d46c4115ca4955e2f65b92d82` совпадает с `_EXPECTED`; извлечение логикой блокнота (запрет выхода из каталога и symlink) — файлы побайтово совпадают с исходниками. 24 файла идентичны движку сайта, включая все файлы Smart Face Fix; 8 Colab-вариантов — тот же набор, что в v1.8.0. Исправлены проверки версии в диагностике памяти и `stress_memory` (иначе отклоняли бы 1.8.1). Лог: `validation/notebook-verification.log`.
++
++## Выпущенный архив
++
++`node scripts/make-release.mjs`: production build → манифест SHA-256 по окончательным файлам staging → `verify-package` и `build-identity` → ZIP → `unzip -t` → повторная распаковка → повторная проверка обоих. Затем `tests/release-install-smoke.py` на **том же ZIP** (чистая распаковка во временную папку; PREFIX/интерпретатор Termux имитированы; npm и pkg заблокированы): чистая установка, повторная установка, HTTP-запуск, обновление через `update.sh`, сохранность синтетических Google-настроек и данных — **PASS**, npm/pkg не вызывались. Проверка целостности не отключалась. SHA-256 архива — в `SHA256SUMS.txt` рядом с ZIP (внутри самого архива его записать невозможно). Это имитация Termux на Linux, а не реальный Android.
++
++## Не проверено
++
++- Tesla T4, Colab Free RAM/VRAM, скорость, CUDA OOM, pretrained Illustrious/SDXL.
++- Визуальное качество исправленных лиц, сохранность черт персонажа, швы на реальных изображениях, сравнение с Civitai.
++- Детекция антро-морд (лиса, летучая мышь, рептилия), профилей — не было авторизованных изображений.
++- Реальный Android-браузер (проверялся Chromium в мобильной эмуляции).
++- Реальные Google Drive / OAuth / CloudCompute-сессии.
++
++## Evidence
++
++`validation/` (в рабочем каталоге разработки; в установочный ZIP не входит, поставляется отдельно): `node-tests.log`, `regression-python.log`, `colab-facefix-python.log`, `python-all.log`, `browser-*.log`, `facefix-*.png`, `typecheck.log`, `build.log`, `build-identity.log`, `notebook-verification.log`, `detection-metrics.json`, `small-faces.json`, `detector-resources.json`, `cpu-facefix-resources.json`. Наложения рамок и масок на оценочные рисунки использовались для внутренней визуальной проверки и не распространяются: права на сами рисунки не установлены.
+diff --git a/engine/bootstrap.py b/engine/bootstrap.py
+index 4d84731..9f58bc5 100644
+--- a/engine/bootstrap.py
++++ b/engine/bootstrap.py
+@@ -21,7 +21,7 @@ def install():
+         constraint=ROOT/'colab-torch-constraint.txt'
+         constraint.write_text('torch=='+torch_version+'\n')
+         subprocess.run([str(python),'-m','pip','install','-c',str(constraint),'--disable-pip-version-check','-r',str(ROOT/'requirements.txt')],check=True,stdout=f,stderr=subprocess.STDOUT)
+-        check="from worker.direct_server import create_app; from inference.text2img import InferenceAdapter; import torch; from diffusers import StableDiffusionXLPipeline, StableDiffusionXLControlNetPipeline, ControlNetModel, AutoencoderKL; import peft, transformers, accelerate, cv2; from controlnet_aux import OpenposeDetector; from transformers import AutoImageProcessor, AutoModelForDepthEstimation; from diffusers import UNet2DConditionModel; from controlnet_aux.open_pose import PoseResult, draw_poses; from inference.sdpose import detect, load_embedding; load_embedding(); from diffusers import StableDiffusionXLImg2ImgPipeline, StableDiffusionXLControlNetImg2ImgPipeline; from inference.img2img import activate, source_image; print('IMPORTS_OK'); print('CUDA',torch.cuda.is_available())"
++        check="from worker.direct_server import create_app; from inference.text2img import InferenceAdapter; import torch; from diffusers import StableDiffusionXLPipeline, StableDiffusionXLControlNetPipeline, ControlNetModel, AutoencoderKL; import peft, transformers, accelerate, cv2; from controlnet_aux import OpenposeDetector; from transformers import AutoImageProcessor, AutoModelForDepthEstimation; from diffusers import UNet2DConditionModel; from controlnet_aux.open_pose import PoseResult, draw_poses; from inference.sdpose import detect, load_embedding; load_embedding(); from diffusers import StableDiffusionXLImg2ImgPipeline, StableDiffusionXLControlNetImg2ImgPipeline; from inference.img2img import activate, source_image; from inference.facedetect import _model; _model('anime'); _model('human'); print('IMPORTS_OK'); print('CUDA',torch.cuda.is_available())"
+         subprocess.run([str(python),'-c',check],cwd=ROOT,check=True,stdout=f,stderr=subprocess.STDOUT)
+         with (ROOT/'installed-versions.txt').open('w') as versions:
+             subprocess.run([str(python),'-m','pip','freeze'],stdout=versions,check=True)
+diff --git a/engine/diagnostics/runner.py b/engine/diagnostics/runner.py
+index a8a2d1d..7dfd97b 100644
+--- a/engine/diagnostics/runner.py
++++ b/engine/diagnostics/runner.py
+@@ -157,7 +157,7 @@ class DiagnosticRunner:
+         _post_events(self.folder,'test_started',requested=int(self.options['count']))
+         try:
+             health=self.client.call('GET','/health')
+-            if health.get('engine_version') not in ('1.7.0','1.8.0') or not health.get('gpu_name'):
++            if health.get('engine_version') not in ('1.7.0','1.8.0','1.8.1') or not health.get('gpu_name'):
+                 raise RuntimeError('Требуется работающий CUDA YOISAKI ENGINE v1.7.0')
+             models=self.client.call('GET','/models').get('models',[])
+             if not any(x.get('id')==self.checkpoint_id and x.get('kind')=='checkpoint' and x.get('compatible') is not False for x in models):
+diff --git a/engine/face_eval.py b/engine/face_eval.py
+new file mode 100644
+index 0000000..10c4a46
+--- /dev/null
++++ b/engine/face_eval.py
+@@ -0,0 +1,30 @@
++"""Run Smart Face Fix detection on YOUR OWN reference images and print what the engine would offer.
++Usage (Colab after "ПОДГОТОВИТЬ ПАНЕЛЬ", or any machine with opencv-python-headless + Pillow):
++    python /content/yoisaki_engine/face_eval.py /path/to/folder [--detector auto]
++Reads PNG/JPEG/WebP only; prints boxes and confidences; writes nothing and sends nothing anywhere.
++Detection success says nothing about repair quality, which must be judged on real SDXL results."""
++import argparse, sys, time
++from pathlib import Path
++
++def main():
++    ap = argparse.ArgumentParser()
++    ap.add_argument('folder')
++    ap.add_argument('--engine', default=str(Path(__file__).resolve().parent))
++    ap.add_argument('--detector', default='auto', choices=['auto', 'anime', 'human'])
++    ap.add_argument('--min-confidence', type=float, default=.35)
++    a = ap.parse_args()
++    sys.path.insert(0, a.engine)
++    from PIL import Image, ImageOps
++    from inference.facedetect import detect
++    for path in sorted(p for p in Path(a.folder).iterdir() if p.suffix.lower() in ('.png', '.jpg', '.jpeg', '.webp')):
++        with Image.open(path) as im:
++            image = ImageOps.exif_transpose(im).convert('RGBA')
++        started = time.perf_counter()
++        r = detect(image, a.detector, a.min_confidence)
++        state = 'AUTO' if r['selected'] else 'CHOOSE' if r['selection_required'] else 'NONE'
++        print(f'{path.name}: {image.width}x{image.height} {state} {len(r["faces"])} face(s) {1000*(time.perf_counter()-started):.0f} ms')
++        for f in r['faces']:
++            print(f'   {f["id"]} x={f["x"]} y={f["y"]} {f["width"]}x{f["height"]} conf={f["confidence"]:.2f} {f["detector"]}{"" if f["auto_selectable"] else " (uncertain)"}')
++
++if __name__ == '__main__':
++    main()
+diff --git a/engine/inference/editor.py b/engine/inference/editor.py
+index 39ca13b..417f8a8 100644
+--- a/engine/inference/editor.py
++++ b/engine/inference/editor.py
+@@ -81,9 +81,43 @@ def face_bounds(region, size):
+         raise EditorError('Выделение лица выходит за границы исходника.')
+     return (math.floor(x), math.floor(y), math.ceil(x+w), math.ceil(y+h))
+ 
++FACE_OPTION_KEYS = {'mask_shape', 'mask_expand', 'work_fit'}
++
++def face_options(req):
++    """v1.8.1 optional Face Fix geometry. Absent: exact v1.8.0 behaviour (rectangle, letterbox)."""
++    options = req.get('face_options')
++    if options is None:
++        return dict(mask_shape='box', mask_expand=0, work_fit='letterbox')
++    if not isinstance(options, dict) or set(options) != FACE_OPTION_KEYS:
++        raise EditorError('face_options: нужны mask_shape, mask_expand, work_fit.')
++    expand = options['mask_expand']
++    if options['mask_shape'] not in ('ellipse', 'box') or options['work_fit'] not in ('aspect', 'letterbox') \
++            or type(expand) not in (int, float) or not math.isfinite(expand) or not 0 <= expand <= .5:
++        raise EditorError('face_options: mask_shape ellipse|box, mask_expand 0–0.5, work_fit aspect|letterbox.')
++    return dict(options)
++
++def edit_targets(req, original):
++    """Source-pixel bounds to edit, in order. Inpaint: [None]. Detected ids are re-detected on the
++    job's own decoded source; client-supplied boxes for them are never used."""
++    if req['mode'] == 'inpaint':
++        return [None], None
++    if req.get('face_detection') is not None:
++        from inference.facedetect import select_faces
++        faces, result = select_faces(original, req['face_detection'])
++        return [(f['x'], f['y'], f['x']+f['width'], f['y']+f['height']) for f in faces], result
++    return [face_bounds(req['face_region'], original.size)], None
++
++def fitted_work_size(crop, width, height):
++    """Largest multiple-of-8 size with the crop's aspect inside width x height (no letterbox).
++    Falls back to the explicit size when a side would drop below the API minimum (256)."""
++    cw, ch = crop[2]-crop[0], crop[3]-crop[1]
++    ratio = min(width/cw, height/ch)
++    w, h = int(cw*ratio)//8*8, int(ch*ratio)//8*8
++    return (w, h) if min(w, h) >= min(256, width, height) else (width, height)
++
+ def validate_editor(req):
+     if req.get('mode') not in EDIT_MODES:
+-        if any(req.get(k) is not None for k in ('mask_image', 'face_region', 'mask_blur', 'mask_padding', 'inpaint_region')):
++        if any(req.get(k) is not None for k in ('mask_image', 'face_region', 'mask_blur', 'mask_padding', 'inpaint_region', 'face_detection', 'face_options')):
+             raise EditorError('Поля редактора допустимы только для Inpaint и Face Fix.')
+         return
+     if req.get('batch_size') != 1:
+@@ -102,7 +136,7 @@ def validate_editor(req):
+     with ExitStack() as stack:
+         source = stack.enter_context(decode(req.get('init_image')))
+         if req['mode'] == 'inpaint':
+-            if req.get('face_region') is not None:
++            if req.get('face_region') is not None or req.get('face_detection') is not None or req.get('face_options') is not None:
+                 raise EditorError('Face region не применяется к Inpaint.')
+             mask = stack.enter_context(decode(req.get('mask_image'), mask=True))
+             if mask.size != source.size:
+@@ -111,21 +145,48 @@ def validate_editor(req):
+                 raise EditorError('Маска пуста. Закрасьте редактируемую область белым.')
+         else:
+             if req.get('mask_image') is not None or req.get('inpaint_region', 'crop') != 'crop':
+-                raise EditorError('Face Fix использует ручной прямоугольник и режим crop.')
+-            face_bounds(req.get('face_region'), source.size)
++                raise EditorError('Face Fix использует выделение лица и режим crop.')
++            face_options(req)
++            if (req.get('face_region') is None) == (req.get('face_detection') is None):
++                raise EditorError('Face Fix: укажите либо ручную рамку face_region, либо выбранные лица face_detection.')
++            if req.get('face_detection') is not None:
++                # Ids are resolved by re-running detection on this exact source.
++                from inference.facedetect import select_faces
++                select_faces(source, req['face_detection'])
++            else:
++                face_bounds(req.get('face_region'), source.size)
++
++def face_mask(size, bounds, shape='box', expand=0):
++    """Selection support for one face. `ellipse` leaves the box corners (hair, ears, background)
++    untouched; `expand` grows the box by a fraction of its size per side, clipped to the image."""
++    w, h = bounds[2]-bounds[0], bounds[3]-bounds[1]
++    ex, ey = w*expand, h*expand
++    box = (bounds[0]-ex, bounds[1]-ey, bounds[2]+ex-1, bounds[3]+ey-1)
++    mask = Image.new('L', size)
++    draw = ImageDraw.Draw(mask)
++    if shape == 'ellipse':
++        draw.ellipse(box, fill=255)
++    else:
++        draw.rectangle(tuple(round(v) for v in box), fill=255)
++    if not mask.getbbox():
++        mask.close()
++        raise EditorError('Выделение лица пустое.')
++    return mask
+ 
+ class EditSession:
+-    def __init__(self, req):
++    def __init__(self, req, source=None, face=None):
++        """`source`: caller-owned RGBA image (sequential multi-face jobs), not closed here.
++        `face`: source-pixel bounds for Face Fix; default is the request's manual face_region."""
+         self.stack = ExitStack()
+         self.images = []
+         try:
+-            self.original = self.keep(decode(req['init_image']))
++            self.original = source if source is not None else self.keep(decode(req['init_image']))
++            options = face_options(req) if req['mode'] == 'facefix' else dict(work_fit='letterbox')
+             if req['mode'] == 'inpaint':
+                 mask = self.keep(decode(req['mask_image'], mask=True))
+             else:
+-                mask = self.keep(Image.new('L', self.original.size))
+-                b = face_bounds(req['face_region'], self.original.size)
+-                ImageDraw.Draw(mask).rectangle((b[0], b[1], b[2]-1, b[3]-1), fill=255)
++                b = face if face is not None else face_bounds(req['face_region'], self.original.size)
++                mask = self.keep(face_mask(self.original.size, b, options['mask_shape'], options['mask_expand']))
+             # Feather inward only, reaching zero at the boundary to avoid a rectangle seam.
+             radius = float(req.get('mask_blur', 8))
+             self.mask = self.keep(feather_mask(mask, radius)) if radius else mask
+@@ -141,6 +202,8 @@ class EditSession:
+             rgb.paste(cropped, mask=self.keep(cropped.getchannel('A')))
+             cmask = self.keep(self.mask.crop(self.crop))
+             w, h = req['width'], req['height']
++            if options['work_fit'] == 'aspect':
++                w, h = fitted_work_size(self.crop, w, h)
+             ratio = min(w/rgb.width, h/rgb.height)
+             rw, rh = max(1,round(rgb.width*ratio)), max(1,round(rgb.height*ratio))
+             left, top = (w-rw)//2, (h-rh)//2
+diff --git a/engine/inference/face_models/LICENSES.md b/engine/inference/face_models/LICENSES.md
+new file mode 100644
+index 0000000..ca20e5c
+--- /dev/null
++++ b/engine/inference/face_models/LICENSES.md
+@@ -0,0 +1,36 @@
++# Face Fix detector weights (YOISAKI ENGINE v1.8.1)
++
++Both files are small, CPU-only OpenCV models, bundled unmodified. They are loaded
++lazily on the first detection request; neither is loaded at engine start.
++
++| File | SHA-256 | Source | License |
++|---|---|---|---|
++| `lbpcascade_animeface.xml` | `9376d30ac38db6bda2a68b88b3b76bbd7e6aa33af47f7f5c76bc88ca75f1ce30` | https://github.com/nagadomi/lbpcascade_animeface (commit on `master`, file `lbpcascade_animeface.xml`) | MIT, Copyright (C) 2011 nagadomi. The full notice is embedded at the top of the XML file itself. |
++| `face_detection_yunet_2023mar.onnx` | `8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4` | https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet | MIT, Copyright (c) 2020 Shiqi Yu. Notice reproduced below. |
++
++Runtime: `opencv-python-headless==4.11.0.86` (Apache-2.0), already pinned by the engine for ControlNet preprocessing.
++No Ultralytics/AGPL code or weights are used.
++
++---
++
++MIT License
++
++Copyright (c) 2020 Shiqi Yu <shiqi.yu@gmail.com>
++
++Permission is hereby granted, free of charge, to any person obtaining a copy
++of this software and associated documentation files (the "Software"), to deal
++in the Software without restriction, including without limitation the rights
++to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++copies of the Software, and to permit persons to whom the Software is
++furnished to do so, subject to the following conditions:
++
++The above copyright notice and this permission notice shall be included in all
++copies or substantial portions of the Software.
++
++THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
++SOFTWARE.
+diff --git a/engine/inference/facedetect.py b/engine/inference/facedetect.py
+new file mode 100644
+index 0000000..e608a65
+--- /dev/null
++++ b/engine/inference/facedetect.py
+@@ -0,0 +1,200 @@
++"""v1.8.1 automatic face detection for Face Fix. CPU only, small bundled OpenCV models.
++
++Coordinates are integer EXIF-oriented source pixels. Detector tensors never leave this module.
++The SDXL pipeline is not touched here; detection never allocates CUDA memory.
++Detections are reproducible: the same decoded image and settings give the same face ids, so a
++/generate request can name ids and the engine re-detects instead of trusting client boxes.
++"""
++import hashlib
++import math
++import threading
++import time
++from pathlib import Path
++
++from inference.editor import EditorError, decode
++
++MODEL_DIR = Path(__file__).with_name('face_models')
++MODELS = {
++    'anime': ('lbpcascade_animeface.xml', '9376d30ac38db6bda2a68b88b3b76bbd7e6aa33af47f7f5c76bc88ca75f1ce30'),
++    'human': ('face_detection_yunet_2023mar.onnx', '8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4'),
++}
++DETECTORS = ('auto', 'anime', 'human')
++DEFAULT_MIN_CONFIDENCE = .35
++# A face is selected without user input only above this score and only when it is the sole such face.
++AUTO_SELECT_CONFIDENCE = .6
++MAX_FACES = 12
++LBP_MAX_SIDE = 1600
++YUNET_SIDES = (640, 1280)
++VERSION = 1
++
++_models = {}
++_model_lock = threading.Lock()
++# One detection at a time; it runs on CPU beside (never inside) the single GPU worker.
++detect_lock = threading.Lock()
++
++def _model(kind):
++    with _model_lock:
++        if kind in _models:
++            return _models[kind]
++        import cv2
++        name, expected = MODELS[kind]
++        path = MODEL_DIR / name
++        try:
++            digest = hashlib.sha256(path.read_bytes()).hexdigest()
++        except OSError as exc:
++            raise EditorError('Файл детектора лиц отсутствует. Переустановите движок v1.8.1.') from exc
++        if digest != expected:
++            raise EditorError('Файл детектора лиц повреждён. Переустановите движок v1.8.1.')
++        if kind == 'anime':
++            model = cv2.CascadeClassifier(str(path))
++            if model.empty():
++                raise EditorError('Не удалось загрузить детектор аниме-лиц.')
++        else:
++            model = cv2.FaceDetectorYN.create(str(path), '', (320, 320), .3, .3, 50)
++        _models[kind] = model
++        return model
++
++def loaded_models():
++    with _model_lock:
++        return sorted(_models)
++
++def _scaled(array, side):
++    import cv2
++    h, w = array.shape[:2]
++    ratio = min(1., side / max(w, h))
++    if ratio == 1.:
++        return array, 1.
++    return cv2.resize(array, (max(1, round(w*ratio)), max(1, round(h*ratio))), interpolation=cv2.INTER_AREA), ratio
++
++def _lbp(bgr):
++    """Anime/illustration faces. The cascade has no probability; its last-stage weight is mapped
++    to (0, 1) with a logistic calibrated on the v1.8.1 evaluation set (see FACE_DETECTION_REPORT)."""
++    import cv2
++    import numpy as np
++    small, ratio = _scaled(bgr, LBP_MAX_SIDE)
++    gray = cv2.equalizeHist(cv2.cvtColor(small, cv2.COLOR_BGR2GRAY))
++    rects, _, weights = _model('anime').detectMultiScale3(gray, scaleFactor=1.1, minNeighbors=3, minSize=(24, 24), outputRejectLevels=True)
++    out = []
++    for (x, y, w, h), weight in zip(rects, np.ravel(weights)):
++        out.append(((x/ratio, y/ratio, w/ratio, h/ratio), 1/(1+math.exp(-1.5*(float(weight)-.5)))))
++    return out
++
++def _yunet(bgr):
++    """General (mostly human) faces. YuNet sees faces of roughly 10-300 px, so two scales are used."""
++    detector = _model('human')
++    out = []
++    long_side = max(bgr.shape[:2])
++    for side in YUNET_SIDES:
++        if side > YUNET_SIDES[0] and long_side <= side*.8:
++            break
++        small, ratio = _scaled(bgr, side)
++        detector.setInputSize((small.shape[1], small.shape[0]))
++        _, faces = detector.detect(small)
++        for row in (faces if faces is not None else []):
++            x, y, w, h = (float(v)/ratio for v in row[:4])
++            out.append(((x, y, w, h), float(row[-1])))
++    return _merge([(b, c, ('human',)) for b, c in out], fuse=False)
++
++def _overlap(a, b):
++    ax, ay, aw, ah = a
++    bx, by, bw, bh = b
++    iw = max(0., min(ax+aw, bx+bw)-max(ax, bx))
++    ih = max(0., min(ay+ah, by+bh)-max(ay, by))
++    inter = iw*ih
++    if not inter:
++        return 0.
++    return max(inter/(aw*ah+bw*bh-inter), inter/min(aw*ah, bw*bh)*.75)
++
++def _merge(items, fuse=True):
++    """Greedy grouping by overlap. Within one detector: keep the best box. Across detectors:
++    confidence-weighted box and noisy-OR confidence, so agreement raises confidence."""
++    items = sorted(items, key=lambda x: -x[1])
++    groups = []
++    for box, conf, names in items:
++        for group in groups:
++            if _overlap(group['box'], box) >= .35:
++                if fuse and not set(names) <= set(group['names']):
++                    total = group['conf']+conf
++                    group['box'] = tuple((g*group['conf']+v*conf)/total for g, v in zip(group['box'], box))
++                    group['conf'] = 1-(1-group['conf'])*(1-conf)
++                    group['names'] = tuple(sorted(set(group['names'])|set(names)))
++                break
++        else:
++            groups.append({'box': box, 'conf': conf, 'names': tuple(names)})
++    return [(g['box'], g['conf'], g['names']) for g in groups]
++
++def validate_options(detector, min_confidence):
++    if detector not in DETECTORS:
++        raise EditorError('Детектор: auto, anime или human.')
++    if type(min_confidence) not in (int, float) or not math.isfinite(min_confidence) or not .05 <= min_confidence <= .95:
++        raise EditorError('Порог уверенности детектора: от 0.05 до 0.95.')
++
++def detect(image, detector='auto', min_confidence=DEFAULT_MIN_CONFIDENCE):
++    """`image` is the decoded RGBA source. Returns the public detection document."""
++    import numpy as np
++    validate_options(detector, min_confidence)
++    started = time.perf_counter()
++    with detect_lock:
++        rgb = image.convert('RGB') if 'A' not in image.getbands() else None
++        if rgb is None:
++            from PIL import Image
++            rgb = Image.new('RGB', image.size, 'white')
++            with image.getchannel('A') as alpha:
++                rgb.paste(image, mask=alpha)
++        try:
++            import cv2
++            bgr = cv2.cvtColor(np.asarray(rgb), cv2.COLOR_RGB2BGR)
++        finally:
++            rgb.close()
++        # Ids bind to the exact pixels; hash the existing buffer instead of copying the image again.
++        digest = hashlib.sha256(memoryview(bgr)).hexdigest()
++        found = []
++        run = ('anime', 'human') if detector == 'auto' else (detector,)
++        if 'anime' in run:
++            found += [(b, c, ('anime',)) for b, c in _lbp(bgr)]
++        if 'human' in run:
++            found += _yunet(bgr)
++        del bgr
++    width, height = image.size
++    faces = []
++    for (x, y, w, h), conf, names in _merge(found):
++        x0, y0 = max(0, math.floor(x)), max(0, math.floor(y))
++        x1, y1 = min(width, math.ceil(x+w)), min(height, math.ceil(y+h))
++        if x1-x0 < 8 or y1-y0 < 8 or conf < min_confidence:
++            continue
++        box = dict(x=x0, y=y0, width=x1-x0, height=y1-y0)
++        ident = 'f'+hashlib.sha256(f'{VERSION}|{digest}|{detector}|{x0},{y0},{x1},{y1}'.encode()).hexdigest()[:12]
++        faces.append(dict(id=ident, **box, confidence=round(conf, 4), detector='+'.join(names), label='face',
++                          auto_selectable=conf >= AUTO_SELECT_CONFIDENCE))
++    faces.sort(key=lambda f: (-f['width']*f['height'], f['y'], f['x']))
++    faces = faces[:MAX_FACES]
++    strong = [f for f in faces if f['auto_selectable']]
++    return dict(detector=detector, detectors_run=list(run), min_confidence=min_confidence,
++                auto_select_confidence=AUTO_SELECT_CONFIDENCE, image=dict(width=width, height=height),
++                faces=faces, selected=strong[0]['id'] if len(strong) == 1 else None,
++                selection_required=len(strong) != 1 and bool(faces),
++                duration_ms=round((time.perf_counter()-started)*1000, 1))
++
++def detect_request(data):
++    """HTTP body {image, detector?, min_confidence?} -> detection document. Image validated like /generate."""
++    if not isinstance(data, dict) or not set(data) <= {'image', 'detector', 'min_confidence'}:
++        raise EditorError('Ожидаются поля image, detector, min_confidence.')
++    detector = data.get('detector', 'auto')
++    min_confidence = data.get('min_confidence', DEFAULT_MIN_CONFIDENCE)
++    validate_options(detector, min_confidence)
++    with decode(data.get('image')) as image:
++        return detect(image, detector, min_confidence)
++
++def select_faces(image, spec):
++    """Resolve a /generate `face_detection` spec on the exact job source. Unknown ids fail closed."""
++    if not isinstance(spec, dict) or set(spec) != {'detector', 'min_confidence', 'select'}:
++        raise EditorError('face_detection: нужны detector, min_confidence и select.')
++    ids = spec['select']
++    if not isinstance(ids, list) or not 1 <= len(ids) <= MAX_FACES or len(set(ids)) != len(ids) or not all(isinstance(i, str) and len(i) == 13 for i in ids):
++        raise EditorError('Выберите от 1 до 12 найденных лиц.')
++    result = detect(image, spec['detector'], spec['min_confidence'])
++    by_id = {f['id']: f for f in result['faces']}
++    missing = [i for i in ids if i not in by_id]
++    if missing:
++        raise EditorError('Выбранное лицо не найдено при повторной проверке. Обновите обнаружение лиц и выберите заново.')
++    return [by_id[i] for i in ids], result
+diff --git a/engine/inference/img2img.py b/engine/inference/img2img.py
+index 0799dc6..fb28341 100644
+--- a/engine/inference/img2img.py
++++ b/engine/inference/img2img.py
+@@ -18,7 +18,12 @@ def denoise_steps(steps, strength):
+ 
+ def total_steps(req):
+     """Denoising steps the job really executes (progress, ETA, DECODING stage)."""
+-    return denoise_steps(req['steps'], req['denoising_strength']) if req.get('mode') in ('img2img','inpaint','facefix') else req['steps']
++    if req.get('mode') not in ('img2img','inpaint','facefix'):
++        return req['steps']
++    faces = req.get('face_detection') or {}
++    # v1.8.1: selected detected faces are refined one after another within the same job.
++    count = len(faces.get('select') or []) if req.get('mode') == 'facefix' and isinstance(faces.get('select'), list) else 1
++    return denoise_steps(req['steps'], req['denoising_strength']) * max(1, count)
+ 
+ def decode_source(data):
+     from inference.controlnet import decode_image, ControlNetError
+diff --git a/engine/inference/text2img.py b/engine/inference/text2img.py
+index 53b6e29..6bbe0ca 100644
+--- a/engine/inference/text2img.py
++++ b/engine/inference/text2img.py
+@@ -1,5 +1,5 @@
+ """Local-only SDXL inference (Text2Img and, since v1.7.0, Img2Img on the same components). Never load pickle checkpoint files."""
+-import gc,threading,secrets,hashlib
++import gc,threading,secrets,hashlib,time
+ from pathlib import Path
+ from worker.models import resolve
+ class InferenceAdapter:
+@@ -122,10 +122,11 @@ class InferenceAdapter:
+             if not 0 <= seed <= 2147483647:raise ValueError("Seed must be between 0 and 2147483647")
+             generator=torch.Generator(device='cpu').manual_seed(seed)
+             observer=None
++            offset=[0]  # v1.8.1: sequential faces share one progress range
+             def callback(_pipe,step,timestep,tensors):
+                 if observer is not None:observer.step_end(step)
+-                progress(step+1,'GENERATING')
+-                if step+1==total:progress(step+1,'DECODING')
++                progress(offset[0]+step+1,'GENERATING')
++                if offset[0]+step+1==total:progress(offset[0]+step+1,'DECODING')
+                 return tensors
+             self.last_pipeline_type=type(pipe).__name__
+             self.measure('before_generation')
+@@ -147,11 +148,20 @@ class InferenceAdapter:
+                 control_kwargs={'control_image' if img2img else 'image':control_image,'controlnet_conditioning_scale':control['strength'],'control_guidance_start':control['start'],'control_guidance_end':control['end']}
+             stage_hook=None
+             edit=None
++            current=None
++            targets=[]
++            self.last_face_job=None
+             try:
+                 if editing:
+-                    from inference.editor import EditSession
+-                    edit=EditSession(req)
+-                    source_kwargs=dict(image=edit.source,mask_image=edit.work_mask,strength=float(req['denoising_strength']))
++                    from inference.editor import decode,edit_targets
++                    current=decode(req['init_image'])
++                    detect_started=time.perf_counter()
++                    targets,detection=edit_targets(req,current)
++                    self.last_face_job=dict(detector=detection['detector'] if detection else 'manual',
++                        detectors_run=detection['detectors_run'] if detection else [],
++                        detected_faces=len(detection['faces']) if detection else None,
++                        detection_seconds=round(time.perf_counter()-detect_started,3) if detection else None,
++                        requested_faces=len(targets),refined_faces=0)
+                 if img2img:
+                     from inference.img2img import source_image
+                     source=source_image(req['init_image'],req['width'],req['height'])
+@@ -174,21 +184,29 @@ class InferenceAdapter:
+                         'embedding_shapes':{k:list(v.shape) for k,v in conditioning.items() if v is not None},
+                         'embedding_bytes':sum(v.numel()*v.element_size() for v in conditioning.values() if v is not None),
+                         'dtype':str(conditioning['prompt_embeds'].dtype),'device':str(conditioning['prompt_embeds'].device)}
+-                    images=pipe(**conditioning,**control_kwargs,**source_kwargs,**size_kwargs,num_inference_steps=req['steps'],guidance_scale=req['cfg_scale'],num_images_per_prompt=req['batch_size'],generator=generator,callback_on_step_end=callback).images
+-                    if edit is not None:
+-                        raw_images=images
+-                        images=[]
+-                        try:
+-                            for im in raw_images:images.append(edit.composite(im))
+-                        except Exception:
+-                            for im in images:im.close()
+-                            raise
+-                        finally:
+-                            for im in raw_images:im.close()
++                    if not editing:
++                        images=pipe(**conditioning,**control_kwargs,**source_kwargs,**size_kwargs,num_inference_steps=req['steps'],guidance_scale=req['cfg_scale'],num_images_per_prompt=req['batch_size'],generator=generator,callback_on_step_end=callback).images
++                    else:
++                        from inference.editor import EditSession
++                        from inference.img2img import denoise_steps
++                        per_face=denoise_steps(req['steps'],req['denoising_strength'])
++                        # One masked pass per face, strictly sequential, on the same shared pipeline.
++                        for index,target in enumerate(targets):
++                            offset[0]=index*per_face
++                            edit=EditSession(req,source=current,face=target)
++                            raw=pipe(**conditioning,image=edit.source,mask_image=edit.work_mask,strength=float(req['denoising_strength']),width=edit.source.width,height=edit.source.height,num_inference_steps=req['steps'],guidance_scale=req['cfg_scale'],num_images_per_prompt=1,generator=generator,callback_on_step_end=callback).images
++                            try:updated=edit.composite(raw[0])
++                            finally:
++                                for im in raw:im.close()
++                            edit.close();edit=None
++                            current.close();current=updated
++                            self.last_face_job['refined_faces']=index+1
++                        images=[current];current=None
+             finally:
+                 if stage_hook is not None:stage_hook.remove()
+                 if control_image is not None:control_image.close()
+                 if source is not None:source.close()
+                 if edit is not None:edit.close()
++                if current is not None:current.close()
+             self.measure('after_decode')
+             return images,int(seed)
+diff --git a/engine/stress_memory.py b/engine/stress_memory.py
+index 4bff226..cd3f2d7 100644
+--- a/engine/stress_memory.py
++++ b/engine/stress_memory.py
+@@ -10,7 +10,7 @@ def run(token,checkpoint_id,character_id='',second_character_id='',style_id='',w
+     def call(method,path,**kw):
+         r=session.request(method,base+path,timeout=120,**kw);r.raise_for_status();return r
+     health=call('GET','/health').json()
+-    if health.get('engine_version') not in ('1.7.0','1.8.0') or not health.get('gpu_name') or health.get('state')!='READY':raise RuntimeError('Ready CUDA engine 1.7.0 / 1.8.0 required; no simulation performed')
++    if health.get('engine_version') not in ('1.7.0','1.8.0','1.8.1') or not health.get('gpu_name') or health.get('state')!='READY':raise RuntimeError('Ready CUDA engine 1.7.0 / 1.8.0 / 1.8.1 required; no simulation performed')
+     out=Path(output);out.mkdir(parents=True,exist_ok=True)
+     scenarios=[('off_'+str(i+1),[],[]) for i in range(10)]
+     if character_id:scenarios.append(('character',[{'id':character_id,'weight':.8}],[]))
+diff --git a/engine/worker/direct_server.py b/engine/worker/direct_server.py
+index c8e8ee9..ba339db 100644
+--- a/engine/worker/direct_server.py
++++ b/engine/worker/direct_server.py
+@@ -19,7 +19,7 @@ from .models import scan, resolve
+ from .memory import MemoryLog
+ from .results import ResultStore
+ 
+-ENGINE_VERSION = '1.8.0'
++ENGINE_VERSION = '1.8.1'
+ API_VERSION = '1.7.0'  # Existing wire contract; the Studio release is independent.
+ 
+ class RegionRequest(BaseModel):
+@@ -60,6 +60,9 @@ class AdapterRequest(BaseModel):
+     mask_blur: float | None = Field(default=None,ge=0,le=64,allow_inf_nan=False)
+     mask_padding: float | None = Field(default=None,ge=0,le=1,allow_inf_nan=False)
+     inpaint_region: str | None = None
++    # v1.8.1 SMART FACE FIX: ids from /facefix/detect, re-detected server-side; optional mask geometry.
++    face_detection: dict | None = None
++    face_options: dict | None = None
+     @model_validator(mode='after')
+     def check(self):
+         if self.mode not in ('text2img','img2img','inpaint','facefix') or self.kind!=self.mode:raise ValueError('Unsupported inference mode')
+@@ -139,7 +142,7 @@ def create_app(model_root,token):
+     def health():
+         with lock:busy=active[0]
+         results.cleanup()
+-        return dict(memory_log_ok=memory.write_ok,engine='YOISAKI_ENGINE',engine_version=ENGINE_VERSION,api_version=API_VERSION,capabilities={'controlnet':True,'sdpose':True,'img2img':True,'inpaint':True,'facefix':True,'editor_contract':1,'regional_control':True,'result_ack':True},state='BUSY' if busy else 'READY' if hardware()['gpu_name'] else 'ERROR',**hardware())
++        return dict(memory_log_ok=memory.write_ok,engine='YOISAKI_ENGINE',engine_version=ENGINE_VERSION,api_version=API_VERSION,capabilities={'controlnet':True,'sdpose':True,'img2img':True,'inpaint':True,'facefix':True,'editor_contract':1,'auto_facefix':True,'face_detect_contract':1,'regional_control':True,'result_ack':True},state='BUSY' if busy else 'READY' if hardware()['gpu_name'] else 'ERROR',**hardware())
+     preprocess_op=[None]
+     @app.post('/controlnet/preprocess',dependencies=[auth])
+     def controlnet_preprocess(data:dict):
+@@ -166,6 +169,21 @@ def create_app(model_root,token):
+             with lock:
+                 if preprocess_op[0] is op and op['future'].done():preprocess_op[0]=None
+         return value
++    @app.post('/facefix/detect',dependencies=[auth])
++    def facefix_detect(data:dict):
++        # CPU-only detection with small OpenCV models; never enters the GPU queue or touches CUDA.
++        from inference.facedetect import detect_request,loaded_models
++        from inference.editor import EditorError
++        from .resources import snapshot
++        before=snapshot()
++        try:result=detect_request(data)
++        except EditorError as exc:raise HTTPException(422,str(exc))
++        after=snapshot()
++        memory.detection_summary=dict(detector=result['detector'],detectors_run=result['detectors_run'],faces=len(result['faces']),
++            duration_ms=result['duration_ms'],loaded_models=loaded_models(),
++            process_rss_before_bytes=before['process_rss_bytes'],process_rss_after_bytes=after['process_rss_bytes'],
++            cuda_allocated_before_bytes=before['cuda_allocated_bytes'],cuda_allocated_after_bytes=after['cuda_allocated_bytes'])
++        return result
+     @app.get('/models',dependencies=[auth])
+     def models():return {'models':scan(model_root)}
+     @app.post('/prompt-audit',dependencies=[auth])
+@@ -179,7 +197,7 @@ def create_app(model_root,token):
+         except ValueError as exc:raise HTTPException(422,str(exc))
+         finally:engine.lock.release()
+     @app.get('/memory',dependencies=[auth])
+-    def memory_status():return {'last':memory.last,'job_resources':memory.last_job,'log_write_ok':memory.write_ok}
++    def memory_status():return {'last':memory.last,'job_resources':memory.last_job,'face_detection':getattr(memory,'detection_summary',None),'log_write_ok':memory.write_ok}
+     @app.post('/jobs/{ident}/ack',dependencies=[auth])
+     def acknowledge(ident:str):
+         with lock:
+@@ -274,6 +292,8 @@ def create_app(model_root,token):
+             gc.collect()  # Once temporary tensors/context managers have left generate().
+             measure('after_cleanup')
+             summary=resource.finish(adapter[0],cleanup)
++            face_job=getattr(adapter[0],'last_face_job',None) if request.get('mode')=='facefix' else None
++            if face_job is not None:summary['face_fix']=face_job
+             memory.job_summary(summary)
+             with lock:jobs[ident]['resources']=summary
+             if adapter[0] is not None:adapter[0].profiler=None
+diff --git a/package.json b/package.json
+index 76debcf..0b42312 100644
+--- a/package.json
++++ b/package.json
+@@ -1,6 +1,6 @@
+ {
+   "name": "yoisaki-ai-studio-local",
+-  "version": "1.8.0",
++  "version": "1.8.1",
+   "private": true,
+   "type": "module",
+   "engines": {
+diff --git a/server/app.mjs b/server/app.mjs
+index f51ca02..71a3d2e 100644
+--- a/server/app.mjs
++++ b/server/app.mjs
+@@ -3,7 +3,8 @@ import {providerConfig,providerName,endpoint} from './providers.mjs';
+ import {validatePreprocess,validateControlImage,compactControlRequest} from './controlnet.mjs';
+ import {compactSourceRequest} from './img2img.mjs';
+ import {TERMINAL_STATUSES,HISTORY_LIMIT,isTerminal,matchesHistory} from './history.mjs';
+-import {WEBSITE_VERSION,STUDIO_EDITION,COMPATIBLE_ENGINE_FAMILY,engineCompatibility} from './release.mjs';
++import {WEBSITE_VERSION,STUDIO_EDITION,COMPATIBLE_ENGINE_FAMILY,engineCompatibility,supportsAutoFaceFix} from './release.mjs';
++import {validateDetectRequest,validateDetectResponse} from './editor.mjs';
+ import {SYNC_ACTIONS,validateSyncStatus,validateConnect,validateSyncStart} from './drive-sync.mjs';
+ import http from 'node:http';
+ import fs from 'node:fs/promises';
+@@ -601,7 +602,7 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
+    if(route==='/api/gpu/status'&&method==='GET')return send(res,await refresh(u.searchParams.get('models')==='1'));
+    if(route==='/api/gpu/controlnet/preprocess'&&method==='POST'){
+     if(!connection||!['READY','BUSY'].includes(state))fail('GPU_OFFLINE','GPU отключён. Подключитесь в разделе GPU.',409);
+-    if(engineCompatibility(info)!=='COMPATIBLE')fail('ENGINE_UPGRADE_REQUIRED','Несовместимая версия движка. Требуется YOISAKI ENGINE v1.7.0, v1.7.6 или v1.8.0 с API 1.7.0.',409);
++    if(engineCompatibility(info)!=='COMPATIBLE')fail('ENGINE_UPGRADE_REQUIRED','Несовместимая версия движка. Требуется YOISAKI ENGINE v1.7.0, v1.7.6, v1.8.0 или v1.8.1 с API 1.7.0.',409);
+     const request=validatePreprocess(await jsonBody(req));
+     // AUD-006: each hop stays below the browser (95 s) and Cloudflare (~100 s) limits; the engine answers
+     // PENDING after 60 s and the page repeats the identical request to resume the same operation.
+@@ -610,10 +611,18 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
+     if(result?.type!==request.type||result?.width!==request.width||result?.height!==request.height||result?.preprocessor!==request.preprocessor)fail('INVALID_RESPONSE','Неверная карта ControlNet от GPU.',502);
+     validateControlImage(result.image);return send(res,result);
+    }
++   if(route==='/api/gpu/facefix/detect'&&method==='POST'){
++    if(!connection||!['READY','BUSY'].includes(state))fail('GPU_OFFLINE','GPU отключён. Подключитесь в разделе GPU.',409);
++    if(!supportsAutoFaceFix(info))fail('ENGINE_UPGRADE_REQUIRED','Автоматическое обнаружение лиц требует YOISAKI ENGINE v1.8.1 SMART FACE FIX. Ручная рамка доступна в расширенных настройках.',409);
++    const request=validateDetectRequest(await jsonBody(req,20*1024*1024));
++    // CPU detection on the GPU host; the image is not stored in history or logs.
++    return send(res,validateDetectResponse(await upstream(connection,'/facefix/detect',{method:'POST',body:JSON.stringify(request),timeout:60000}),request));
++   }
+    if(route==='/api/gpu/generate'&&method==='POST'){
+     if(!connection||!['READY','BUSY'].includes(state))fail('GPU_OFFLINE','GPU отключён. Подключитесь в разделе GPU.',409);
+     const request=validateGeneration(await jsonBody(req,20*1024*1024),store.data.models);
+-    if(['inpaint','facefix'].includes(request.mode)&&info?.capabilities?.[request.mode]!==true)fail('ENGINE_UPGRADE_REQUIRED','Для Inpaint/Face Fix запустите YOISAKI ENGINE v1.8.0.',409);
++    if(['inpaint','facefix'].includes(request.mode)&&info?.capabilities?.[request.mode]!==true)fail('ENGINE_UPGRADE_REQUIRED','Для Inpaint/Face Fix запустите YOISAKI ENGINE v1.8.0 или новее.',409);
++    if((request.face_detection||request.face_options)&&!supportsAutoFaceFix(info))fail('ENGINE_UPGRADE_REQUIRED','Автоматический Face Fix требует YOISAKI ENGINE v1.8.1 SMART FACE FIX. Ручная рамка доступна в расширенных настройках.',409);
+     if(request.regions?.some(r=>r.enabled)&&!supportsRegionalControl(info))fail('ENGINE_UPGRADE_REQUIRED','Движок не объявляет поддержку Regional Control и не распознан как совместимый YOISAKI ENGINE 1.7.0 / 1.7.6 / 1.8.0.',409);
+     request.client_request_id ||= randomUUID();
+     const c=connection,requestEpoch=epoch;
+diff --git a/server/connect-flow.mjs b/server/connect-flow.mjs
+index e84409e..62d2047 100644
+--- a/server/connect-flow.mjs
++++ b/server/connect-flow.mjs
+@@ -17,7 +17,7 @@ const RULES={
+  INVALID_RESPONSE:{component:'engine',retry:true,message:'По адресу отвечает не движок YOISAKI (возможно, страница ошибки туннеля). Жду запуска движка.'},
+  AUTH_REJECTED:{component:'auth',retry:false,message:'Сервер отклонил токен: на GPU сменили токен (ротация) или по этому адресу другой сервер. Вставьте новую ссылку один раз.'},
+  GPU_NOT_READY:{component:'gpu',retry:false,message:'Движок отвечает, но CUDA/GPU недоступны. Проверьте инстанс: ./check-cloudcompute.sh (CloudCompute) или среду T4 (Colab).'},
+- ENGINE_UPGRADE_REQUIRED:{component:'engine',retry:false,message:'Версия движка несовместима: нужен YOISAKI ENGINE 1.7.0, 1.7.6 или 1.8.0 (API 1.7.0) с ControlNet, SDPose и Img2Img.'},
++ ENGINE_UPGRADE_REQUIRED:{component:'engine',retry:false,message:'Версия движка несовместима: нужен YOISAKI ENGINE 1.7.0, 1.7.6, 1.8.0 или 1.8.1 (API 1.7.0) с ControlNet, SDPose и Img2Img.'},
+  PRIVATE_DESTINATION:{component:'tunnel',retry:false,message:'Адрес указывает на частную сеть. Нужен публичный HTTPS-адрес.'},
+  REDIRECT_REJECTED:{component:'tunnel',retry:false,message:'Адрес перенаправляет запрос (например, на страницу входа). Нужен прямой адрес движка.'},
+  PROXY_DENIED:{component:'tunnel',retry:false,message:'Запрос к этому адресу запрещён политикой безопасности.'},
+diff --git a/server/editor.mjs b/server/editor.mjs
+index 8a092d8..50350ca 100644
+--- a/server/editor.mjs
++++ b/server/editor.mjs
+@@ -3,7 +3,7 @@ import {validateSourceImage,denoiseSteps} from './img2img.mjs';
+ export const EDIT_MODES=['inpaint','facefix'];
+ export function validateEditor(x){
+  if(!EDIT_MODES.includes(x.mode)){
+-  if(['mask_image','face_region','mask_blur','mask_padding','inpaint_region'].some(k=>x[k]!=null))fail('INVALID_PARAMETERS','Поля редактора допустимы только в Inpaint/Face Fix.');
++  if(['mask_image','face_region','mask_blur','mask_padding','inpaint_region','face_detection','face_options'].some(k=>x[k]!=null))fail('INVALID_PARAMETERS','Поля редактора допустимы только в Inpaint/Face Fix.');
+   return {};
+  }
+  validateSourceImage(x.init_image);
+@@ -13,13 +13,47 @@ export function validateEditor(x){
+  if(!Number.isFinite(out.mask_blur)||out.mask_blur<0||out.mask_blur>64||!Number.isFinite(out.mask_padding)||out.mask_padding<0||out.mask_padding>1||!['crop','full'].includes(out.inpaint_region))fail('INVALID_PARAMETERS','Неверные параметры маски.');
+  if(x.mode==='inpaint'){
+   validateSourceImage(x.mask_image);
+-  if(!x.mask_image.startsWith('data:image/png;base64,')||x.face_region!=null)fail('INVALID_PARAMETERS','Inpaint: нужна маска PNG.');
++  if(!x.mask_image.startsWith('data:image/png;base64,')||x.face_region!=null||x.face_detection!=null||x.face_options!=null)fail('INVALID_PARAMETERS','Inpaint: нужна маска PNG.');
+   out.mask_image=x.mask_image;
+  }else{
+   const r=x.face_region;
+-  if(x.mask_image!=null||out.inpaint_region!=='crop'||!r||Object.keys(r).sort().join(',')!=='height,width,x,y'||!Object.values(r).every(Number.isFinite)||r.x<0||r.y<0||r.width<2||r.height<2||r.x+r.width>8192||r.y+r.height>8192)fail('INVALID_PARAMETERS','Неверное выделение лица.');
+-  out.face_region={...r};
++  if(x.mask_image!=null||out.inpaint_region!=='crop'||(r==null)===(x.face_detection==null))fail('INVALID_PARAMETERS','Face Fix: нужна либо ручная рамка, либо выбранные найденные лица.');
++  if(r!=null){
++   if(Object.keys(r).sort().join(',')!=='height,width,x,y'||!Object.values(r).every(Number.isFinite)||r.x<0||r.y<0||r.width<2||r.height<2||r.x+r.width>8192||r.y+r.height>8192)fail('INVALID_PARAMETERS','Неверное выделение лица.');
++   out.face_region={...r};
++  }else out.face_detection=validateFaceDetection(x.face_detection);
++  if(x.face_options!=null)out.face_options=validateFaceOptions(x.face_options);
+  }
+  // Actual decoding, EXIF, dimensions and exact bounds are checked by the authenticated GPU API.
+  return out;
+ }
++
++// v1.8.1 SMART FACE FIX. Ids are opaque; the GPU re-detects faces on the exact source and rejects unknown ids.
++export const FACE_DETECTORS=['auto','anime','human'];
++function detectorOptions(x){
++ const detector=x.detector??'auto',min=x.min_confidence??.35;
++ if(!FACE_DETECTORS.includes(detector)||typeof min!=='number'||!Number.isFinite(min)||min<.05||min>.95)fail('INVALID_PARAMETERS','Детектор: auto, anime или human; порог 0.05–0.95.');
++ return {detector,min_confidence:min};
++}
++export function validateFaceDetection(x){
++ if(!x||typeof x!=='object'||Array.isArray(x)||Object.keys(x).sort().join(',')!=='detector,min_confidence,select')fail('INVALID_PARAMETERS','face_detection: нужны detector, min_confidence, select.');
++ const ids=x.select;
++ if(!Array.isArray(ids)||ids.length<1||ids.length>12||new Set(ids).size!==ids.length||!ids.every(i=>typeof i==='string'&&/^f[a-f0-9]{12}$/.test(i)))fail('INVALID_PARAMETERS','Выберите от 1 до 12 найденных лиц.');
++ return {...detectorOptions(x),select:[...ids]};
++}
++export function validateFaceOptions(x){
++ if(!x||typeof x!=='object'||Array.isArray(x)||Object.keys(x).sort().join(',')!=='mask_expand,mask_shape,work_fit'||!['ellipse','box'].includes(x.mask_shape)||!['aspect','letterbox'].includes(x.work_fit)||typeof x.mask_expand!=='number'||!Number.isFinite(x.mask_expand)||x.mask_expand<0||x.mask_expand>.5)fail('INVALID_PARAMETERS','face_options: ellipse|box, расширение 0–0.5, aspect|letterbox.');
++ return {mask_shape:x.mask_shape,mask_expand:x.mask_expand,work_fit:x.work_fit};
++}
++export function validateDetectRequest(x){
++ if(!x||typeof x!=='object'||Array.isArray(x)||Object.keys(x).some(k=>!['image','detector','min_confidence'].includes(k)))fail('INVALID_PARAMETERS','Ожидаются image, detector, min_confidence.');
++ validateSourceImage(x.image);
++ return {image:x.image,...detectorOptions(x)};
++}
++// The browser receives only validated integer boxes inside the reported image.
++export function validateDetectResponse(r,request){
++ const ok=r&&Array.isArray(r.faces)&&r.faces.length<=12&&r.detector===request.detector&&Number.isInteger(r.image?.width)&&Number.isInteger(r.image?.height)&&r.faces.every(f=>f&&/^f[a-f0-9]{12}$/.test(f.id)&&['x','y','width','height'].every(k=>Number.isInteger(f[k])&&f[k]>=0)&&f.width>=8&&f.height>=8&&f.x+f.width<=r.image.width&&f.y+f.height<=r.image.height&&Number.isFinite(f.confidence)&&f.confidence>=0&&f.confidence<=1&&typeof f.detector==='string'&&typeof f.auto_selectable==='boolean')&&(r.selected===null||r.faces.some(f=>f.id===r.selected));
++ if(!ok)fail('INVALID_RESPONSE','Неверный ответ детектора лиц от GPU.',502);
++ return {detector:r.detector,detectors_run:Array.isArray(r.detectors_run)?r.detectors_run.filter(x=>typeof x==='string'):[],min_confidence:r.min_confidence,auto_select_confidence:r.auto_select_confidence,image:{width:r.image.width,height:r.image.height},
++  faces:r.faces.map(f=>({id:f.id,x:f.x,y:f.y,width:f.width,height:f.height,confidence:f.confidence,detector:f.detector,label:'face',auto_selectable:f.auto_selectable})),selected:r.selected,selection_required:r.selection_required===true,duration_ms:Number.isFinite(r.duration_ms)?r.duration_ms:null};
++}
+diff --git a/server/release.mjs b/server/release.mjs
+index a9a429c..5c47b28 100644
+--- a/server/release.mjs
++++ b/server/release.mjs
+@@ -1,8 +1,10 @@
+ import release from '../package.json' with {type:'json'};
+ export const WEBSITE_VERSION=release.version;
+-export const STUDIO_EDITION='EDITOR COMPLETION EDITION';
+-export const COMPATIBLE_ENGINE_FAMILY='1.7.0 / 1.7.6 / 1.8.0 (API 1.7.0)';
++export const STUDIO_EDITION='SMART FACE FIX';
++export const COMPATIBLE_ENGINE_FAMILY='1.7.0 / 1.7.6 / 1.8.0 / 1.8.1 (API 1.7.0)';
+ export function engineCompatibility(info){
+  if(!info)return 'NOT_CONNECTED';
+- return info.engine==='YOISAKI_ENGINE'&&['1.7.0','1.7.6','1.8.0'].includes(info.engine_version)&&(info.api_version==='1.7.0'||info.engine_version==='1.7.0'&&info.api_version===undefined)&&info.capabilities?.controlnet===true&&info.capabilities?.sdpose===true&&info.capabilities?.img2img===true?'COMPATIBLE':'UNVERIFIED';
++ return info.engine==='YOISAKI_ENGINE'&&['1.7.0','1.7.6','1.8.0','1.8.1'].includes(info.engine_version)&&(info.api_version==='1.7.0'||info.engine_version==='1.7.0'&&info.api_version===undefined)&&info.capabilities?.controlnet===true&&info.capabilities?.sdpose===true&&info.capabilities?.img2img===true?'COMPATIBLE':'UNVERIFIED';
+ }
++// v1.8.1: automatic Face Fix is offered only when the engine declares it (older engines keep manual Face Fix).
++export function supportsAutoFaceFix(info){return engineCompatibility(info)==='COMPATIBLE'&&info.capabilities?.facefix===true&&info.capabilities?.auto_facefix===true&&info.capabilities?.face_detect_contract===1}
+diff --git a/server/upstream.mjs b/server/upstream.mjs
+index 27e76d2..fcb4b4e 100644
+--- a/server/upstream.mjs
++++ b/server/upstream.mjs
+@@ -53,7 +53,7 @@ export async function requestUpstream(connection,route,{method='GET',body,timeou
+  req.end(body);
+  });
+ }
+-export function validateHealth(x){if(!x||x.engine!=='YOISAKI_ENGINE'||typeof x.engine_version!=='string'||!['READY','BUSY','LOADING','ERROR'].includes(x.state)||!(x.gpu_name===null||typeof x.gpu_name==='string')||!['vram_total_mb','vram_available_mb'].every(k=>x[k]===null||Number.isFinite(x[k])&&x[k]>=0))fail('INVALID_RESPONSE','Неверный ответ health от GPU.',502);if(x.state==='ERROR')fail('GPU_NOT_READY','Движок отвечает, но GPU не готов. Проверьте CUDA на GPU-сервере.',503);if(engineCompatibility(x)!=='COMPATIBLE')fail('ENGINE_UPGRADE_REQUIRED','Несовместимая версия движка. Требуется YOISAKI ENGINE v1.7.0, v1.7.6 или v1.8.0 с API 1.7.0.',409);return x}
++export function validateHealth(x){if(!x||x.engine!=='YOISAKI_ENGINE'||typeof x.engine_version!=='string'||!['READY','BUSY','LOADING','ERROR'].includes(x.state)||!(x.gpu_name===null||typeof x.gpu_name==='string')||!['vram_total_mb','vram_available_mb'].every(k=>x[k]===null||Number.isFinite(x[k])&&x[k]>=0))fail('INVALID_RESPONSE','Неверный ответ health от GPU.',502);if(x.state==='ERROR')fail('GPU_NOT_READY','Движок отвечает, но GPU не готов. Проверьте CUDA на GPU-сервере.',503);if(engineCompatibility(x)!=='COMPATIBLE')fail('ENGINE_UPGRADE_REQUIRED','Несовместимая версия движка. Требуется YOISAKI ENGINE v1.7.0, v1.7.6, v1.8.0 или v1.8.1 с API 1.7.0.',409);return x}
+ export function engineDetail(data){
+  let detail;try{detail=JSON.parse(data.toString()).detail}catch{return ''}
+  if(Array.isArray(detail))detail=detail.find(d=>typeof d?.msg==='string')?.msg;
+diff --git a/src/app/engine/page.tsx b/src/app/engine/page.tsx
+index 2ea3b34..fbf9599 100644
+--- a/src/app/engine/page.tsx
++++ b/src/app/engine/page.tsx
+@@ -51,7 +51,7 @@ export default function Page(){
+   setToken('');
+   await gpu.selectProvider(provider,value||drafts[gpu.provider]).catch(()=>{});
+  }
+- const displayError=english?({AUTH_REJECTED:'The GPU rejected the token. Paste a fresh protected link.',INVALID_URL:'Use a public HTTPS server URL on port 443 without a path or query.',INVALID_TOKEN:'Paste the complete protected link or its 64-character token.',ENGINE_UPGRADE_REQUIRED:'This server requires YOISAKI ENGINE 1.7.0, 1.7.6 or 1.8.0 (API 1.7.0) with ControlNet, SDPose and Img2Img.',GPU_NOT_READY:'The engine responded, but the GPU is not ready.',DNS_ERROR:'Server name could not be resolved. Check the URL.',DNS_TIMEOUT:'DNS lookup timed out. Check your network.',PRIVATE_DESTINATION:'The server resolves to a private or reserved address. Use a public HTTPS endpoint.',TLS_ERROR:'The HTTPS certificate or secure connection is invalid.',TUNNEL_UNAVAILABLE:'The server or tunnel is unavailable.',TUNNEL_OFFLINE:'Cloudflare answers, but no GPU server is attached to the tunnel.',REDIRECT_REJECTED:'Redirects are blocked. Paste the direct HTTPS endpoint.',INVALID_RESPONSE:'The server returned an invalid engine response.',UPSTREAM_INTERRUPTED:'The GPU connection was interrupted.',PROVIDER_CHANGED:'Select the provider before connecting.',CONNECTION_TIMEOUT:'The GPU request timed out. Check the server and tunnel.',NOT_REMEMBERED:'No remembered server for this provider.'} as Record<string,string>)[gpu.code||'']||`Connection failed (${gpu.code||'NETWORK_ERROR'}). Check the selected server, URL and token; retry the connection.`:(gpu.phase==='ERROR'&&gpu.phase_message)||gpu.error;
++ const displayError=english?({AUTH_REJECTED:'The GPU rejected the token. Paste a fresh protected link.',INVALID_URL:'Use a public HTTPS server URL on port 443 without a path or query.',INVALID_TOKEN:'Paste the complete protected link or its 64-character token.',ENGINE_UPGRADE_REQUIRED:'This server requires YOISAKI ENGINE 1.7.0, 1.7.6, 1.8.0 or 1.8.1 (API 1.7.0) with ControlNet, SDPose and Img2Img.',GPU_NOT_READY:'The engine responded, but the GPU is not ready.',DNS_ERROR:'Server name could not be resolved. Check the URL.',DNS_TIMEOUT:'DNS lookup timed out. Check your network.',PRIVATE_DESTINATION:'The server resolves to a private or reserved address. Use a public HTTPS endpoint.',TLS_ERROR:'The HTTPS certificate or secure connection is invalid.',TUNNEL_UNAVAILABLE:'The server or tunnel is unavailable.',TUNNEL_OFFLINE:'Cloudflare answers, but no GPU server is attached to the tunnel.',REDIRECT_REJECTED:'Redirects are blocked. Paste the direct HTTPS endpoint.',INVALID_RESPONSE:'The server returned an invalid engine response.',UPSTREAM_INTERRUPTED:'The GPU connection was interrupted.',PROVIDER_CHANGED:'Select the provider before connecting.',CONNECTION_TIMEOUT:'The GPU request timed out. Check the server and tunnel.',NOT_REMEMBERED:'No remembered server for this provider.'} as Record<string,string>)[gpu.code||'']||`Connection failed (${gpu.code||'NETWORK_ERROR'}). Check the selected server, URL and token; retry the connection.`:(gpu.phase==='ERROR'&&gpu.phase_message)||gpu.error;
+  const connectedAt=gpu.connected_at||0;
+  const minutes=connectedAt?Math.max(0,Math.floor((now-connectedAt)/60000)):0;
+  const idle=gpu.url&&connectedAt?Math.floor((now-Math.max(lastJob,connectedAt))/60000):0;
+diff --git a/src/app/globals.css b/src/app/globals.css
+index cc5fa04..96dd10a 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -32,3 +32,6 @@ html,body{max-width:100%;overflow-x:clip} .layout,.content,.page,.panel,.stack,.
+ .lib-sources{position:sticky;top:0;z-index:6;background:var(--bg);padding:6px 0}.lib-source{min-height:42px;font-weight:800}
+ @media(max-width:600px){.lib-indicators,.lib-indicators.compact{grid-template-columns:repeat(2,minmax(0,1fr))}.lib-sources .pill{flex:1 1 30%;font-size:11px;padding:7px 6px}.lib-selection{top:52px}.lib-numbers{grid-template-columns:repeat(2,minmax(0,1fr))}}
+ @media(max-width:360px){.lib-indicators,.lib-indicators.compact{grid-template-columns:minmax(0,1fr)}}
++/* v1.8.1 SMART FACE FIX */
++.facefix-stage{--ffh:62dvh;position:relative;margin:0 auto;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#09090a;touch-action:pan-y;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}.facefix-stage.manual{touch-action:none;cursor:crosshair}.facefix-stage>img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none}.facefix-face{position:absolute;border:2px dashed #ffc24799;border-radius:8px;pointer-events:none;box-shadow:0 0 0 1px #0007}.facefix-face.selected{border:3px solid var(--gold);background:#ff98001a}.facefix-face.uncertain{border:2px dotted #a7a7adaa}.facefix-face span{position:absolute;left:-1px;top:-1px;transform:translateY(-100%);background:#000a;color:var(--gold);font-size:11px;font-weight:800;padding:1px 6px;border-radius:6px 6px 0 0}.facefix-hit{position:absolute;transform:translate(-50%,-50%);min-height:0;padding:0;border:0;background:transparent;border-radius:10px}.facefix-hit:focus-visible{outline:2px solid var(--gold)}.facefix-overlay{position:absolute;inset:auto 0 0 0;padding:10px;background:#000b;color:var(--gold);text-align:center;font-weight:700}.facefix-divider{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:var(--gold);pointer-events:none}.facefix-go{width:100%;min-height:52px;font-size:16px}.facefix-summary{cursor:pointer;font-weight:700;min-height:44px;display:flex;align-items:center}
++@media(max-width:900px){.facefix-stage{--ffh:56dvh}}
+diff --git a/src/components/Editor.tsx b/src/components/Editor.tsx
+index e5e7f64..d23b3e2 100644
+--- a/src/components/Editor.tsx
++++ b/src/components/Editor.tsx
+@@ -1,7 +1,8 @@
+ import {maskCanvas,normalizedImage,boundedBox,sourcePoint,type EditorInput} from '@/lib/editor';
+-'use client';import {useEffect,useRef,useState} from 'react';import {Stage,Layer,Image as KImage,Line,Rect,Transformer} from 'react-konva';import {Head,Tabs,ImageUpload,Slider,downloadJSON} from './Common';import {GenerationControls,DirectImage,type LiveJob} from './Generator';import {useStudio} from '@/stores/studio';import {downloadBlob} from '@/lib/storage/gallery';
++'use client';import {useEffect,useRef,useState} from 'react';import {Stage,Layer,Image as KImage,Line,Rect,Transformer} from 'react-konva';import {Head,Tabs,ImageUpload,Slider,downloadJSON} from './Common';import {GenerationControls,DirectImage,type LiveJob} from './Generator';import {useStudio} from '@/stores/studio';import {downloadBlob} from '@/lib/storage/gallery';import {FaceFix} from './FaceFix';
+ type Stroke={points:number[];size:number;erase:boolean};type Box={x:number;y:number;width:number;height:number};
+-export function Editor(){const [mode,setMode]=useState('INPAINT');const [job,setJob]=useState<LiveJob|null>(null);return <div className="page stack"><Head title="Edit workspace" detail="Img2Img, Inpaint и Face Fix используют подключённый GPU. Исходник сохраняется."/><Tabs value={mode} onChange={setMode} options={['IMG2IMG','INPAINT','FACE FIX']}/>{mode==='IMG2IMG'?<div className="generator"><Img2ImgOutput job={job}/><GenerationControls currentJob={job} setCurrentJob={setJob} lockedMode="img2img"/></div>:<CanvasEditor key={mode} mode={mode==='INPAINT'?'mask':'face'}/>}</div>}
++// v1.8.1: FACE FIX opens the automatic flow; the v1.8.0 manual editor stays reachable from its advanced settings.
++export function Editor(){const [mode,setMode]=useState('INPAINT');const [classic,setClassic]=useState(false);const [job,setJob]=useState<LiveJob|null>(null);return <div className="page stack"><Head title="Edit workspace" detail="Img2Img, Inpaint и Face Fix используют подключённый GPU. Исходник сохраняется."/><Tabs value={mode} onChange={v=>{setMode(v);setClassic(false)}} options={['IMG2IMG','INPAINT','FACE FIX']}/>{mode==='IMG2IMG'?<div className="generator"><Img2ImgOutput job={job}/><GenerationControls currentJob={job} setCurrentJob={setJob} lockedMode="img2img"/></div>:mode==='FACE FIX'&&!classic?<FaceFix onClassic={()=>setClassic(true)}/>:<>{mode==='FACE FIX'&&<button className="pill" onClick={()=>setClassic(false)}>← Smart Face Fix</button>}<CanvasEditor key={mode} mode={mode==='INPAINT'?'mask':'face'}/></>}</div>}
+ // v1.7.0: the existing Img2Img tab now submits real GPU jobs through the shared generation controls.
+ function Img2ImgOutput({job}:{job:LiveJob|null}){const s=useStudio(x=>x.settings);const done=job?.status==='COMPLETED'&&!!job.result?.image_keys?.length;return <div className="panel stack"><h2>Image-to-image</h2><p className="muted">Upload a source and set Denoise in the controls. Results are saved to the local gallery.</p><div className="preview" style={{aspectRatio:`${Math.max(1,s.width)}/${Math.max(1,s.height)}`,maxHeight:610}}>{done?<DirectImage job={job!.id} index={0} preview/>:<div className="placeholder"><p className="subtle">{job?.status?`Задача ${job.status}`:'Результат Img2Img появится здесь'}</p></div>}</div></div>}
+ function CanvasEditor({mode}:{mode:'mask'|'face'}){const [image,setImage]=useState<HTMLImageElement|null>(null),[name,setName]=useState(''),[strokes,setStrokes]=useState<Stroke[]>([]),[redo,setRedo]=useState<Stroke[]>([]),[brush,setBrush]=useState(35),[erase,setErase]=useState(false),[zoom,setZoom]=useState(1),[pan,setPan]=useState({x:0,y:0}),[box,setBox]=useState<Box|null>(null),[padding,setPadding]=useState(.15),[denoise,setDenoise]=useState(mode==='face'?.25:.5),[blur,setBlur]=useState(8),[regionMode,setRegionMode]=useState<'crop'|'full'>('crop'),[job,setJob]=useState<LiveJob|null>(null),[status,setStatus]=useState('');const uploadRevision=useRef(0);const painting=useRef(false),start=useRef({x:0,y:0}),wrap=useRef<HTMLDivElement>(null),stage=useRef<any>(null),transformer=useRef<any>(null);const [containerWidth,setWidth]=useState(600);
+diff --git a/src/components/FaceFix.tsx b/src/components/FaceFix.tsx
+new file mode 100644
+index 0000000..c45931b
+--- /dev/null
++++ b/src/components/FaceFix.tsx
+@@ -0,0 +1,166 @@
++'use client';
++// v1.8.1 SMART FACE FIX: upload → automatic detection → (choose a face if several) → Fix Face → compare → save.
++// Every advanced parameter is still available, collapsed. Checkpoint, VAE, LoRA and prompts are the shared settings.
++import {useEffect,useRef,useState} from 'react';
++import Link from 'next/link';
++import {ImageUpload,Slider,Prompt} from './Common';
++import {JobProgress} from './JobProgress';
++import type {LiveJob} from './Generator';
++import {useStudio} from '@/stores/studio';
++import {useDirect,directFetch,imageFromDirect} from '@/lib/engine/direct';
++import {normalizedImage,boundedBox,type Box} from '@/lib/editor';
++import {FACE_DEFAULTS,DEFAULT_STRENGTH,visibleFaces,initialSelection,hitFace,profileError,faceFixRequest,autoFeather,type Detection,type FaceProfile,type Detector} from '@/lib/facefix';
++import {downloadBlob} from '@/lib/storage/gallery';
++
++const TERMINAL=['COMPLETED','FAILED','CANCELLED','INTERRUPTED'];
++
++export function FaceFix({onClassic}:{onClassic:()=>void}){
++ const s=useStudio(x=>x.settings),updateSettings=useStudio(x=>x.update);
++ const direct=useDirect();
++ const caps=direct.info?.capabilities||{};
++ const connected=!!direct.url&&['READY','BUSY'].includes(direct.state);
++ const auto=connected&&caps.auto_facefix===true&&caps.face_detect_contract===1;
++ const legacy=connected&&!auto&&caps.facefix===true;
++ const [image,setImage]=useState<HTMLImageElement|null>(null),[name,setName]=useState('');
++ const [detection,setDetection]=useState<Detection|null>(null),[detecting,setDetecting]=useState(false);
++ const [selected,setSelected]=useState<string[]>([]),[showUncertain,setShowUncertain]=useState(false);
++ const [manual,setManual]=useState(false),[box,setBox]=useState<Box|null>(null);
++ const [strength,setStrength]=useState(DEFAULT_STRENGTH);
++ const [profile,setProfile]=useState<FaceProfile>({...FACE_DEFAULTS,sampler:s.sampler,scheduler:s.scheduler});
++ const [advanced,setAdvanced]=useState(false);
++ const [job,setJob]=useState<LiveJob|null>(null),[result,setResult]=useState(''),[compare,setCompare]=useState(50);
++ const [status,setStatus]=useState(''),[sending,setSending]=useState(false);
++ const revision=useRef(0),wrap=useRef<HTMLDivElement>(null),drag=useRef<{x:number;y:number}|null>(null);
++ const set=(x:Partial<FaceProfile>)=>setProfile(p=>({...p,...x}));
++ const faces=visibleFaces(detection,showUncertain);
++ const uncertain=detection?detection.faces.filter(f=>!f.auto_selectable).length:0;
++ const busy=!!job&&!TERMINAL.includes(job.status);
++
++ const detect=async(img:HTMLImageElement,p:FaceProfile=profile)=>{
++  const ticket=++revision.current;setDetecting(true);setStatus('');setDetection(null);setSelected([]);
++  try{
++   const d=await directFetch<Detection>(direct.url,direct.token,'facefix/detect',{method:'POST',body:JSON.stringify({image:img.src,detector:p.detector,min_confidence:p.minConfidence})});
++   if(ticket!==revision.current)return;
++   if(d.image.width!==img.width||d.image.height!==img.height)throw Error('Размер изображения на GPU не совпал с загруженным. Загрузите файл заново.');
++   setDetection(d);setSelected(initialSelection(d));
++   const strong=d.faces.filter(f=>f.auto_selectable).length;
++   if(!strong){setManual(true);setStatus(d.faces.length?'Лицо найдено только с низкой уверенностью. Проверьте варианты («Показать неуверенные») или выделите лицо вручную.':'Лицо не найдено. Исходник не изменён. Выделите лицо вручную: проведите пальцем по изображению.')}
++   else setManual(false);
++  }catch(e){if(ticket===revision.current){setStatus((e as Error).message);setManual(true)}}
++  finally{if(ticket===revision.current)setDetecting(false)}
++ };
++ const onFile=async(f:File)=>{
++  try{
++   const img=await normalizedImage(f);
++   setImage(img);setName(f.name);setJob(null);setResult('');setBox(null);setManual(false);setDetection(null);setSelected([]);setStatus('');setCompare(50);
++   if(auto)await detect(img);
++   else{setManual(true);setStatus(connected?'':'Подключите GPU (раздел GPU), чтобы найти лица автоматически. Можно выделить лицо вручную.')}
++  }catch(e){setStatus((e as Error).message)}
++ };
++ // Poll the running job exactly like the shared generation controls do.
++ useEffect(()=>{
++  if(!job||TERMINAL.includes(job.status))return;
++  let active=true,timer:ReturnType<typeof setTimeout>;
++  const poll=async()=>{try{const next=await directFetch<LiveJob>(direct.url,direct.token,'jobs/'+encodeURIComponent(job.id));if(active)setJob(next)}catch(e){if(active)setStatus((e as Error).message)}if(active)timer=setTimeout(poll,2000)};
++  timer=setTimeout(poll,1000);return()=>{active=false;clearTimeout(timer)};
++ },[job?.id,job?.status]);
++ useEffect(()=>{
++  if(job?.status!=='COMPLETED'||!job.result?.image_keys?.length)return;
++  let active=true;imageFromDirect(direct.url,direct.token,job.id,0).then(u=>{if(active)setResult(u)}).catch(e=>{if(active)setStatus((e as Error).message)});
++  return()=>{active=false};
++ },[job?.id,job?.status]);
++
++ const fix=async()=>{
++  if(!image){setStatus('Загрузите изображение.');return}
++  if(!connected){setStatus('GPU отключён. Подключите его в разделе GPU.');return}
++  if(caps.facefix!==true){setStatus('Подключённый движок не поддерживает Face Fix. Запустите YOISAKI ENGINE v1.8.1.');return}
++  if(!s.checkpoint){setStatus('Выберите Checkpoint на странице Generate.');return}
++  const problem=profileError(profile,strength,s.prompt);if(problem){setStatus(problem);return}
++  const chosen=detection?detection.faces.filter(f=>selected.includes(f.id)):[];
++  const useManual=manual||!chosen.length;
++  if(useManual&&(!box||box.width<8||box.height<8)){setStatus('Выберите лицо касанием или выделите его вручную.');return}
++  setSending(true);setStatus('');setResult('');
++  try{
++   const target=useManual?{box:boundedBox(box!,image.width,image.height)}:{select:chosen.map(f=>f.id)};
++   const body=faceFixRequest(s,profile,strength,image.src,target,auto,useManual?[box!]:chosen);
++   setJob(await directFetch<LiveJob>(direct.url,direct.token,'generate',{method:'POST',body:JSON.stringify(body)}));
++  }catch(e){setStatus((e as Error).message)}finally{setSending(false)}
++ };
++ const cancel=async()=>{if(!job)return;try{const r=await directFetch<{status:string}>(direct.url,direct.token,'jobs/'+encodeURIComponent(job.id),{method:'DELETE'});setJob({...job,status:r.status})}catch(e){setStatus((e as Error).message)}};
++
++ // Tap selects a face; in manual mode a drag draws the rectangle. Source-pixel coordinates.
++ const point=(e:React.PointerEvent)=>{const r=wrap.current!.getBoundingClientRect();return {x:Math.max(0,Math.min(image!.width,(e.clientX-r.left)/r.width*image!.width)),y:Math.max(0,Math.min(image!.height,(e.clientY-r.top)/r.height*image!.height))}};
++ // One face by default; once several are selected ("fix all"), taps toggle within that set.
++ const choose=(id:string)=>{if(busy)return;setSelected(old=>old.includes(id)?(old.length>1?old.filter(i=>i!==id):old):(old.length>1?[...old,id]:[id]))};
++ const down=(e:React.PointerEvent)=>{
++  if(!image||busy)return;
++  if(manual){const p=point(e);e.preventDefault();(e.currentTarget as Element).setPointerCapture?.(e.pointerId);drag.current=p;setBox({x:p.x,y:p.y,width:0,height:0});return}
++  const p=point(e),hit=hitFace(faces,p.x,p.y);if(hit&&(e.target as Element)===e.currentTarget)choose(hit.id);
++ };
++ const move=(e:React.PointerEvent)=>{if(!manual||!drag.current||!image)return;e.preventDefault();const p=point(e),a=drag.current;setBox({x:Math.min(a.x,p.x),y:Math.min(a.y,p.y),width:Math.abs(p.x-a.x),height:Math.abs(p.y-a.y)})};
++ const up=()=>{drag.current=null};
++ const pct=(b:Box)=>image?{left:b.x/image.width*100+'%',top:b.y/image.height*100+'%',width:b.width/image.width*100+'%',height:b.height/image.height*100+'%'}:{};
++ const strongFaces=detection?detection.faces.filter(f=>f.auto_selectable):[];
++ const allSelected=strongFaces.length>1&&strongFaces.every(f=>selected.includes(f.id));
++ const chosenBoxes=manual?(box?[box]:[]):(detection?.faces.filter(f=>selected.includes(f.id))||[]);
++ const saveOriginal=async()=>downloadBlob(await (await fetch(image!.src)).blob(),'yoisaki-original.png');
++
++ return <div className="facefix stack">
++  {connected&&!auto&&<div className="notice" role="alert">{legacy?`Подключён YOISAKI ENGINE ${direct.info?.engine_version||''}: автоматический поиск лиц недоступен. Работает ручное выделение. Для автоматического Face Fix запустите блокнот YOISAKI ENGINE v1.8.1 SMART FACE FIX.`:'Подключённый движок не поддерживает Face Fix. Запустите YOISAKI ENGINE v1.8.1.'}</div>}
++  {!connected&&<div className="notice">GPU не подключён. <Link href="/engine" style={{color:'var(--gold)',fontWeight:700}}>Подключить GPU ↗</Link></div>}
++  <div className="panel stack">
++   <div className="row"><ImageUpload onFile={onFile} label={image?'Заменить изображение':'Загрузить изображение'}/><span className="tiny muted grow">{image?`${image.width} × ${image.height} · ${name}`:'PNG / JPG / WEBP до 25 МБ'}</span></div>
++   {image&&<div ref={wrap} className={'facefix-stage'+(manual?' manual':'')} style={{aspectRatio:`${image.width}/${image.height}`,width:`min(100%, calc(var(--ffh) * ${image.width/image.height}))`}} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} data-testid="facefix-stage">
++    <img src={image.src} alt="Исходник" draggable={false}/>
++    {result&&<img src={result} alt="Результат" draggable={false} className="facefix-after" style={{clipPath:`inset(0 0 0 ${compare}%)`}}/>}
++    {result&&<div className="facefix-divider" style={{left:compare+'%'}}/>}
++    {!result&&!manual&&faces.map((f,i)=><div key={f.id} className={'facefix-face'+(selected.includes(f.id)?' selected':'')+(f.auto_selectable?'':' uncertain')} style={pct(f)}><span>{i+1}</span></div>)}
++    {!result&&!manual&&faces.length>1&&faces.map((f,i)=><button key={'hit'+f.id} type="button" aria-pressed={selected.includes(f.id)} aria-label={`Лицо ${i+1}, уверенность ${Math.round(f.confidence*100)}%`} className="facefix-hit" style={{left:(f.x+f.width/2)/image.width*100+'%',top:(f.y+f.height/2)/image.height*100+'%',width:`max(44px,${f.width/image.width*100}%)`,height:`max(44px,${f.height/image.height*100}%)`}} onClick={()=>choose(f.id)}/>)}
++    {!result&&manual&&box&&box.width>0&&<div className="facefix-face selected" style={pct(box)}/>}
++    {detecting&&<div className="facefix-overlay">Поиск лиц…</div>}
++   </div>}
++   {image&&!result&&detection&&(!manual||uncertain>0)&&<div className="tiny muted" role="status">{manual?'':strongFaces.length===1?'Лицо найдено и выбрано автоматически.':strongFaces.length>1?`Найдено лиц: ${strongFaces.length}. Коснитесь лица, которое нужно исправить.`:showUncertain?'Неуверенные варианты: коснитесь, только если это действительно лицо.':''}{uncertain>0&&<> <button className="pill" onClick={()=>{const next=!showUncertain;setShowUncertain(next);if(next){setManual(false);setBox(null)}else{setSelected(old=>old.filter(id=>strongFaces.some(f=>f.id===id)));if(!strongFaces.length)setManual(true)}}}>{showUncertain?'Скрыть неуверенные':`Показать неуверенные (${uncertain})`}</button></>}</div>}
++   {image&&!result&&strongFaces.length>1&&!manual&&<label className="row tiny"><input type="checkbox" checked={allSelected} onChange={e=>setSelected(e.target.checked?strongFaces.map(f=>f.id):initialSelection(detection!).length?initialSelection(detection!):[strongFaces[0].id])}/> Исправить все найденные лица ({strongFaces.length}), по очереди</label>}
++   {image&&!result&&manual&&<div className="tiny muted">Ручное выделение: проведите пальцем вокруг лица. {detection&&strongFaces.length>0&&<button className="pill" onClick={()=>{setManual(false);setBox(null)}}>Вернуться к найденным лицам</button>}</div>}
++   {image&&!result&&!manual&&detection&&<button className="pill" onClick={()=>{setManual(true);setBox(null)}}>Выделить другое лицо вручную</button>}
++   {result&&<div className="stack"><Slider label="До / После" min={0} max={100} step={1} value={compare} onChange={setCompare}/><div className="row"><a className="btn primary" href={result} download={`yoisaki-facefix-${job?.id}.png`}>Сохранить результат</a><button onClick={saveOriginal}>Скачать исходник</button><button onClick={()=>{setResult('');setJob(null)}}>Оставить оригинал / попробовать снова</button></div><span className="tiny muted">Результат также сохранён в галерею. Исходник не изменяется.</span></div>}
++  </div>
++  <div className="panel stack">
++   <Slider label="Сила исправления" min={.1} max={.6} step={.05} value={strength} onChange={setStrength}/>
++   <span className="tiny muted">0.3 — бережно (по умолчанию). Больше — сильнее перерисовка; характерные черты могут измениться.</span>
++   <button className="primary facefix-go" disabled={!image||sending||busy||detecting||(!manual&&!chosenBoxes.length&&!!detection)} onClick={fix}>{sending?'Отправка…':busy?'Исправление…':chosenBoxes.length>1?`Исправить лица (${chosenBoxes.length})`:'Исправить лицо'}</button>
++   {job&&<div className="card stack"><JobProgress job={job}/>{busy&&<button onClick={cancel}>Отменить</button>}</div>}
++   {status&&<div role="status" className="notice dangernotice">{status}</div>}
++   <span className="tiny muted" style={{overflowWrap:'anywhere'}}>Модель: {s.checkpoint?'выбрана на странице Generate':'не выбрана'} · LoRA: {s.loras.filter(l=>l.enabled).length} · Промпт: {s.prompt.trim()?'из Generate':'пустой'}</span>
++  </div>
++  <details className="panel" open={advanced} onToggle={e=>setAdvanced((e.target as HTMLDetailsElement).open)}>
++   <summary className="facefix-summary">Расширенные настройки</summary>
++   {advanced&&<div className="stack" style={{marginTop:12}}>
++    <h3>Обнаружение</h3>
++    <div className="field"><label>Детектор</label><select aria-label="Детектор" value={profile.detector} onChange={e=>set({detector:e.target.value as Detector})}><option value="auto">Авто (аниме + общий)</option><option value="anime">Аниме / иллюстрации</option><option value="human">Общий (реалистичные лица)</option></select></div>
++    <Slider label="Порог уверенности" min={.1} max={.9} step={.05} value={profile.minConfidence} onChange={minConfidence=>set({minConfidence})}/>
++    <button disabled={!image||!auto||detecting} onClick={()=>image&&detect(image)}>Найти лица заново</button>
++    <button onClick={()=>{setManual(true);setBox(null)}} disabled={!image}>Ручное выделение лица</button>
++    <h3>Маска</h3>
++    <div className="field"><label>Форма маски</label><select aria-label="Форма маски" value={profile.shape} onChange={e=>set({shape:e.target.value as 'ellipse'|'box'})}><option value="ellipse">Овал (сохраняет уши, волосы, фон в углах)</option><option value="box">Прямоугольник</option></select></div>
++    <Slider label="Расширение маски" min={0} max={.5} step={.02} value={profile.expand} onChange={expand=>set({expand})}/>
++    <Slider label="Контекст вокруг лица (padding)" min={0} max={1} step={.05} value={profile.padding} onChange={padding=>set({padding})}/>
++    <label className="row tiny"><input type="checkbox" checked={profile.featherAuto} onChange={e=>set({featherAuto:e.target.checked})}/> Растушёвка автоматически{profile.featherAuto&&chosenBoxes.length?` (${autoFeather(chosenBoxes)} px)`:''}</label>
++    {!profile.featherAuto&&<Slider label="Растушёвка внутрь (px)" min={0} max={64} step={1} value={profile.feather} onChange={feather=>set({feather})}/>}
++    <h3>Генерация</h3>
++    <Slider label="Steps" min={1} max={60} step={1} value={profile.steps} onChange={steps=>set({steps})}/>
++    <Slider label="CFG" min={1} max={20} step={.5} value={profile.cfg} onChange={cfg=>set({cfg})}/>
++    <div className="grid2"><div className="field"><label>Sampler</label><select aria-label="Sampler" value={profile.sampler} onChange={e=>set({sampler:e.target.value})}>{['Euler','Euler a','DPM++ 2M'].map(t=><option key={t}>{t}</option>)}</select></div><div className="field"><label>Scheduler</label><select aria-label="Scheduler" value={profile.scheduler} onChange={e=>set({scheduler:e.target.value})}>{['Normal','Karras'].map(t=><option key={t}>{t}</option>)}</select></div></div>
++    <div className="grid2"><div className="field"><label>Рабочая ширина</label><input aria-label="Рабочая ширина" type="number" min={256} max={1536} step={8} value={profile.workWidth} onChange={e=>set({workWidth:Number(e.target.value)})}/></div><div className="field"><label>Рабочая высота</label><input aria-label="Рабочая высота" type="number" min={256} max={1536} step={8} value={profile.workHeight} onChange={e=>set({workHeight:Number(e.target.value)})}/></div></div>
++    <span className="tiny muted">Область лица вписывается в рабочий размер с сохранением пропорций; итог сохраняет размер исходника.</span>
++    <label className="row tiny"><input type="checkbox" checked={profile.randomSeed} onChange={e=>set({randomSeed:e.target.checked})}/> Случайный seed</label>
++    {!profile.randomSeed&&<input aria-label="Seed" value={profile.seed} onChange={e=>set({seed:e.target.value.replace(/\D/g,'')})} placeholder="Seed"/>}
++    <h3>Промпт и модели (общие с Generate)</h3>
++    <Prompt label="Positive Prompt" value={s.prompt} onChange={prompt=>updateSettings({prompt})}/>
++    <Prompt label="Negative Prompt" value={s.negative} onChange={negative=>updateSettings({negative})}/>
++    <span className="tiny muted">Checkpoint, VAE и LoRA с весами берутся со страницы Generate без изменений. ControlNet и Regional Control к Face Fix не применяются. Скрытые теги не добавляются.</span>
++    <button onClick={onClassic}>Классический редактор Face Fix (v1.8.0)</button>
++   </div>}
++  </details>
++ </div>;
++}
+diff --git a/src/lib/facefix.ts b/src/lib/facefix.ts
+new file mode 100644
+index 0000000..0c29af3
+--- /dev/null
++++ b/src/lib/facefix.ts
+@@ -0,0 +1,36 @@
++// v1.8.1 SMART FACE FIX: pure helpers shared by the page and tests. Coordinates are source pixels.
++import type {Box} from './editor';
++export type Detector='auto'|'anime'|'human';
++export type DetectedFace=Box&{id:string;confidence:number;detector:string;label:'face';auto_selectable:boolean};
++export type Detection={detector:Detector;detectors_run:string[];min_confidence:number;auto_select_confidence:number;image:{width:number;height:number};faces:DetectedFace[];selected:string|null;selection_required:boolean;duration_ms:number|null};
++// Separate Face Fix profile: never written into the Generate page settings.
++export type FaceProfile={detector:Detector;minConfidence:number;padding:number;expand:number;shape:'ellipse'|'box';featherAuto:boolean;feather:number;steps:number;cfg:number;sampler:string;scheduler:string;workWidth:number;workHeight:number;randomSeed:boolean;seed:string};
++export const FACE_DEFAULTS:Omit<FaceProfile,'sampler'|'scheduler'>={detector:'auto',minConfidence:.35,padding:.5,expand:.08,shape:'ellipse',featherAuto:true,feather:8,steps:25,cfg:5.5,workWidth:1024,workHeight:1024,randomSeed:true,seed:''};
++export const DEFAULT_STRENGTH=.3;
++/** Faces shown by default: confident ones. Uncertain ones only on request, never auto-selected. */
++export function visibleFaces(d:Detection|null,showUncertain:boolean){return d?d.faces.filter(f=>showUncertain||f.auto_selectable):[]}
++export function initialSelection(d:Detection):string[]{return d.selected?[d.selected]:[]}
++/** Inward feather relative to the smallest selected face, clamped to the engine range. */
++export function autoFeather(boxes:Box[]){const side=Math.min(...boxes.map(b=>Math.min(b.width,b.height)));return Number.isFinite(side)?Math.max(2,Math.min(32,Math.round(side*.08))):8}
++/** Topmost (smallest) face containing a tap; source pixels. */
++export function hitFace(faces:DetectedFace[],x:number,y:number){return faces.filter(f=>x>=f.x&&x<=f.x+f.width&&y>=f.y&&y<=f.y+f.height).sort((a,b)=>a.width*a.height-b.width*b.height)[0]||null}
++export function profileError(p:FaceProfile,strength:number,prompt:string){
++ if(!prompt.trim())return 'Добавьте Positive Prompt (описание персонажа) на странице Generate или в расширенных настройках.';
++ if(!Number.isFinite(strength)||strength<=0||strength>1||Math.floor(p.steps*strength)<1)return 'Сила исправления слишком мала для выбранного числа шагов.';
++ if(p.workWidth%8||p.workHeight%8||p.workWidth<256||p.workHeight<256||p.workWidth>1536||p.workHeight>1536||p.workWidth*p.workHeight>2097152)return 'Рабочий размер: 256–1536, кратно 8, до 2 Мп.';
++ if(p.steps<1||p.steps>60||p.cfg<1||p.cfg>20)return 'Steps 1–60, CFG 1–20.';
++ if(p.sampler==='Euler a'&&p.scheduler==='Karras')return 'Euler a работает только с Normal.';
++ if(!p.randomSeed&&(!/^\d+$/.test(p.seed)||Number(p.seed)>2147483647))return 'Seed: целое число 0–2147483647.';
++ return '';
++}
++type Global={prompt:string;negative:string;checkpoint:string;vae:string;loras:{id:string;weight:number;enabled:boolean}[]};
++/** /generate body. Checkpoint, VAE, LoRA and prompts come unchanged from the shared settings. */
++export function faceFixRequest(g:Global,p:FaceProfile,strength:number,image:string,target:{select:string[]}|{box:Box},auto:boolean,boxes:Box[]){
++ const base={client_request_id:crypto.randomUUID(),regions:[],kind:'facefix',mode:'facefix',prompt:g.prompt,negative_prompt:g.negative,checkpoint_id:g.checkpoint,vae_id:g.vae||'auto',
++  lora_adapters:g.loras.filter(l=>l.enabled).map(l=>({id:l.id,weight:l.weight})),width:p.workWidth,height:p.workHeight,steps:p.steps,cfg_scale:p.cfg,sampler:p.sampler,scheduler:p.scheduler,
++  seed:p.randomSeed?-1:Number(p.seed),batch_size:1,controlnet_config:{enabled:false},init_image:image,denoising_strength:strength,
++  mask_blur:p.featherAuto?autoFeather(boxes):p.feather,mask_padding:p.padding,inpaint_region:'crop' as const};
++ const where='select' in target?{face_detection:{detector:p.detector,min_confidence:p.minConfidence,select:target.select}}:{face_region:{...target.box}};
++ // Old engines (v1.8.0) do not know face_options; the local server also refuses to forward them there.
++ return {...base,...where,...(auto?{face_options:{mask_shape:p.shape,mask_expand:p.expand,work_fit:'aspect' as const}}:{})};
++}
+diff --git a/tests/history.test.mjs b/tests/history.test.mjs
+index 8c381a9..7efb81f 100644
+--- a/tests/history.test.mjs
++++ b/tests/history.test.mjs
+@@ -56,7 +56,7 @@ test('serialized cleanup and concurrent completion do not lose unrelated changes
+  assert.equal((await h.call('/api/history/'+running.id,'DELETE')).status,500);assert.equal(h.app.store.data.history.length,1);assert.equal(JSON.parse(await fs.readFile(h.app.store.file)).history.length,1);h.app.store.atomic=atomic;
+  }finally{await h.app.close()}
+ }));
+-test('website and engine have independent versions and compatibility metadata',()=>temp(async dir=>{const h=await harness(dir);try{assert.equal(h.version.version,'1.8.0');const r=await h.connect();assert.equal(r.body.website_version,'1.8.0');assert.equal(r.body.info.engine_version,'1.7.0');assert.equal(r.body.compatibility,'COMPATIBLE');assert.equal((await h.call('/api/diagnostics')).body.version,'1.8.0')}finally{await h.app.close()}}));
++test('website and engine have independent versions and compatibility metadata',()=>temp(async dir=>{const h=await harness(dir);try{assert.equal(h.version.version,'1.8.1');const r=await h.connect();assert.equal(r.body.website_version,'1.8.1');assert.equal(r.body.info.engine_version,'1.7.0');assert.equal(r.body.compatibility,'COMPATIBLE');assert.equal((await h.call('/api/diagnostics')).body.version,'1.8.1')}finally{await h.app.close()}}));
+ test('deletion is atomic when a selected job becomes active before cleanup commits',()=>temp(async dir=>{
+  const h=await harness(dir);try{const row=record('COMPLETED');await h.app.store.change(d=>{d.history=[row]});
+  let release;const gate=new Promise(r=>{release=r});const blocker=h.app.store.change(async d=>{await gate;d.history[0].status='RUNNING'});
+diff --git a/tests/providers.test.mjs b/tests/providers.test.mjs
+index 4f376ec..cc1613f 100644
+--- a/tests/providers.test.mjs
++++ b/tests/providers.test.mjs
+@@ -23,7 +23,7 @@ test('both providers: separate endpoints, explicit reconnect, no secrets on disk
+   const surfaces=JSON.stringify([await h.call('/api/gpu/status'),await h.call('/api/diagnostics'),await h.call('/api/settings'),await fs.readFile(path.join(dir,'state.json'),'utf8'),await fs.readFile(path.join(dir,'state.json.bak'),'utf8')]);
+   for(const token of Object.values(tokens))assert(!surfaces.includes(token));
+   await h.app.close();const n=calls.length;h=await harness(upstream,dir);x=await h.call('/api/gpu/status');assert.equal(x.provider,'cloudcompute');assert.equal(x.state,'OFFLINE');assert.deepEqual(x.endpoints,urls);assert.equal(calls.length,n);
+-  const v=await h.call('/api/version');assert.equal(v.studio_version,'1.8.0');assert.equal(v.engine_version,null);
++  const v=await h.call('/api/version');assert.equal(v.studio_version,'1.8.1');assert.equal(v.engine_version,null);
+  }finally{await h.app.close();await fs.rm(dir,{recursive:true,force:true})}
+ });
+ test('late health from a disconnected provider cannot revive a session',async()=>{
+diff --git a/tests/release-install-smoke.py b/tests/release-install-smoke.py
+index a44b666..4ac4a05 100644
+--- a/tests/release-install-smoke.py
++++ b/tests/release-install-smoke.py
+@@ -79,14 +79,14 @@ def main():
+             run('node', 'scripts/verify-package.mjs')
+             assert (app / 'start.sh').read_text().splitlines()[0] == '#!' + str(bin_dir / 'bash')
+             run('./start.sh')
+-            assert json.loads(get('/api/session', True))['version'] == '1.8.0'
++            assert json.loads(get('/api/session', True))['version'] == '1.8.1'
+             page = get('/').decode()
+-            assert '1.8.0' in page
++            assert '1.8.1' in page
+             for asset in re.findall(r'(?:src|href)="(/assets/[^\"]+)"', page):
+                 assert len(get(asset)) > 0
+             run('bash', 'stop.sh')
+             run('bash', 'update.sh', str(archive), str(app))
+-            assert json.loads(get('/api/session', True))['version'] == '1.8.0'
++            assert json.loads(get('/api/session', True))['version'] == '1.8.1'
+             run('node', 'scripts/verify-package.mjs')
+             run('node', 'scripts/build-identity.mjs')
+             assert before == {p: hashlib.sha256(p.read_bytes()).hexdigest() for p in protected}
+diff --git a/tests/test_v170_img2img.py b/tests/test_v170_img2img.py
+index 2534ee6..efb891c 100644
+--- a/tests/test_v170_img2img.py
++++ b/tests/test_v170_img2img.py
+@@ -262,7 +262,7 @@ class Img2ImgRequestContract(unittest.TestCase):
+              patch('worker.direct_server.resolve'), patch.object(InferenceAdapter, 'generate', generate), patch.object(InferenceAdapter, 'finish_job', lambda self: None):
+             with TestClient(create_app('/unused', token)) as client:
+                 health = client.get('/health', headers=headers).json()
+-                self.assertEqual(health['engine_version'], '1.8.0'); self.assertIs(health['capabilities']['img2img'], True)
++                self.assertEqual(health['engine_version'], '1.8.1'); self.assertIs(health['capabilities']['img2img'], True)
+                 body = dict(REQ, kind='img2img', mode='img2img', init_image=IMG, denoising_strength=.35)
+                 r = client.post('/generate', headers=headers, json=body); self.assertEqual(r.status_code, 200, r.text)
+                 j = wait(client, r.json()['id'])
+diff --git a/tests/test_v180_editor.py b/tests/test_v180_editor.py
+index 4074312..6b5a0f9 100644
+--- a/tests/test_v180_editor.py
++++ b/tests/test_v180_editor.py
+@@ -99,7 +99,7 @@ def test_editor_http_auth_serial_queue_cancel_failure_and_resources(tmp_path,mon
+     monkeypatch.setattr(InferenceAdapter,'generate',generate)
+     with TestClient(create_app(tmp_path,token)) as c:
+         assert c.post('/generate',json=payload()).status_code==401
+-        h=c.get('/health',headers=headers).json();assert h['engine_version']=='1.8.0';assert h['capabilities']['inpaint'];assert h['capabilities']['facefix']
++        h=c.get('/health',headers=headers).json();assert h['engine_version']=='1.8.1';assert h['capabilities']['inpaint'];assert h['capabilities']['facefix']
+         assert c.post('/generate',headers=headers,json=payload(mask_image='broken')).status_code==422
+         first=c.post('/generate',headers=headers,json=payload(seed=1)).json()['id'];assert entered.wait(2)
+         queued=c.post('/generate',headers=headers,json=payload('facefix',seed=2)).json()['id']
+diff --git a/tests/test_v181_facefix.py b/tests/test_v181_facefix.py
+new file mode 100644
+index 0000000..643c693
+--- /dev/null
++++ b/tests/test_v181_facefix.py
+@@ -0,0 +1,213 @@
++"""v1.8.1 SMART FACE FIX: real OpenCV detector models on CPU, selection rules, masks, API/HTTP contract,
++and real tiny RANDOM SDXL multi-face inference on CPU. No quality or GPU claim."""
++import sys, io, base64, gc, json, os, time, weakref, importlib
++from pathlib import Path
++from unittest.mock import patch
++import pytest
++import numpy as np
++from PIL import Image, ImageDraw
++sys.path.insert(0,os.environ.get('YOISAKI_TEST_ENGINE',str(Path(__file__).resolve().parents[1]/'engine')))
++sys.path.insert(0,str(Path(__file__).resolve().parent))
++from inference import facedetect
++from inference.editor import EditorError, EditSession, decode, face_mask, fitted_work_size, validate_editor
++from worker.direct_server import AdapterRequest
++
++def url(im):
++    b=io.BytesIO();im.save(b,format='PNG');return 'data:image/png;base64,'+base64.b64encode(b.getvalue()).decode()
++
++SOURCE=Image.new('RGBA',(96,64),(90,45,120,255))
++ImageDraw.Draw(SOURCE).rectangle((0,0,47,63),fill=(200,150,90,255))
++
++def fake_detectors(monkeypatch, anime=(), human=()):
++    monkeypatch.setattr(facedetect,'_lbp',lambda bgr:list(anime))
++    monkeypatch.setattr(facedetect,'_yunet',lambda bgr:facedetect._merge([(b,c,('human',)) for b,c in human],fuse=False))
++
++def payload(**changes):
++    req=dict(mode='facefix',kind='facefix',prompt='  orange fox, amber eyes  ',negative_prompt='',checkpoint_id='a'*32,vae_id='auto',
++             lora_adapters=[],width=256,height=256,steps=4,cfg_scale=5.5,sampler='Euler',scheduler='Normal',seed=7,batch_size=1,
++             regions=[],controlnet_config={'enabled':False},init_image=url(SOURCE),denoising_strength=.5,mask_blur=2,mask_padding=.5,
++             inpaint_region='crop',face_options=dict(mask_shape='ellipse',mask_expand=.08,work_fit='aspect'))
++    req.update(changes);return req
++
++def test_real_models_hash_verified_lazy_and_no_false_positive_on_flat_images():
++    importlib.reload(facedetect)
++    assert facedetect.loaded_models()==[]
++    for image in (Image.new('RGBA',(320,240),'white'),Image.linear_gradient('L').resize((300,200)).convert('RGBA')):
++        result=facedetect.detect(image)
++        assert result['faces']==[] and result['selected'] is None and result['selection_required'] is False
++        assert result['image']=={'width':image.width,'height':image.height}
++    assert facedetect.loaded_models()==['anime','human']
++    # The detector never touches CUDA: torch need not even be imported for detection.
++    assert result['detectors_run']==['anime','human'] and result['duration_ms']>=0
++
++def test_tampered_or_missing_model_fails_closed(monkeypatch):
++    importlib.reload(facedetect)
++    monkeypatch.setitem(facedetect.MODELS,'anime',('lbpcascade_animeface.xml','0'*64))
++    with pytest.raises(EditorError,match='повреждён'):facedetect.detect(Image.new('RGBA',(64,64)),'anime')
++    monkeypatch.setitem(facedetect.MODELS,'human',('missing.onnx','0'*64))
++    with pytest.raises(EditorError,match='отсутствует'):facedetect.detect(Image.new('RGBA',(64,64)),'human')
++    importlib.reload(facedetect)
++
++def test_selection_rules_fusion_ids_and_clamping(monkeypatch):
++    img=SOURCE
++    fake_detectors(monkeypatch,anime=[((10,10,30,30),.9)])
++    one=facedetect.detect(img)
++    assert len(one['faces'])==1 and one['selected']==one['faces'][0]['id'] and not one['selection_required']
++    assert facedetect.detect(img)['faces'][0]['id']==one['faces'][0]['id'], 'ids are reproducible'
++    other=Image.new('RGBA',img.size,(1,2,3,255))
++    assert facedetect.detect(other)['faces'][0]['id']!=one['faces'][0]['id'], 'ids are bound to the image'
++    # Two detectors agreeing on one face: one fused face, noisy-OR confidence.
++    fake_detectors(monkeypatch,anime=[((10,10,30,30),.5)],human=[((12,12,28,28),.5)])
++    fused=facedetect.detect(img)['faces']
++    assert len(fused)==1 and fused[0]['detector']=='anime+human' and abs(fused[0]['confidence']-.75)<1e-3
++    # Two confident faces: the user must choose; nothing is selected silently.
++    fake_detectors(monkeypatch,anime=[((2,2,30,30),.95),((60,10,30,30),.9)])
++    two=facedetect.detect(img);assert two['selected'] is None and two['selection_required'] and len(two['faces'])==2
++    # Low confidence: shown, never auto-selected; below threshold: dropped.
++    fake_detectors(monkeypatch,human=[((5,5,30,30),.45),((60,5,20,20),.2)])
++    weak=facedetect.detect(img);assert [f['auto_selectable'] for f in weak['faces']]==[False] and weak['selected'] is None
++    # A face crossing the image edge is clamped to source pixels.
++    fake_detectors(monkeypatch,anime=[((-10,40,40,40),.9)])
++    edge=facedetect.detect(img)['faces'][0]
++    assert edge['x']==0 and edge['y']==40 and edge['y']+edge['height']<=64 and edge['x']+edge['width']<=96
++
++def test_detect_request_and_select_validation(monkeypatch):
++    fake_detectors(monkeypatch,anime=[((10,10,30,30),.9),((60,10,30,30),.8)])
++    doc=facedetect.detect_request({'image':url(SOURCE)})
++    ids=[f['id'] for f in doc['faces']]
++    for bad in ({'image':url(SOURCE),'detector':'yolo'},{'image':url(SOURCE),'min_confidence':2},{'image':'data:image/png;base64,AAAA'},{'image':url(SOURCE),'extra':1}):
++        with pytest.raises(EditorError):facedetect.detect_request(bad)
++    with decode(url(SOURCE)) as image:
++        faces,_=facedetect.select_faces(image,{'detector':'auto','min_confidence':.35,'select':ids[::-1]})
++        assert [f['id'] for f in faces]==ids[::-1]
++        for spec in ({'detector':'auto','min_confidence':.35,'select':['f000000000000']},{'detector':'auto','min_confidence':.35,'select':[]},
++                     {'detector':'auto','min_confidence':.35,'select':[ids[0],ids[0]]},{'detector':'auto','select':ids}):
++            with pytest.raises(EditorError):facedetect.select_faces(image,spec)
++
++def test_face_mask_shape_expand_edges_and_work_size():
++    m=face_mask((100,80),(20,20,60,60),'ellipse',0)
++    a=np.asarray(m);assert a[40,40]==255 and a[20,20]==0 and a[21,59]==0, 'ellipse leaves box corners untouched'
++    grown=np.asarray(face_mask((100,80),(20,20,60,60),'ellipse',.25));assert (grown>0).sum()>(a>0).sum()
++    edge=np.asarray(face_mask((100,80),(0,50,30,80),'ellipse',.1));assert edge[79,10]==255 and edge.shape==(80,100)
++    box=np.asarray(face_mask((100,80),(20,20,60,60),'box',0));assert box[20,20]==255 and box[19,19]==0
++    assert fitted_work_size((0,0,300,600),1024,1024)==(512,1024)
++    assert fitted_work_size((0,0,1000,10),1024,1024)==(1024,1024), 'degenerate aspect falls back to explicit size'
++
++def test_ellipse_session_changes_only_inside_support():
++    req=payload(width=512,height=512,face_region=dict(x=20,y=10,width=40,height=40),face_options=dict(mask_shape='ellipse',mask_expand=0,work_fit='aspect'))
++    edit=EditSession(req)
++    try:
++        before=np.asarray(edit.original).copy();support=np.asarray(edit.mask)>0
++        assert edit.source.size==edit.work_mask.size and edit.source.width%8==0
++        l,t,r,b=edit.content;assert r-l>=edit.source.width-8 and b-t>=edit.source.height-8, 'aspect fit: no letterbox bands'
++        with Image.new('RGB',edit.source.size,'red') as generated:out=edit.composite(generated)
++        after=np.asarray(out)
++        assert np.array_equal(before[~support],after[~support]) and np.any(before[support]!=after[support])
++        assert not support[10,20] and not support[49,59], 'corners of the face box are preserved'
++        out.close()
++    finally:edit.close()
++
++def test_request_contract(monkeypatch):
++    fake_detectors(monkeypatch,anime=[((10,10,30,30),.9)])
++    ident=facedetect.detect_request({'image':url(SOURCE)})['faces'][0]['id']
++    spec={'detector':'auto','min_confidence':.35,'select':[ident]}
++    parsed=AdapterRequest(**payload(face_detection=spec)).model_dump()
++    assert parsed['face_detection']==spec and parsed['prompt']=='  orange fox, amber eyes  ' and parsed['seed']==7
++    assert AdapterRequest(**payload(face_region=dict(x=1,y=1,width=20,height=20),face_options=None)).model_dump()['face_options'] is None
++    bad=[dict(face_detection=spec,face_region=dict(x=1,y=1,width=20,height=20)),dict(),dict(face_detection={**spec,'select':['f'+'0'*12]}),
++         dict(face_detection=spec,face_options=dict(mask_shape='circle',mask_expand=.1,work_fit='aspect')),
++         dict(face_detection=spec,face_options=dict(mask_shape='ellipse',mask_expand=.9,work_fit='aspect')),
++         dict(face_detection=spec,inpaint_region='full')]
++    for change in bad:
++        with pytest.raises(ValueError):AdapterRequest(**payload(**change))
++    with pytest.raises(ValueError):validate_editor(dict(mode='text2img',face_options={}))
++    from inference.img2img import total_steps
++    two={**payload(face_detection={**spec,'select':[ident,'f'+'1'*12]})}
++    assert total_steps(two)==2*total_steps(payload(face_detection=spec))==4
++
++def test_http_detect_route_auth_capability_and_independent_of_gpu_queue(tmp_path,monkeypatch):
++    import threading, torch
++    from fastapi.testclient import TestClient
++    from inference.text2img import InferenceAdapter
++    from worker.direct_server import create_app
++    gate=threading.Event();entered=threading.Event()
++    def generate(adapter,req,progress):
++        entered.set();gate.wait(5);progress(1,'GENERATING');return [Image.new('RGBA',(96,64))],1
++    monkeypatch.setattr(torch.cuda,'is_available',lambda:True)
++    monkeypatch.setattr(torch.cuda,'get_device_name',lambda:'MOCK GPU READINESS')
++    monkeypatch.setattr(torch.cuda,'mem_get_info',lambda:(10*1024**3,16*1024**3))
++    monkeypatch.setattr('worker.direct_server.scan',lambda _:[dict(id='a'*32,kind='checkpoint')])
++    monkeypatch.setattr('worker.direct_server.resolve',lambda *args:tmp_path)
++    monkeypatch.setattr(InferenceAdapter,'generate',generate)
++    fake_detectors(monkeypatch,anime=[((10,10,30,30),.9),((60,10,30,30),.85)])
++    token='c'*64;headers={'Authorization':'Bearer '+token}
++    with TestClient(create_app(tmp_path,token)) as c:
++        h=c.get('/health',headers=headers).json()
++        assert h['engine_version']=='1.8.1' and h['api_version']=='1.7.0'
++        assert h['capabilities']['auto_facefix'] is True and h['capabilities']['face_detect_contract']==1 and h['capabilities']['facefix'] is True
++        assert c.post('/facefix/detect',json={'image':url(SOURCE)}).status_code==401
++        assert c.post('/facefix/detect',headers=headers,json={'image':url(SOURCE),'detector':'yolo'}).status_code==422
++        ids=[f['id'] for f in c.post('/facefix/detect',headers=headers,json={'image':url(SOURCE)}).json()['faces']]
++        job=c.post('/generate',headers=headers,json=payload(face_detection={'detector':'auto','min_confidence':.35,'select':ids})).json()['id']
++        assert entered.wait(3)
++        # Detection is answered while the single GPU worker is busy: it never enters that queue.
++        started=time.monotonic();doc=c.post('/facefix/detect',headers=headers,json={'image':url(SOURCE)}).json()
++        assert time.monotonic()-started<3 and len(doc['faces'])==2 and doc['selection_required']
++        row=c.get('/jobs/'+job,headers=headers).json();assert row['status']=='RUNNING' and row['progress']['total_steps']==4
++        gate.set()
++        for _ in range(500):
++            row=c.get('/jobs/'+job,headers=headers).json()
++            if row['status']=='COMPLETED' and row.get('resources'):break
++            time.sleep(.01)
++        assert row['status']=='COMPLETED'
++        assert c.get('/memory',headers=headers).json()['face_detection']['faces']==2
++        bad=c.post('/generate',headers=headers,json=payload(face_detection={'detector':'auto','min_confidence':.35,'select':['f'+'2'*12]}))
++        assert bad.status_code==422 and 'не найдено' in bad.text
++
++def test_real_diffusers_sequential_multi_face_cancel_and_memory(tmp_path,monkeypatch):
++    """Two detected faces refined one after another on shared tiny SDXL modules; repeated jobs; cancellation."""
++    import torch
++    from diffusers import DiffusionPipeline,StableDiffusionXLPipeline
++    from inference.text2img import InferenceAdapter
++    from worker.resources import JobResources
++    import test_controlnet_diffusers_cpu as tiny
++    torch.set_num_threads(2)
++    fake_detectors(monkeypatch,anime=[((4,6,32,32),.95),((56,8,32,32),.9)])
++    ids=[f['id'] for f in facedetect.detect_request({'image':url(SOURCE)})['faces']]
++    with patch.object(DiffusionPipeline,'enable_model_cpu_offload',tiny._cpu_offload):
++        pipe,_=tiny.tiny_pipe(tmp_path);pipe.enable_vae_slicing();pipe.enable_model_cpu_offload()
++        a=InferenceAdapter(tmp_path);a.pipe=pipe;a.key=('a'*32,'auto');a.scheduler_config=dict(pipe.scheduler.config)
++        a.load=lambda *args:a.pipe;a.prepare_adapters=lambda req:([],[])
++        modules={k:getattr(pipe,k) for k in ('unet','vae','text_encoder','text_encoder_2')}
++        params={k:sum(p.numel()*p.element_size() for p in m.parameters()) for k,m in modules.items()}
++        views=[];measurements=[];steps=[]
++        def run(req,cancel_at=None):
++            res=JobResources(req['mode']);res.start()
++            def progress(step,stage):
++                if step>0:
++                    steps.append(step);views.append(weakref.ref(a.pipe))
++                    if cancel_at and step>=cancel_at:raise RuntimeError('Cancellation requested')
++            try:return a.generate(req,progress)
++            finally:
++                a.finish_job();gc.collect();summary=res.finish(a,'ok');summary['face_fix']=a.last_face_job;measurements.append(summary)
++        req=payload(width=64,height=64,steps=4,face_detection={'detector':'auto','min_confidence':.35,'select':ids})
++        for _ in range(4):
++            steps.clear()
++            images,seed=run(req);assert seed==7 and len(images)==1 and images[0].size==(96,64)
++            assert max(steps)==4, 'progress spans both faces (2 x int(4*0.5))'
++            assert a.last_face_job['refined_faces']==2 and a.last_face_job['requested_faces']==2 and a.last_face_job['detected_faces']==2
++            out=np.asarray(images[0]);src=np.asarray(SOURCE)
++            assert out[63,47].tolist()==src[63,47].tolist() and out[0,95].tolist()==src[0,95].tolist(), 'pixels outside both masks unchanged'
++            images[0].close()
++            assert type(a.pipe) is StableDiffusionXLPipeline and not getattr(a.pipe,'_yoisaki_editor',False)
++            for k,m in modules.items():
++                assert getattr(a.pipe,k) is m and sum(p.numel()*p.element_size() for p in m.parameters())==params[k]
++        # Cancel during the second face, then a normal job succeeds.
++        with pytest.raises(RuntimeError,match='Cancellation'):run(req,cancel_at=3)
++        assert a.last_face_job['refined_faces']==1
++        images,_=run(req);images[0].close()
++        gc.collect()
++        assert all(ref() is None or type(ref()) is StableDiffusionXLPipeline for ref in views)
++        out=Path(__file__).parents[1]/'validation';out.mkdir(exist_ok=True)
++        (out/'cpu-facefix-resources.json').write_text(json.dumps(measurements,indent=2))
++        a.unload()
+diff --git a/tests/v177-cloudcompute-stability.test.mjs b/tests/v177-cloudcompute-stability.test.mjs
+index f63f0ea..af4bbb1 100644
+--- a/tests/v177-cloudcompute-stability.test.mjs
++++ b/tests/v177-cloudcompute-stability.test.mjs
+@@ -278,7 +278,7 @@ test('diagnostics: downloadable JSON with stages and provider status; no API key
+   const r=await h.raw('/api/cloudcompute/diagnostics');assert.equal(r.status,200);assert.match(r.headers.get('content-disposition'),new RegExp(DIAGNOSTICS_FILENAME));
+   const text=await r.text(),rep=JSON.parse(text),token=(await h.secretsFile()).deployment.token;
+   for(const secret of [token,KEY,'cc-another_secret_99'])assert(!text.includes(secret),secret);
+-  assert.equal(rep.website.version,'1.8.0');assert.equal(rep.instance.id,'9001');assert.equal(rep.instance.provider_status,'running');assert.equal(rep.instance.bootstrap_profile,'worker');
++  assert.equal(rep.website.version,'1.8.1');assert.equal(rep.instance.id,'9001');assert.equal(rep.instance.provider_status,'running');assert.equal(rep.instance.bootstrap_profile,'worker');
+   assert.equal(rep.initialization.instance_running,true);assert.equal(rep.initialization.engine_ready,false);assert(rep.initialization.stage_history.length>=3);
+   assert.equal(rep.engine.version,'unavailable');assert.equal(rep.gpu.driver,'unavailable');assert.equal(rep.gpu.model_source,'CloudCompute offer (advertised)');
+   assert.equal(rep.image.reference,ENGINE_IMAGE);
+diff --git a/tests/v180-editor-browser.mjs b/tests/v180-editor-browser.mjs
+index c3cdb0a..9d8ca1f 100644
+--- a/tests/v180-editor-browser.mjs
++++ b/tests/v180-editor-browser.mjs
+@@ -39,7 +39,7 @@ try{
+  await page.getByRole('button',{name:/^(Eraser|Ластик)$/}).click();await touch(await point(300,200));m=await mask();assert.equal(m.at(300,200)[0],0);await page.getByRole('button',{name:/^(Brush|Кисть)$/}).click();await range('Zoom').fill('2');await page.getByRole('button',{name:'→',exact:true}).click();await touch(await point(100,100,2,40));m=await mask();assert(m.at(100,100)[0]>200);
+  await submit();await waitSent(1);let req=sent[0];assert.equal(req.mode,'inpaint');assert.equal(req.prompt,'  amber_character, orange eyes  ');assert.deepEqual(req.lora_adapters,[{id:lid,weight:.8}]);assert.equal(req.mask_blur,8);assert.equal(req.denoising_strength,.5);const original=pngPixels(decodeDataURL(req.init_image).bytes);m=pngPixels(decodeDataURL(req.mask_image).bytes);assert.equal(original.w,m.w);assert.equal(original.h,m.h);assert(m.at(100,100)[0]>200);
+  await page.locator('img[alt="Созданное изображение"]').first().waitFor({timeout:15000});assert(app.store.data.gallery.some(g=>g.job_id===req.client_request_id));assert(!('mask_image' in app.store.data.gallery[0].parameters));await page.getByRole('button',{name:'Скачать исходник',exact:true}).waitFor();await page.screenshot({path:'validation/editor-inpaint-mobile.png',fullPage:true});
+- await page.getByRole('tab',{name:'FACE FIX',exact:true}).click();await upload();await touch(await point(100,100),await point(240,220));await page.getByAltText('Выбранное лицо',{exact:true}).waitFor();
++ await page.getByRole('tab',{name:'FACE FIX',exact:true}).click();/* v1.8.1: v1.8.0 engine -> compatibility notice; classic manual editor from advanced settings */await page.getByText(/автоматический поиск лиц недоступен/).waitFor();await page.getByText('Расширенные настройки',{exact:true}).click();await page.getByRole('button',{name:'Классический редактор Face Fix (v1.8.0)',exact:true}).click();await upload();await touch(await point(100,100),await point(240,220));await page.getByAltText('Выбранное лицо',{exact:true}).waitFor();
+  p=await point(170,160);await touch(p,{x:p.x+15,y:p.y+10});let b=await region();assert(b.x>100);assert(b.y>100);
+  p=await point(b.x+b.width,b.y+b.height);await touch(p,{x:p.x+10,y:p.y+8});let bigger=await region();assert(bigger.width>b.width);assert(bigger.height>b.height);
+  await submit();await waitSent(2);req=sent[1];assert.equal(req.mode,'facefix');assert.equal(req.width,512);assert.equal(req.height,512);assert.equal(req.denoising_strength,.25);assert.equal(req.face_region.width,bigger.width);assert(req.face_region.x+req.face_region.width<=600);assert(!req.mask_image);await page.locator('img[alt="Созданное изображение"]').first().waitFor({timeout:15000});assert(app.store.data.gallery.some(g=>g.job_id===req.client_request_id));await page.screenshot({path:'validation/editor-facefix-mobile.png',fullPage:true});
+diff --git a/tests/v181-facefix-browser.mjs b/tests/v181-facefix-browser.mjs
+new file mode 100644
+index 0000000..dec2935
+--- /dev/null
++++ b/tests/v181-facefix-browser.mjs
+@@ -0,0 +1,81 @@
++// v1.8.1 SMART FACE FIX: real mobile-sized Chromium + real local server. The GPU upstream is SYNTHETIC:
++// /facefix/detect answers fixed boxes chosen by source width; no detector or SDXL runs here.
++import {chromium} from '@playwright/test';import assert from 'node:assert/strict';import fs from 'node:fs/promises';import os from 'node:os';import path from 'node:path';import zlib from 'node:zlib';import {createLocalApp} from '../server/app.mjs';
++const mid='b'.repeat(32),lid='c'.repeat(32),token='e'.repeat(64),sent=[],detects=[],status={};
++function encodePNG(w,h,pixel){const raw=Buffer.alloc((w*3+1)*h);for(let y=0;y<h;y++)for(let x=0;x<w;x++)raw.set(pixel(x,y),y*(w*3+1)+1+x*3);
++ const chunk=(type,data)=>{const t=Buffer.from(type);const len=Buffer.alloc(4);len.writeUInt32BE(data.length);const crc=Buffer.alloc(4);crc.writeUInt32BE(zlib.crc32(Buffer.concat([t,data])));return Buffer.concat([len,t,data,crc])};
++ const ihdr=Buffer.alloc(13);ihdr.writeUInt32BE(w,0);ihdr.writeUInt32BE(h,4);ihdr[8]=8;ihdr[9]=2;
++ return Buffer.concat([Buffer.from('89504e470d0a1a0a','hex'),chunk('IHDR',ihdr),chunk('IDAT',zlib.deflateSync(raw)),chunk('IEND',Buffer.alloc(0))])}
++const one=encodePNG(600,400,x=>x<300?[230,140,60]:[60,40,90]),two=encodePNG(640,400,()=>[120,120,160]),none=encodePNG(500,400,()=>[20,90,40]);
++const result=encodePNG(600,400,()=>[200,150,40]);
++const face=(id,x,y,w,h,c)=>({id,x,y,width:w,height:h,confidence:c,detector:'anime+human',label:'face',auto_selectable:c>=.6});
++const ID1='f'+'1'.repeat(12),ID2='f'+'2'.repeat(12),ID3='f'+'3'.repeat(12),IDW='f'+'9'.repeat(12);
++function detection(body){const png=Buffer.from(body.image.split(',')[1],'base64');const w=png.readUInt32BE(16),h=png.readUInt32BE(20);
++ const faces=w===600?[face(ID1,250,80,120,130,.97)]:w===640?[face(ID2,60,90,110,120,.95),face(ID3,420,100,100,110,.9)]:[face(IDW,200,150,60,60,.42)];
++ const strong=faces.filter(f=>f.auto_selectable);
++ return {detector:body.detector,detectors_run:['anime','human'],min_confidence:body.min_confidence,auto_select_confidence:.6,image:{width:w,height:h},faces,selected:strong.length===1?strong[0].id:null,selection_required:strong.length!==1&&faces.length>0,duration_ms:12}}
++const dir=await fs.mkdtemp(path.join(os.tmpdir(),'facefix-181-'));
++const app=await createLocalApp({dataDir:dir,distDir:path.resolve('dist'),upstream:async(c,p,o={})=>{
++ if(p==='/health')return {engine:'YOISAKI_ENGINE',engine_version:'1.8.1',api_version:'1.7.0',capabilities:{controlnet:true,sdpose:true,img2img:true,regional_control:true,inpaint:true,facefix:true,editor_contract:1,auto_facefix:true,face_detect_contract:1,result_ack:true},state:'READY',gpu_name:'TEST ONLY',vram_total_mb:16000,vram_available_mb:15000};
++ if(p==='/models')return {models:[{id:mid,name:'TEST',kind:'checkpoint',architecture:'SDXL',compatible:true,size_bytes:1},{id:lid,name:'TEST LoRA',kind:'lora',architecture:'SDXL',compatible:true,size_bytes:1}]};
++ if(p==='/facefix/detect'){const x=JSON.parse(o.body);detects.push(x);return detection(x)}
++ if(p==='/generate'){const x=JSON.parse(o.body);sent.push(x);status[x.client_request_id]={id:x.client_request_id,status:'COMPLETED',progress:{step:1,total_steps:1,stage:'DONE',percent:100},result:{seed:5,image_keys:['0']}};return {id:x.client_request_id,status:'QUEUED'}}
++ if(p.endsWith('/ack'))return {ok:true};if(p.startsWith('/results/'))return result;return status[p.split('/').pop()];
++}});
++await new Promise(r=>app.server.listen(0,'127.0.0.1',r));const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
++const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});const cdp=await page.context().newCDPSession(page),errors=[];page.on('pageerror',e=>errors.push(e.message));
++async function touch(p,q=p){await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[p]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:(p.x+q.x)/2,y:(p.y+q.y)/2}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[q]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]})}
++async function waitSent(n){for(let i=0;i<100&&sent.length<n;i++)await new Promise(r=>setTimeout(r,50));assert.equal(sent.length,n,await page.locator('body').innerText())}
++async function stagePoint(sx,sy,w,h){const s=page.getByTestId('facefix-stage');await s.scrollIntoViewIfNeeded();const r=await s.boundingBox();return {x:r.x+sx/w*r.width,y:r.y+sy/h*r.height}}
++const upload=async(buffer,name)=>{await page.locator('input[type=file]').first().setInputFiles({name,mimeType:'image/png',buffer});await page.getByTestId('facefix-stage').waitFor()};
++const fixButton=()=>page.locator('button.facefix-go');
++const L=n=>({Steps:/^(Steps|Шаги)$/,Scheduler:/^(Scheduler|Планировщик)$/,CFG:/^(CFG|Шкала CFG)$/}[n]||n);
++const noOverflow=async()=>assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth),0);
++try{
++ await page.goto('http://127.0.0.1:'+app.server.address().port+'/engine');await page.getByLabel('URL туннеля Colab').fill('https://test.trycloudflare.com/#token='+token);await page.getByRole('button',{name:'Подключиться',exact:true}).click();await page.getByText('GPU: TEST ONLY',{exact:true}).waitFor();
++ await page.locator('.bottomnav a[href="/generate"]').click();await page.locator('select[aria-label="Checkpoint"]').selectOption(mid);await page.getByLabel(/^(Positive Prompt|Позитивный промпт)$/).fill('  amber fox, orange eyes  ');await page.getByLabel(/^(Negative Prompt|Негативный промпт)$/).fill('blur');await page.locator('select[aria-label="Add LoRA"],select[aria-label="Добавить LoRA"]').selectOption(lid);
++ const studio=async()=>{await new Promise(r=>setTimeout(r,400));const v=app.store.data.settings||{};const x=v.state?.settings||v.settings||v;assert(x.checkpoint===mid,'settings persisted: '+JSON.stringify(v).slice(0,200));const {prompt,negative,checkpoint,vae,loras,width,height,steps,cfg,sampler,scheduler,denoise,batch}=x;return JSON.stringify({prompt,negative,checkpoint,vae,loras,width,height,steps,cfg,sampler,scheduler,denoise,batch})};const settingsBefore=await studio();
++ await page.locator('.bottomnav a[href="/edit"]').click();await page.getByRole('tab',{name:'FACE FIX',exact:true}).click();
++ // Default screen: advanced parameters collapsed.
++ for(const hidden of ['Steps','CFG','Sampler','Scheduler','Рабочая ширина','Детектор'])assert.equal(await page.getByLabel(L(hidden),{exact:true}).count(),0,hidden+' must be hidden by default');
++ // A. Exactly one confident face: auto-selected, no rectangle needed.
++ await upload(one,'one.png');await page.getByText('Лицо найдено и выбрано автоматически.').waitFor();assert.equal(detects.length,1);assert.equal(detects[0].detector,'auto');
++ assert.equal(await page.locator('.facefix-face.selected').count(),1);
++ const go=await fixButton().boundingBox();assert(go.height>=44&&go.width>=200,'primary action is a large tap target');
++ await fixButton().click();await waitSent(1);let req=sent[0];
++ assert.equal(req.mode,'facefix');assert.deepEqual(req.face_detection,{detector:'auto',min_confidence:.35,select:[ID1]});assert(!req.face_region);
++ assert.deepEqual(req.face_options,{mask_shape:'ellipse',mask_expand:.08,work_fit:'aspect'});assert.equal(req.width,1024);assert.equal(req.height,1024);assert.equal(req.steps,25);assert.equal(req.cfg_scale,5.5);assert.equal(req.denoising_strength,.3);assert.equal(req.mask_padding,.5);assert.equal(req.mask_blur,10);
++ assert.equal(req.prompt,'  amber fox, orange eyes  ');assert.equal(req.negative_prompt,'blur');assert.deepEqual(req.lora_adapters,[{id:lid,weight:.8}]);assert.equal(req.checkpoint_id,mid);assert.equal(req.batch_size,1);assert.deepEqual(req.controlnet_config,{enabled:false});
++ assert.equal(req.init_image,detects[0].image,'detection and repair use the exact same source bytes');
++ await page.getByRole('link',{name:'Сохранить результат'}).waitFor({timeout:15000});await page.getByAltText('Результат').waitFor();
++ await page.locator('input[aria-label="До / После"]').fill('20');assert.match(await page.getByAltText('Результат').getAttribute('style'),/inset\(0(px)? 0(px)? 0(px)? 20%\)/);
++ const download=page.waitForEvent('download');await page.getByRole('link',{name:'Сохранить результат'}).click();assert.deepEqual(await fs.readFile(await (await download).path()),result);
++ assert(app.store.data.gallery.some(g=>g.job_id===req.client_request_id));const hist=app.store.data.history.find(j=>j.id===req.client_request_id);assert(hist&&!('init_image' in hist.request)&&hist.request.face_detection.select[0]===ID1);
++ await noOverflow();await page.screenshot({path:'validation/facefix-auto-390.png',fullPage:true});
++ // B. Two faces: nothing silently selected; tap selects one; "fix all" sends both, sequentially processed by the engine.
++ await page.getByRole('button',{name:'Оставить оригинал / попробовать снова'}).click();await upload(two,'two.png');await page.getByText(/Найдено лиц: 2/).waitFor();
++ assert.equal(await page.locator('.facefix-face.selected').count(),0);assert(await fixButton().isDisabled(),'no face chosen yet');
++ const hit=page.getByRole('button',{name:/^Лицо 2,/});const hb=await hit.boundingBox();assert(hb.width>=44&&hb.height>=44,'face tap target ≥ 44 px');
++ const scroll=await page.evaluate(()=>scrollY);await touch({x:hb.x+hb.width/2,y:hb.y+hb.height/2});assert.equal(await page.evaluate(()=>scrollY),scroll);
++ await page.locator('.facefix-face.selected').waitFor();assert.equal(await hit.getAttribute('aria-pressed'),'true');
++ await fixButton().click();await waitSent(2);assert.deepEqual(sent[1].face_detection.select,[ID3]);
++ await page.getByRole('button',{name:'Оставить оригинал / попробовать снова'}).click();
++ await page.getByLabel(/Исправить все найденные лица \(2\)/).check();assert.equal(await page.locator('.facefix-face.selected').count(),2);assert.match(await fixButton().innerText(),/Исправить лица \(2\)/);
++ await fixButton().click();await waitSent(3);assert.deepEqual(sent[2].face_detection.select.sort(),[ID2,ID3].sort());
++ await page.screenshot({path:'validation/facefix-two-faces-390.png',fullPage:true});
++ // C. No confident face: clear message, nothing sent automatically, manual rectangle fallback without page scroll.
++ await page.getByRole('button',{name:'Оставить оригинал / попробовать снова'}).click();await upload(none,'none.png');
++ await page.getByText(/низкой уверенностью/).waitFor();assert.equal(sent.length,3,'no automatic full-image repair');
++ // Uncertain candidate: hidden by default, never auto-selected; can be revealed and chosen explicitly.
++ await page.getByRole('button',{name:/Показать неуверенные \(1\)/}).click();await page.locator('.facefix-face.uncertain').waitFor();assert.equal(await page.locator('.facefix-face.selected').count(),0);
++ await page.getByRole('button',{name:'Скрыть неуверенные'}).click();await page.getByText(/Ручное выделение/).waitFor();
++ const a=await stagePoint(150,100,500,400),b=await stagePoint(330,300,500,400);const before=await page.evaluate(()=>scrollY);await touch(a,b);assert.equal(await page.evaluate(()=>scrollY),before,'drawing must not scroll the page');
++ await fixButton().click();await waitSent(4);req=sent[3];assert(!req.face_detection);assert(req.face_region.x>140&&req.face_region.x<160&&req.face_region.width>170&&req.face_region.width<190,JSON.stringify(req.face_region));assert.equal(req.face_options.work_fit,'aspect');
++ // D. Advanced settings stay available and change only the Face Fix profile.
++ await page.getByText('Расширенные настройки',{exact:true}).click();for(const shown of ['Steps','CFG','Sampler','Scheduler','Рабочая ширина','Детектор','Форма маски'])await page.getByLabel(L(shown),{exact:true}).first().waitFor();
++ await page.getByLabel('Детектор',{exact:true}).selectOption('anime');await page.getByRole('button',{name:'Найти лица заново'}).click();for(let i=0;i<50&&detects.at(-1).detector!=='anime';i++)await new Promise(r=>setTimeout(r,50));assert.equal(detects.at(-1).detector,'anime');
++ assert.equal(await studio(),settingsBefore,'Generate settings untouched by the Face Fix profile');
++ await noOverflow();await page.setViewportSize({width:360,height:780});await noOverflow();await page.screenshot({path:'validation/facefix-advanced-360.png',fullPage:true});
++ assert.deepEqual(errors,[]);
++ console.log('PASS mobile 390/360 touch: one face auto-selected and fixed without a rectangle; two faces require a tap (44px targets, no scroll) and "fix all" sends both ids; no-face shows message and manual fallback without page scroll; advanced collapsed by default and functional; prompts/LoRA/checkpoint preserved; same source bytes for detect and repair; result compare/save/gallery; no horizontal overflow. GPU upstream SYNTHETIC.');
++}catch(e){await page.screenshot({path:'validation/facefix-browser-failure.png',fullPage:true});await fs.writeFile('validation/facefix-browser-failure.txt',await page.locator('body').innerText());throw e}finally{await browser.close();await app.close();await fs.rm(dir,{recursive:true,force:true})}
+diff --git a/tests/v181-facefix.test.mjs b/tests/v181-facefix.test.mjs
+new file mode 100644
+index 0000000..f9241a7
+--- /dev/null
++++ b/tests/v181-facefix.test.mjs
+@@ -0,0 +1,76 @@
++// v1.8.1 SMART FACE FIX: request/response contract, engine compatibility and the local server routes.
++// The GPU upstream is a test double; real detection is covered by tests/test_v181_facefix.py.
++import {test} from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs/promises';import os from 'node:os';import path from 'node:path';
++import {validateGeneration} from '../server/upstream.mjs';import {compactSourceRequest} from '../server/img2img.mjs';import {engineCompatibility,supportsAutoFaceFix,COMPATIBLE_ENGINE_FAMILY} from '../server/release.mjs';
++import {validateDetectRequest,validateDetectResponse} from '../server/editor.mjs';import {createLocalApp} from '../server/app.mjs';
++const image='data:image/png;base64,aGVsbG8=',id='a'.repeat(32),models=[{id,kind:'checkpoint',compatible:true}],F1='f'+'1'.repeat(12),F2='f'+'2'.repeat(12);
++const spec={detector:'auto',min_confidence:.35,select:[F1]},options={mask_shape:'ellipse',mask_expand:.08,work_fit:'aspect'};
++const base={kind:'facefix',mode:'facefix',prompt:'  orange fox\n(amber eyes:1.2)  ',negative_prompt:'',checkpoint_id:id,vae_id:'auto',lora_adapters:[],width:1024,height:1024,steps:25,cfg_scale:5.5,sampler:'Euler',scheduler:'Normal',seed:-1,batch_size:1,regions:[],controlnet_config:{enabled:false},init_image:image,denoising_strength:.3,mask_blur:10,mask_padding:.5,inpaint_region:'crop',face_detection:spec,face_options:options};
++const health=(version,caps={})=>({engine:'YOISAKI_ENGINE',engine_version:version,api_version:'1.7.0',capabilities:{controlnet:true,sdpose:true,img2img:true,regional_control:true,inpaint:true,facefix:true,editor_contract:1,...caps},state:'READY',gpu_name:'TEST',vram_total_mb:16000,vram_available_mb:15000});
++const doc=(over={})=>({detector:'auto',detectors_run:['anime','human'],min_confidence:.35,auto_select_confidence:.6,image:{width:600,height:400},faces:[{id:F1,x:10,y:20,width:100,height:110,confidence:.93,detector:'anime',label:'face',auto_selectable:true}],selected:F1,selection_required:false,duration_ms:12,...over});
++
++test('automatic Face Fix request is preserved verbatim and stripped of the source in history',()=>{
++ const req=validateGeneration(base,models);assert.deepEqual(JSON.parse(JSON.stringify(req)),base);
++ const compact=compactSourceRequest(req);assert(!('init_image' in compact));assert.deepEqual(compact.face_detection,spec);assert.equal(compact.prompt,base.prompt);
++ const manual={...base,face_detection:undefined,face_region:{x:1,y:2,width:30,height:40}};delete manual.face_detection;
++ assert.deepEqual(JSON.parse(JSON.stringify(validateGeneration(manual,models))),manual);
++});
++test('invalid selections, options and mode combinations are rejected',()=>{
++ const bad=[{face_region:{x:0,y:0,width:20,height:20}},{face_detection:undefined},{face_detection:{...spec,select:[]}},{face_detection:{...spec,select:[F1,F1]}},
++  {face_detection:{...spec,select:['x'.repeat(13)]}},{face_detection:{...spec,detector:'yolo'}},{face_detection:{...spec,min_confidence:1}},{face_detection:{detector:'auto',select:[F1]}},
++  {face_detection:{...spec,select:Array.from({length:13},(_,i)=>'f'+String(i).padStart(12,'0'))}},{face_options:{...options,mask_shape:'circle'}},{face_options:{...options,mask_expand:.6}},
++  {face_options:{...options,extra:1}},{inpaint_region:'full'},{mask_image:image}];
++ for(const change of bad)assert.throws(()=>validateGeneration({...base,...change},models),JSON.stringify(change));
++ assert.throws(()=>validateGeneration({...base,mode:'inpaint',kind:'inpaint',mask_image:image},models));
++ const t2i={...base,mode:'text2img',kind:'text2img'};for(const k of ['init_image','denoising_strength','mask_blur','mask_padding','inpaint_region','face_detection'])delete t2i[k];
++ assert.throws(()=>validateGeneration(t2i,models),/Inpaint\/Face Fix/);
++});
++test('detect request and GPU response are validated; boxes must lie inside the reported image',()=>{
++ assert.deepEqual(validateDetectRequest({image}),{image,detector:'auto',min_confidence:.35});
++ for(const x of [{image,detector:'yolo'},{image,min_confidence:0},{image:'http://x'},{image,extra:1}])assert.throws(()=>validateDetectRequest(x));
++ const ok=validateDetectResponse(doc(),{detector:'auto'});assert.equal(ok.faces[0].id,F1);assert.equal(ok.selected,F1);
++ const face=doc().faces[0];
++ for(const over of [{faces:[{...face,x:550}]},{faces:[{...face,x:1.5}]},{faces:[{...face,id:'zzz'}]},{faces:[{...face,confidence:2}]},{selected:F2},{detector:'human'},{faces:Array(13).fill(face)}])
++  assert.throws(()=>validateDetectResponse(doc(over),{detector:'auto'}),/детектора/);
++});
++test('compatibility: v1.8.1 is compatible on API 1.7.0; only engines declaring auto_facefix get the automatic flow',()=>{
++ assert.equal(engineCompatibility(health('1.8.1',{auto_facefix:true,face_detect_contract:1})),'COMPATIBLE');assert.match(COMPATIBLE_ENGINE_FAMILY,/1\.8\.1/);
++ assert.equal(supportsAutoFaceFix(health('1.8.1',{auto_facefix:true,face_detect_contract:1})),true);
++ assert.equal(supportsAutoFaceFix(health('1.8.0')),false);assert.equal(supportsAutoFaceFix(health('1.8.0',{auto_facefix:true})),false,'contract version required');
++ assert.equal(supportsAutoFaceFix(health('1.9.0',{auto_facefix:true,face_detect_contract:1})),false,'unknown engine version not trusted');
++});
++async function harness(engine){
++ const dir=await fs.mkdtemp(path.join(os.tmpdir(),'facefix-181-'));const sent=[],detects=[];
++ const app=await createLocalApp({dataDir:dir,distDir:path.resolve('dist'),upstream:async(c,p,o={})=>{
++  if(p==='/health')return engine;if(p==='/models')return {models:[{id,name:'TEST',kind:'checkpoint',architecture:'SDXL',compatible:true,size_bytes:1}]};
++  if(p==='/facefix/detect'){const x=JSON.parse(o.body);detects.push(x);return doc({detector:x.detector})}
++  if(p==='/generate'){const x=JSON.parse(o.body);sent.push(x);return {id:x.client_request_id,status:'QUEUED'}}
++  if(p.endsWith('/ack'))return {ok:true};return {id:p.split('/').pop(),status:'QUEUED',progress:{stage:'PENDING'}};
++ }});
++ await new Promise(r=>app.server.listen(0,'127.0.0.1',r));const root='http://127.0.0.1:'+app.server.address().port;
++ const session=await fetch(root+'/api/session',{headers:{'X-Yoisaki-Local':'1'}}),cookie=session.headers.get('set-cookie').split(';')[0];
++ const call=async(route,method='GET',body)=>{const r=await fetch(root+route,{method,headers:{'X-Yoisaki-Local':'1',Cookie:cookie,'Content-Type':'application/json'},body:body&&JSON.stringify(body)});return {status:r.status,body:await r.json()}};
++ assert.equal((await call('/api/gpu/connect','POST',{url:'https://test.trycloudflare.com/#token='+'a'.repeat(64)})).status,200);await call('/api/gpu/status?models=1');
++ return {app,call,sent,detects,close:async()=>{await app.close();await fs.rm(dir,{recursive:true,force:true})}};
++}
++test('local server proxies detection for v1.8.1 and refuses automatic requests to a v1.8.0 engine',async()=>{
++ const png='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aU1cAAAAASUVORK5CYII=';
++ let h=await harness(health('1.8.1',{auto_facefix:true,face_detect_contract:1,result_ack:true}));
++ try{
++  const r=await h.call('/api/gpu/facefix/detect','POST',{image:png,detector:'anime',min_confidence:.4});
++  assert.equal(r.status,200,JSON.stringify(r.body));assert.equal(r.body.faces[0].id,F1);assert.deepEqual(h.detects[0],{image:png,detector:'anime',min_confidence:.4});
++  assert.equal((await h.call('/api/gpu/facefix/detect','POST',{image:png,detector:'yolo'})).status,400);
++  const g=await h.call('/api/gpu/generate','POST',{...base,init_image:png});assert([200,201].includes(g.status),JSON.stringify(g.body));
++  assert.deepEqual(h.sent[0].face_detection,spec);assert.deepEqual(h.sent[0].face_options,options);assert.equal(h.sent[0].prompt,base.prompt);
++  const hist=h.app.store.data.history.find(j=>j.id===h.sent[0].client_request_id);assert(!('init_image' in hist.request));
++ }finally{await h.close()}
++ h=await harness(health('1.8.0',{result_ack:true}));
++ try{
++  const r=await h.call('/api/gpu/facefix/detect','POST',{image:png});assert.equal(r.status,409);assert.equal(r.body.code||r.body.error?.code||'ENGINE_UPGRADE_REQUIRED','ENGINE_UPGRADE_REQUIRED');assert.match(JSON.stringify(r.body),/v1\.8\.1/);
++  assert.equal((await h.call('/api/gpu/generate','POST',{...base,init_image:png})).status,409,'face_detection never reaches an old engine');
++  const legacy={...base,init_image:png,face_region:{x:0,y:0,width:2,height:2}};delete legacy.face_detection;
++  assert.equal((await h.call('/api/gpu/generate','POST',legacy)).status,409,'face_options never reach an old engine (it would ignore them silently)');
++  delete legacy.face_options;legacy.face_region={x:0,y:0,width:2,height:2};
++  const ok=await h.call('/api/gpu/generate','POST',legacy);assert([200,201].includes(ok.status),'manual v1.8.0 Face Fix still works: '+JSON.stringify(ok.body));assert.equal(h.detects.length,0);
++ }finally{await h.close()}
++});
+diff --git a/update.sh b/update.sh
+index 22f6cae..f64da8e 100644
+--- a/update.sh
++++ b/update.sh
+@@ -42,4 +42,4 @@ if ! (cd "$APP_DIR" && bash start.sh); then
+ fi
+ echo "Обновлено. Резервная копия кода: $BACKUP"
+ echo "Резервная копия данных (если существовали): $DATA_BACKUP"
+-echo 'Откройте http://127.0.0.1:3000/engine и проверьте версию 1.7.7 (AMBER CORE · v1.7.7 CLOUDCOMPUTE STABILITY EDITION).'
++echo 'Откройте http://127.0.0.1:3000/engine и проверьте версию сайта (для этого релиза: 1.8.1 SMART FACE FIX).'

@@ -1,0 +1,1 @@
+PASS mobile 390x844: touch drawing without scroll; source/mask dimensions; brush/eraser; undo/redo; zoom/pan; face draw/move/resize/preview; prompts/LoRA preserved; real local server transport; result and original available, gallery saved. GPU upstream SYNTHETIC.

@@ -1,0 +1,242 @@
+[
+ {
+  "tile": "t02.png",
+  "scale": 0.5,
+  "face_px": 64,
+  "found": true,
+  "confidence": 0.8975,
+  "auto": true,
+  "selected_ok": true,
+  "other_faces": 0
+ },
+ {
+  "tile": "t02.png",
+  "scale": 0.35,
+  "face_px": 45,
+  "found": true,
+  "confidence": 0.6699,
+  "auto": true,
+  "selected_ok": true,
+  "other_faces": 0
+ },
+ {
+  "tile": "t02.png",
+  "scale": 0.25,
+  "face_px": 32,
+  "found": true,
+  "confidence": 0.6473,
+  "auto": true,
+  "selected_ok": true,
+  "other_faces": 0
+ },
+ {
+  "tile": "t02.png",
+  "scale": 0.18,
+  "face_px": 23,
+  "found": true,
+  "confidence": 0.4005,
+  "auto": false,
+  "selected_ok": false,
+  "other_faces": 0
+ },
+ {
+  "tile": "t15.png",
+  "scale": 0.5,
+  "face_px": 48,
+  "found": true,
+  "confidence": 0.7496,
+  "auto": true,
+  "selected_ok": true,
+  "other_faces": 0
+ },
+ {
+  "tile": "t15.png",
+  "scale": 0.35,
+  "face_px": 33,
+  "found": true,
+  "confidence": 0.5386,
+  "auto": false,
+  "selected_ok": false,
+  "other_faces": 0
+ },
+ {
+  "tile": "t15.png",
+  "scale": 0.25,
+  "face_px": 24,
+  "found": true,
+  "confidence": 0.4734,
+  "auto": false,
+  "selected_ok": false,
+  "other_faces": 0
+ },
+ {
+  "tile": "t15.png",
+  "scale": 0.18,
+  "face_px": 17,
+  "found": false,
+  "confidence": null,
+  "auto": null,
+  "selected_ok": false,
+  "other_faces": 0
+ },
+ {
+  "tile": "t22.png",
+  "scale": 0.5,
+  "face_px": 78,
+  "found": true,
+  "confidence": 0.9922,
+  "auto": true,
+  "selected_ok": true,
+  "other_faces": 0
+ },
+ {
+  "tile": "t22.png",
+  "scale": 0.35,
+  "face_px": 55,
+  "found": true,
+  "confidence": 0.698,
+  "auto": true,
+  "selected_ok": true,
+  "other_faces": 0
+ },
+ {
+  "tile": "t22.png",
+  "scale": 0.25,
+  "face_px": 39,
+  "found": true,
+  "confidence": 0.7265,
+  "auto": true,
+  "selected_ok": true,
+  "other_faces": 0
+ },
+ {
+  "tile": "t22.png",
+  "scale": 0.18,
+  "face_px": 28,
+  "found": true,
+  "confidence": 0.3637,
+  "auto": false,
+  "selected_ok": false,
+  "other_faces": 0
+ },
+ {
+  "tile": "t35.png",
+  "scale": 0.5,
+  "face_px": 70,
+  "found": true,
+  "confidence": 0.9914,
+  "auto": true,
+  "selected_ok": true,
+  "other_faces": 0
+ },
+ {
+  "tile": "t35.png",
+  "scale": 0.35,
+  "face_px": 49,
+  "found": true,
+  "confidence": 0.852,
+  "auto": true,
+  "selected_ok": true,
+  "other_faces": 0
+ },
+ {
+  "tile": "t35.png",
+  "scale": 0.25,
+  "face_px": 35,
+  "found": true,
+  "confidence": 0.6691,
+  "auto": true,
+  "selected_ok": true,
+  "other_faces": 0
+ },
+ {
+  "tile": "t35.png",
+  "scale": 0.18,
+  "face_px": 25,
+  "found": true,
+  "confidence": 0.4667,
+  "auto": false,
+  "selected_ok": false,
+  "other_faces": 0
+ },
+ {
+  "tile": "t51.png",
+  "scale": 0.5,
+  "face_px": 74,
+  "found": true,
+  "confidence": 0.767,
+  "auto": true,
+  "selected_ok": true,
+  "other_faces": 0
+ },
+ {
+  "tile": "t51.png",
+  "scale": 0.35,
+  "face_px": 52,
+  "found": false,
+  "confidence": null,
+  "auto": null,
+  "selected_ok": false,
+  "other_faces": 0
+ },
+ {
+  "tile": "t51.png",
+  "scale": 0.25,
+  "face_px": 37,
+  "found": false,
+  "confidence": null,
+  "auto": null,
+  "selected_ok": false,
+  "other_faces": 0
+ },
+ {
+  "tile": "t51.png",
+  "scale": 0.18,
+  "face_px": 27,
+  "found": true,
+  "confidence": 0.4931,
+  "auto": false,
+  "selected_ok": false,
+  "other_faces": 0
+ },
+ {
+  "tile": "t11.png",
+  "scale": 0.5,
+  "face_px": 86,
+  "found": true,
+  "confidence": 0.965,
+  "auto": true,
+  "selected_ok": true,
+  "other_faces": 0
+ },
+ {
+  "tile": "t11.png",
+  "scale": 0.35,
+  "face_px": 61,
+  "found": true,
+  "confidence": 0.7853,
+  "auto": true,
+  "selected_ok": true,
+  "other_faces": 0
+ },
+ {
+  "tile": "t11.png",
+  "scale": 0.25,
+  "face_px": 43,
+  "found": true,
+  "confidence": 0.7027,
+  "auto": true,
+  "selected_ok": true,
+  "other_faces": 0
+ },
+ {
+  "tile": "t11.png",
+  "scale": 0.18,
+  "face_px": 31,
+  "found": true,
+  "confidence": 0.7845,
+  "auto": true,
+  "selected_ok": true,
+  "other_faces": 0
+ }
+]

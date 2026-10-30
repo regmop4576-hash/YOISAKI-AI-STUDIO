@@ -1,0 +1,5 @@
+
+> yoisaki-ai-studio-local@1.8.1 build
+> node scripts/build.mjs
+
+Production build ready: dist/ · 1.8.1

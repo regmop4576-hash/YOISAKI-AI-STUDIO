@@ -1,0 +1,77 @@
+....................................................................     [100%]
+=============================== warnings summary ===============================
+../../venv/lib/python3.13/site-packages/diffusers/models/transformers/transformer_kandinsky.py:168
+  /tmp/claude-0/-home-user-YOISAKI-AI-STUDIO/a9a74c62-eeeb-5697-b417-ff8c1661a045/scratchpad/venv/lib/python3.13/site-packages/diffusers/models/transformers/transformer_kandinsky.py:168: UserWarning: CUDA is not available or torch_xla is imported. Disabling autocast.
+    @torch.autocast(device_type="cuda", dtype=torch.float32)
+
+../../venv/lib/python3.13/site-packages/diffusers/models/transformers/transformer_kandinsky.py:272
+  /tmp/claude-0/-home-user-YOISAKI-AI-STUDIO/a9a74c62-eeeb-5697-b417-ff8c1661a045/scratchpad/venv/lib/python3.13/site-packages/diffusers/models/transformers/transformer_kandinsky.py:272: UserWarning: CUDA is not available or torch_xla is imported. Disabling autocast.
+    @torch.autocast(device_type="cuda", dtype=torch.float32)
+
+../../venv/lib/python3.13/site-packages/starlette/testclient.py:37
+  /tmp/claude-0/-home-user-YOISAKI-AI-STUDIO/a9a74c62-eeeb-5697-b417-ff8c1661a045/scratchpad/venv/lib/python3.13/site-packages/starlette/testclient.py:37: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = typing.Callable[[], typing.ContextManager[anyio.abc.BlockingPortal]]
+
+tests/test_v170_img2img.py::RealDiffusersImg2Img::test_controlnet_img2img_and_text2img_controlnet_unchanged
+tests/test_controlnet_diffusers_cpu.py::RealDiffusersControlNet::test_aud001_invalid_values_rejected
+tests/test_v180_editor.py::test_real_diffusers_mixed_modes_lora_storage_release_and_error_recovery
+tests/test_v181_facefix.py::test_real_diffusers_sequential_multi_face_cancel_and_memory
+  /tmp/claude-0/-home-user-YOISAKI-AI-STUDIO/a9a74c62-eeeb-5697-b417-ff8c1661a045/scratchpad/venv/lib/python3.13/site-packages/diffusers/pipelines/pipeline_utils.py:2186: FutureWarning: `enable_vae_slicing` is deprecated and will be removed in version 0.40.0. Calling `enable_vae_slicing()` on a `StableDiffusionXLPipeline` is deprecated and this method will be removed in a future version. Please use `pipe.vae.enable_slicing()`.
+    deprecate(
+
+tests/test_v170_img2img.py: 41 warnings
+tests/test_controlnet_diffusers_cpu.py: 18 warnings
+tests/test_prompt_fidelity.py: 8 warnings
+tests/test_v180_editor.py: 8 warnings
+tests/test_v181_facefix.py: 12 warnings
+  /tmp/claude-0/-home-user-YOISAKI-AI-STUDIO/a9a74c62-eeeb-5697-b417-ff8c1661a045/scratchpad/venv/lib/python3.13/site-packages/diffusers/schedulers/scheduling_euler_discrete.py:429: DeprecationWarning: __array__ implementation doesn't accept a copy keyword, so passing copy=False failed. __array__ must implement 'dtype' and 'copy' keyword arguments. To learn more, see the migration guide https://numpy.org/devdocs/numpy_2_0_migration_guide.html#adapting-to-changes-in-the-copy-keyword
+    sigmas = np.array(((1 - self.alphas_cumprod) / self.alphas_cumprod) ** 0.5)
+
+tests/test_v170_img2img.py::RealDiffusersImg2Img::test_img2img_shares_loaded_components_and_returns_to_base
+  /tmp/claude-0/-home-user-YOISAKI-AI-STUDIO/a9a74c62-eeeb-5697-b417-ff8c1661a045/scratchpad/work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_v170_img2img.py:101: FutureWarning: `torch.distributed.reduce_op` is deprecated, please use `torch.distributed.ReduceOp` instead
+    units, vaes = (sum(isinstance(o, c) for o in gc.get_objects()) for c in (UNet2DConditionModel, AutoencoderKL))
+
+tests/test_v170_img2img.py::RealDiffusersImg2Img::test_img2img_shares_loaded_components_and_returns_to_base
+  /tmp/claude-0/-home-user-YOISAKI-AI-STUDIO/a9a74c62-eeeb-5697-b417-ff8c1661a045/scratchpad/work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_v170_img2img.py:107: FutureWarning: `torch.distributed.reduce_op` is deprecated, please use `torch.distributed.ReduceOp` instead
+    self.assertEqual(sum(isinstance(o, UNet2DConditionModel) for o in gc.get_objects()), units)
+
+tests/test_v170_img2img.py::RealDiffusersImg2Img::test_img2img_shares_loaded_components_and_returns_to_base
+  /tmp/claude-0/-home-user-YOISAKI-AI-STUDIO/a9a74c62-eeeb-5697-b417-ff8c1661a045/scratchpad/work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_v170_img2img.py:108: FutureWarning: `torch.distributed.reduce_op` is deprecated, please use `torch.distributed.ReduceOp` instead
+    self.assertEqual(sum(isinstance(o, AutoencoderKL) for o in gc.get_objects()), vaes)
+
+tests/test_v170_img2img.py::RealDiffusersImg2Img::test_repeated_runs_do_not_accumulate_objects
+  /tmp/claude-0/-home-user-YOISAKI-AI-STUDIO/a9a74c62-eeeb-5697-b417-ff8c1661a045/scratchpad/venv/lib/python3.13/site-packages/torch/__init__.py:1547: FutureWarning: `torch.distributed.reduce_op` is deprecated, please use `torch.distributed.ReduceOp` instead
+    return isinstance(obj, torch.Tensor)
+
+tests/test_v170_img2img.py::RealDiffusersImg2Img::test_repeated_runs_do_not_accumulate_objects
+  /tmp/claude-0/-home-user-YOISAKI-AI-STUDIO/a9a74c62-eeeb-5697-b417-ff8c1661a045/scratchpad/work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_v170_img2img.py:192: FutureWarning: `torch.distributed.reduce_op` is deprecated, please use `torch.distributed.ReduceOp` instead
+    return (sum(torch.is_tensor(o) for o in objs), sum(isinstance(o, DiffusionPipeline) for o in objs), sum(isinstance(o, torch.nn.Module) for o in objs))
+
+tests/test_v170_img2img.py::RealDiffusersImg2Img::test_seed_denoise_source_batch_and_samplers
+  /tmp/claude-0/-home-user-YOISAKI-AI-STUDIO/a9a74c62-eeeb-5697-b417-ff8c1661a045/scratchpad/venv/lib/python3.13/site-packages/diffusers/schedulers/scheduling_euler_ancestral_discrete.py:207: DeprecationWarning: __array__ implementation doesn't accept a copy keyword, so passing copy=False failed. __array__ must implement 'dtype' and 'copy' keyword arguments. To learn more, see the migration guide https://numpy.org/devdocs/numpy_2_0_migration_guide.html#adapting-to-changes-in-the-copy-keyword
+    sigmas = np.array(((1 - self.alphas_cumprod) / self.alphas_cumprod) ** 0.5)
+
+tests/test_v170_img2img.py::RealDiffusersImg2Img::test_seed_denoise_source_batch_and_samplers
+  /tmp/claude-0/-home-user-YOISAKI-AI-STUDIO/a9a74c62-eeeb-5697-b417-ff8c1661a045/scratchpad/venv/lib/python3.13/site-packages/diffusers/schedulers/scheduling_euler_ancestral_discrete.py:312: DeprecationWarning: __array__ implementation doesn't accept a copy keyword, so passing copy=False failed. __array__ must implement 'dtype' and 'copy' keyword arguments. To learn more, see the migration guide https://numpy.org/devdocs/numpy_2_0_migration_guide.html#adapting-to-changes-in-the-copy-keyword
+    sigmas = np.array(((1 - self.alphas_cumprod) / self.alphas_cumprod) ** 0.5)
+
+tests/test_v170_img2img.py::RealDiffusersImg2Img::test_seed_denoise_source_batch_and_samplers
+tests/test_v170_img2img.py::RealDiffusersImg2Img::test_seed_denoise_source_batch_and_samplers
+tests/test_prompt_fidelity.py::test_generate_entrypoint_scheduler_reset_trace_and_profiler
+tests/test_prompt_fidelity.py::test_generate_entrypoint_scheduler_reset_trace_and_profiler
+  /tmp/claude-0/-home-user-YOISAKI-AI-STUDIO/a9a74c62-eeeb-5697-b417-ff8c1661a045/scratchpad/venv/lib/python3.13/site-packages/diffusers/schedulers/scheduling_dpmsolver_multistep.py:408: DeprecationWarning: __array__ implementation doesn't accept a copy keyword, so passing copy=False failed. __array__ must implement 'dtype' and 'copy' keyword arguments. To learn more, see the migration guide https://numpy.org/devdocs/numpy_2_0_migration_guide.html#adapting-to-changes-in-the-copy-keyword
+    sigmas = np.array(((1 - self.alphas_cumprod) / self.alphas_cumprod) ** 0.5)
+
+tests/test_prompt_fidelity.py::test_short_native_parity
+tests/test_prompt_fidelity.py::test_long_tail_both_encoders_and_negative
+tests/test_prompt_fidelity.py::test_A_B_C_D_E_real_cpu_inference
+tests/test_prompt_fidelity.py::test_limit_rejects_without_truncating
+tests/test_prompt_fidelity.py::test_different_tokenizer_lengths
+tests/test_prompt_fidelity.py::test_generate_entrypoint_scheduler_reset_trace_and_profiler
+tests/test_prompt_fidelity.py::test_regional_long_prompt_real_pipeline
+tests/test_prompt_fidelity.py::test_native_truncation_with_real_sdxl_tokenizers
+  /tmp/claude-0/-home-user-YOISAKI-AI-STUDIO/a9a74c62-eeeb-5697-b417-ff8c1661a045/scratchpad/venv/lib/python3.13/site-packages/peft/tuners/tuners_utils.py:282: UserWarning: Already found a `peft_config` attribute in the model. This will lead to having multiple adapters in the model. Make sure to know what you are doing!
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+68 passed, 113 warnings in 117.17s (0:01:57)

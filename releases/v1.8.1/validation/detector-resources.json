@@ -1,0 +1,32 @@
+{
+ "rss_start_mib": 10.43359375,
+ "rss_after_import_cv2_numpy_mib": 73.50390625,
+ "rss_after_loading_3072_rgba_mib": 111.30859375,
+ "image": [
+  3072,
+  3072
+ ],
+ "first_detect_s": 0.663,
+ "rss_after_first_detect_mib": 361.62890625,
+ "grid_faces_total": 12,
+ "grid_faces_strong": 12,
+ "loaded_models": [
+  "anime",
+  "human"
+ ],
+ "detect_3072_s_median": 0.568,
+ "rss_after_20_detects_mib": 338.40625,
+ "rss_series_mib": [
+  336.7,
+  346.9,
+  329.0,
+  329.0,
+  329.0
+ ],
+ "peak_rss_mib": 411.67578125,
+ "detect_512_s_median": 0.039,
+ "opencv": "4.11.0",
+ "cv2_threads": 4,
+ "cpu_count": 4,
+ "torch_imported": false
+}

@@ -1,0 +1,6 @@
+nbformat valid, cells 10
+AST OK for all code cells; outputs cleared
+embedded package sha256 == _EXPECTED fa9f5283eed2fb164e1f1712bb79c3a8add91b9d46c4115ca4955e2f65b92d82
+extracted 32 files byte-identical to Colab sources
+identical to website engine: 24 | Colab-specific variants (same set as v1.8.0): ['diagnostics/runner.py', 'diagnostics/ui.py', 'inference/sdpose.py', 'panel.py', 'stress_memory.py', 'worker/direct_server.py', 'worker/memory_profiler.py', 'worker/models.py']
+Smart Face Fix files identical in both engine trees; engine_version ['1.8.1']

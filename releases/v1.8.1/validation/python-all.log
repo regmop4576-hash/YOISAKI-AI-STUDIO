@@ -1,0 +1,341 @@
+F...................F.......F..................................F........ [ 23%]
+...........................F............................F.........FF.... [ 46%]
+........................................................................ [ 69%]
+........sssssssssssssssss....s...sF.................ss......F..F.....FFF [ 92%]
+....FF.................                                                  [100%]
+=================================== FAILURES ===================================
+________________ ControlTests.test_authenticated_api_real_canny ________________
+
+self = <test_controlnet.ControlTests testMethod=test_authenticated_api_real_canny>
+
+    def test_authenticated_api_real_canny(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            app=create_app(Path(tmp)/'models','a'*64)
+            with TestClient(app) as c:
+                self.assertEqual(c.post('/controlnet/preprocess',json=self.request()).status_code,401)
+                headers={'Authorization':'Bearer '+'a'*64}
+                r=c.post('/controlnet/preprocess',headers=headers,json=self.request());self.assertEqual(r.status_code,200,r.text)
+                self.assertEqual(r.json()['type'],'Canny')
+                self.assertEqual(c.post('/controlnet/preprocess',headers=headers,json=dict(self.request(),image='bad')).status_code,422)
+>               h=c.get('/health',headers=headers).json();self.assertEqual(h['engine_version'],'1.7.0');self.assertTrue(h['capabilities']['controlnet'])
+                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E               AssertionError: '1.8.1' != '1.7.0'
+E               - 1.8.1
+E               + 1.7.0
+
+tests/test_controlnet.py:53: AssertionError
+_________________________ test_auth_health_and_limits __________________________
+
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-10/test_auth_health_and_limits0')
+
+    def test_auth_health_and_limits(tmp_path):
+        from urllib.parse import urlsplit,parse_qs
+        assert parse_qs(urlsplit('https://example.trycloudflare.com/#token='+TOKEN).fragment)['token']==[TOKEN]
+        with TestClient(create_app(tmp_path,TOKEN)) as c:
+            for url in ['/health','/models','/jobs/no','/results/no']:assert c.get(url).status_code==401
+>           assert c.get('/health',headers=AUTH).json()['engine_version']=='1.7.0'
+E           AssertionError: assert '1.8.1' == '1.7.0'
+E             
+E             - 1.7.0
+E             + 1.8.1
+
+tests/test_engine.py:32: AssertionError
+______________________________ test_panel_no_gpu _______________________________
+
+    def test_panel_no_gpu():
+        assert gpu()['cuda'] is False
+>       p=Panel();assert len(p.buttons)==4;assert 'GPU недоступен' in p.status.value
+          ^^^^^^^
+
+tests/test_engine.py:44: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <panel.Panel object at 0x7fa0f135a7b0>
+
+    def __init__(self):
+>       import ipywidgets as w
+E       ModuleNotFoundError: No module named 'ipywidgets'
+
+engine/panel.py:91: ModuleNotFoundError
+______________________ test_engine_api_metadata_and_auth _______________________
+
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-10/test_engine_api_metadata_and_a0')
+
+    def test_engine_api_metadata_and_auth(tmp_path):
+        token='d'*64
+        app=create_app(tmp_path,token)
+>       assert app.version=='1.7.0'
+E       AssertionError: assert '1.8.1' == '1.7.0'
+E         
+E         - 1.7.0
+E         + 1.8.1
+
+tests/test_ui_release_metadata.py:11: AssertionError
+___________ test_launcher_end_to_end_auth_health_lock_and_clean_stop ___________
+
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-10/test_launcher_end_to_end_auth_0')
+
+    @needs_engine
+    def test_launcher_end_to_end_auth_health_lock_and_clean_stop(tmp_path):
+        env = {**os.environ, **env_for(tmp_path, YOISAKI_ENGINE_DIR=str(fake_gpu_engine(tmp_path)), YOISAKI_TUNNEL='0',
+               YOISAKI_GPU_PREFLIGHT='0', YOISAKI_PORT='18765')}
+        data = tmp_path / 'data'
+        proc = subprocess.Popen([sys.executable, str(APP / 'cloudcompute/launcher.py'), 'run'], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        try:
+            state = data / 'runtime/state'
+            assert wait(lambda: (state / 'launcher.json').exists() and json.loads((state / 'launcher.json').read_text())['phase'] == 'READY'), proc
+            token = (state / 'token').read_text().strip()
+            assert re.fullmatch('[a-f0-9]{64}', token) and stat.S_IMODE((state / 'token').stat().st_mode) == 0o600
+            with pytest.raises(urllib.error.HTTPError) as denied:get('http://127.0.0.1:18765/health')
+            assert denied.value.code == 401
+            with pytest.raises(urllib.error.HTTPError):get('http://127.0.0.1:18765/health', 'b' * 64)
+            status, health = get('http://127.0.0.1:18765/health', token)
+>           assert status == 200 and health['engine'] == 'YOISAKI_ENGINE' and health['engine_version'] == '1.7.0' and health['state'] == 'READY'
+E           AssertionError: assert (200 == 200 and 'YOISAKI_ENGINE' == 'YOISAKI_ENGINE'
+E             
+E               YOISAKI_ENGINE and '1.8.1' == '1.7.0'
+E             
+E             - 1.7.0
+E             + 1.8.1)
+
+tests/test_v171_cloudcompute.py:128: AssertionError
+_____________________ test_diagnostics_report_without_gpu ______________________
+
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-10/test_diagnostics_report_withou0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7fa0c0cb77e0>
+capsys = <_pytest.capture.CaptureFixture object at 0x7fa0d0cffe00>
+
+    def test_diagnostics_report_without_gpu(tmp_path, monkeypatch, capsys):
+        for k, v in env_for(tmp_path).items():monkeypatch.setenv(k, v)
+        cfg = launcher.Config()
+        launcher.prepare(cfg)
+        safetensors(cfg.models / 'checkpoints/a.safetensors')
+        assert diagnose.main(['diagnose.py', '--json']) == 0
+        data = json.loads(capsys.readouterr().out)
+>       assert data['engine_version'] == '1.7.0' and data['deploy_version'] == '1.7.7.1'
+E       AssertionError: assert ('1.8.1' == '1.7.0'
+E         
+E         - 1.7.0
+E         + 1.8.1)
+
+tests/test_v171_cloudcompute.py:309: AssertionError
+______________ test_notebook_package_is_byte_identical_to_engine _______________
+
+    def test_notebook_package_is_byte_identical_to_engine():
+        nb = json.loads(next((APP / 'colab').glob('YOISAKI_ENGINE_V1.7.0_*.ipynb')).read_text())
+        source = ''.join(nb['cells'][2]['source'])
+        raw = base64.b64decode(re.search(r"_PACKAGE = '([A-Za-z0-9+/=]+)'", source).group(1))
+        assert hashlib.sha256(raw).hexdigest() == re.search(r"_EXPECTED = '([a-f0-9]{64})'", source).group(1)
+        with zipfile.ZipFile(io.BytesIO(raw)) as z:
+            names = [i.filename for i in z.infolist() if not i.is_dir()]
+            for name in names:
+>               assert z.read(name) == (APP / 'engine' / name).read_bytes(), name
+E               AssertionError: diagnostics/runner.py
+E               assert b'"""Notebook...p.is_dir()]\n' == b'"""Notebook...p.is_dir()]\n'
+E                 
+E                 At index 9082 diff: b'!' != b' '
+E                 Use -v to get more diff
+
+tests/test_v171_cloudcompute.py:403: AssertionError
+_______________ test_engine_files_match_current_package_manifest _______________
+
+    def test_engine_files_match_current_package_manifest():
+        manifest = json.loads((APP / 'package-manifest.json').read_text())
+        engine = {k: v for k, v in manifest.items() if k.startswith('engine/')}
+>       assert len(engine) == 25
+E       AssertionError: assert 27 == 25
+E        +  where 27 = len({'engine/bootstrap.py': 'e567b404b6b4d9c3d6de012d2cc881ec642c004685e403ae0c22b2e9df5dd1f0', 'engine/diagnostics/__init...400d3d238766', 'engine/diagnostics/runner.py': 'd8bf7fb3953f74f8da423d6e23512dd8167c3436a8cc7c0e9180dcad8f42e4ff', ...})
+
+tests/test_v171_cloudcompute.py:411: AssertionError
+_______________ test_real_launcher_serves_engine_and_sync_routes _______________
+
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-10/test_real_launcher_serves_engi0')
+
+    @pytest.mark.skipif(importlib.util.find_spec('fastapi') is None or importlib.util.find_spec('torch') is None,
+                        reason='engine dependencies (run inside the YOISAKI image)')
+    def test_real_launcher_serves_engine_and_sync_routes(tmp_path):
+        """Real launcher → serve_cloud.py → unchanged engine app (CUDA test double), loopback only, token from the state file."""
+        import urllib.request, urllib.error, signal
+        engine = tmp_path / 'engine'
+        shutil.copytree(APP / 'engine', engine, ignore=shutil.ignore_patterns('.venv', '.results', '__pycache__'))
+        (engine / 'sitecustomize.py').write_text("import torch\ntorch.cuda.is_available = lambda: True\n"
+                                                 "torch.cuda.get_device_name = lambda *a: 'TEST_DOUBLE_NOT_REAL_GPU'\n"
+                                                 "torch.cuda.mem_get_info = lambda *a: (15 * 2**30, 16 * 2**30)\n")
+        env = {**os.environ, 'YOISAKI_DATA_ROOT': str(tmp_path / 'data'), 'YOISAKI_ENGINE_DIR': str(engine), 'YOISAKI_TUNNEL': '0',
+               'YOISAKI_GPU_PREFLIGHT': '0', 'YOISAKI_PORT': '18767'}
+        proc = subprocess.Popen([sys.executable, str(APP / 'cloudcompute/launcher.py'), 'run'], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        state = tmp_path / 'data/runtime/state'
+        try:
+            end = time.time() + 90
+            while time.time() < end and not ((state / 'launcher.json').exists() and json.loads((state / 'launcher.json').read_text())['phase'] == 'READY'):
+                assert proc.poll() is None
+                time.sleep(0.5)
+            token = (state / 'token').read_text().strip()
+            req = lambda path, t=None: urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:18767' + path, headers={'Authorization': 'Bearer ' + t} if t else {}), timeout=10)
+            with pytest.raises(urllib.error.HTTPError) as e:
+                req('/sync/status')
+            assert e.value.code == 401
+            snap = json.load(req('/sync/status', token))
+            assert snap['service'] == 'YOISAKI_DRIVE_SYNC' and snap['configured'] is False and snap['source'] == 'YOISAKI_AI_STUDIO/models'
+            health = json.load(req('/health', token))
+>           assert health['engine_version'] == '1.7.0' and health['api_version'] == '1.7.0' and health['state'] == 'READY'
+E           AssertionError: assert ('1.8.1' == '1.7.0'
+E             
+E             - 1.7.0
+E             + 1.8.1)
+
+tests/test_v172_drive_sync.py:692: AssertionError
+__________ test_provision_starts_background_engine_with_website_token __________
+
+env = {'PATH': '/nix/var/nix/profiles/default/bin:/root/.local/bin:/root/.cargo/bin:/usr/local/go/bin:/opt/node22/bin:/opt/m...n_starts_backgrou0/app', 'YOISAKI_PYTHON': '/tmp/pytest-of-root/pytest-10/test_provision_starts_backgrou0/python', ...}
+
+    def test_provision_starts_background_engine_with_website_token(env):
+        r = subprocess.run(['bash', str(AUTOSTART), '--provision'], env={**env, 'YOISAKI_PROVISION_TOKEN': TOKEN, 'FAKE_RUN_SLEEP': '1'},
+                           capture_output=True, text=True, timeout=30)
+>       assert r.returncode == 0, r.stderr
+E       AssertionError: 
+E       assert 3 == 0
+E        +  where 3 = CompletedProcess(args=['bash', '/tmp/claude-0/-home-user-YOISAKI-AI-STUDIO/a9a74c62-eeeb-5697-b417-ff8c1661a045/scratc.../autostart.log).\n2026-10-30 07:56:29 ОШИБКА: запуск супервизора не подтверждён. См. logs/autostart.log.\n', stderr='').returncode
+
+tests/test_v175_autostart.py:98: AssertionError
+___ test_177_image_cmd_after_onstart_waits_instead_of_stopping_the_container ___
+
+env = {'PATH': '/nix/var/nix/profiles/default/bin:/root/.local/bin:/root/.cargo/bin:/usr/local/go/bin:/opt/node22/bin:/opt/m...e_cmd_after_onsta0/app', 'YOISAKI_PYTHON': '/tmp/pytest-of-root/pytest-10/test_177_image_cmd_after_onsta0/python', ...}
+
+    def test_177_image_cmd_after_onstart_waits_instead_of_stopping_the_container(env):
+        """Provider order onstart → image CMD: the onstart supervisor holds the lock. The CMD (PID 1 child under tini)
+        must neither start a second engine nor exit (exit = container stop); it takes over when the first one ends."""
+        r = subprocess.run(['bash', str(AUTOSTART), '--provision'], env={**env, 'YOISAKI_PROVISION_TOKEN': TOKEN, 'FAKE_RUN_SLEEP': '3'},
+                           capture_output=True, text=True, timeout=30)
+>       assert r.returncode == 0, r.stderr
+E       AssertionError: 
+E       assert 3 == 0
+E        +  where 3 = CompletedProcess(args=['bash', '/tmp/claude-0/-home-user-YOISAKI-AI-STUDIO/a9a74c62-eeeb-5697-b417-ff8c1661a045/scratc.../autostart.log).\n2026-10-30 07:56:37 ОШИБКА: запуск супервизора не подтверждён. См. logs/autostart.log.\n', stderr='').returncode
+
+tests/test_v175_autostart.py:153: AssertionError
+________________ test_engine_directory_is_byte_identical_to_174 ________________
+
+    def test_engine_directory_is_byte_identical_to_174():
+        import hashlib
+        h = hashlib.sha256()
+        for path in sorted((APP / 'engine').rglob('*')):
+            if path.is_file() and '__pycache__' not in path.parts:
+                h.update(str(path.relative_to(APP)).encode() + b'\0' + path.read_bytes())
+>       assert h.hexdigest() == 'a5ab65527fceaeff5610a4be993d94c17cd150661ad8592c73576cc5b65df888'  # engine/ of YOISAKI AI STUDIO 1.7.4 (no inference pipeline change)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: assert '3c04a69f87a1...c7a0a0c0d52ef' == 'a5ab65527fce...76cc5b65df888'
+E         
+E         - a5ab65527fceaeff5610a4be993d94c17cd150661ad8592c73576cc5b65df888
+E         + 3c04a69f87a12d2f421d42a37f2ad2c476f8f941d2c131d5e53c7a0a0c0d52ef
+
+tests/test_v175_autostart.py:253: AssertionError
+_ test_parallel_repeated_provision_does_not_reload_or_create_waiting_supervisors _
+
+env = {'PATH': '/nix/var/nix/profiles/default/bin:/root/.local/bin:/root/.cargo/bin:/usr/local/go/bin:/opt/node22/bin:/opt/m..._repeated_provisi0/app', 'YOISAKI_PYTHON': '/tmp/pytest-of-root/pytest-10/test_parallel_repeated_provisi0/python', ...}
+
+    def test_parallel_repeated_provision_does_not_reload_or_create_waiting_supervisors(env):
+        try:
+            first = provision(env)
+>           assert first.returncode == 0, first.stderr + first.stdout
+E           AssertionError: 2026-10-30 07:56:37 Токен движка от YOISAKI AI STUDIO сохранён (0600).
+E             2026-10-30 07:56:37 Автозапуск движка начат в фоне (журнал: /tmp/pytest-of-root/pytest-10/test_parallel_repeated_provisi0/data/logs/autostart.log).
+E             2026-10-30 07:56:43 ОШИБКА: запуск супервизора не подтверждён. См. logs/autostart.log.
+E             
+E           assert 3 == 0
+E            +  where 3 = CompletedProcess(args=['bash', '/tmp/claude-0/-home-user-YOISAKI-AI-STUDIO/a9a74c62-eeeb-5697-b417-ff8c1661a045/scratc.../autostart.log).\n2026-10-30 07:56:43 ОШИБКА: запуск супервизора не подтверждён. См. logs/autostart.log.\n', stderr='').returncode
+
+tests/test_v1771_startup.py:31: AssertionError
+___ test_changed_token_restarts_once_and_detached_supervisor_survives_caller ___
+
+env = {'PATH': '/nix/var/nix/profiles/default/bin:/root/.local/bin:/root/.cargo/bin:/usr/local/go/bin:/opt/node22/bin:/opt/m...token_restarts_on0/app', 'YOISAKI_PYTHON': '/tmp/pytest-of-root/pytest-10/test_changed_token_restarts_on0/python', ...}
+
+    def test_changed_token_restarts_once_and_detached_supervisor_survives_caller(env):
+        try:
+>           assert provision(env).returncode == 0
+E           AssertionError: assert 3 == 0
+E            +  where 3 = CompletedProcess(args=['bash', '/tmp/claude-0/-home-user-YOISAKI-AI-STUDIO/a9a74c62-eeeb-5697-b417-ff8c1661a045/scratc.../autostart.log).\n2026-10-30 07:56:48 ОШИБКА: запуск супервизора не подтверждён. См. logs/autostart.log.\n', stderr='').returncode
+E            +    where CompletedProcess(args=['bash', '/tmp/claude-0/-home-user-YOISAKI-AI-STUDIO/a9a74c62-eeeb-5697-b417-ff8c1661a045/scratc.../autostart.log).\n2026-10-30 07:56:48 ОШИБКА: запуск супервизора не подтверждён. См. logs/autostart.log.\n', stderr='') = provision({'PATH': '/nix/var/nix/profiles/default/bin:/root/.local/bin:/root/.cargo/bin:/usr/local/go/bin:/opt/node22/bin:/opt/m...token_restarts_on0/app', 'YOISAKI_PYTHON': '/tmp/pytest-of-root/pytest-10/test_changed_token_restarts_on0/python', ...})
+
+tests/test_v1771_startup.py:56: AssertionError
+_______ test_foreground_waiter_forwards_shutdown_to_detached_supervisor ________
+
+env = {'PATH': '/nix/var/nix/profiles/default/bin:/root/.local/bin:/root/.cargo/bin:/usr/local/go/bin:/opt/node22/bin:/opt/m...nd_waiter_forward0/app', 'YOISAKI_PYTHON': '/tmp/pytest-of-root/pytest-10/test_foreground_waiter_forward0/python', ...}
+
+    def test_foreground_waiter_forwards_shutdown_to_detached_supervisor(env):
+        proc = None
+        try:
+>           assert provision(env).returncode == 0
+E           AssertionError: assert 3 == 0
+E            +  where 3 = CompletedProcess(args=['bash', '/tmp/claude-0/-home-user-YOISAKI-AI-STUDIO/a9a74c62-eeeb-5697-b417-ff8c1661a045/scratc.../autostart.log).\n2026-10-30 07:56:54 ОШИБКА: запуск супервизора не подтверждён. См. logs/autostart.log.\n', stderr='').returncode
+E            +    where CompletedProcess(args=['bash', '/tmp/claude-0/-home-user-YOISAKI-AI-STUDIO/a9a74c62-eeeb-5697-b417-ff8c1661a045/scratc.../autostart.log).\n2026-10-30 07:56:54 ОШИБКА: запуск супервизора не подтверждён. См. logs/autostart.log.\n', stderr='') = provision({'PATH': '/nix/var/nix/profiles/default/bin:/root/.local/bin:/root/.cargo/bin:/usr/local/go/bin:/opt/node22/bin:/opt/m...nd_waiter_forward0/app', 'YOISAKI_PYTHON': '/tmp/pytest-of-root/pytest-10/test_foreground_waiter_forward0/python', ...})
+
+tests/test_v1771_startup.py:103: AssertionError
+_____________ test_real_browser_terminal_shell_echo_and_detachment _____________
+
+env = {'PATH': '/nix/var/nix/profiles/default/bin:/root/.local/bin:/root/.cargo/bin:/usr/local/go/bin:/opt/node22/bin:/opt/m...wser_terminal_she0/app', 'YOISAKI_PYTHON': '/tmp/pytest-of-root/pytest-10/test_real_browser_terminal_she0/python', ...}
+
+    def test_real_browser_terminal_shell_echo_and_detachment(env):
+        import pty
+        import select
+        import shutil
+        app = Path(env['YOISAKI_APP_DIR'])
+        shutil.copy2(AUTOSTART, app / 'cloudcompute/autostart-image.sh')
+        script = subprocess.check_output(['node', '--input-type=module', '-e',
+            'import {onstartScript,ENGINE_IMAGE} from "./server/cloudcompute-deploy.mjs";process.stdout.write(onstartScript({image:ENGINE_IMAGE,token:"a".repeat(64)}))'], cwd=AUTOSTART.parents[1], text=True)
+        master, slave = pty.openpty()
+        proc = subprocess.Popen(['bash', '--noprofile', '--norc', '-i'], stdin=slave, stdout=slave, stderr=slave,
+                                env={**env, 'FAKE_RUN_SLEEP': '120'}, start_new_session=True)
+        os.close(slave)
+        def receive(marker):
+            data = b''
+            end = time.time() + 12
+            while marker not in data and time.time() < end:
+                if select.select([master], [], [], .1)[0]:
+                    data += os.read(master, 65536)
+            assert marker in data, data.decode(errors='replace')
+            return data
+        try:
+            receive(b'# ')
+            os.write(master, b" stty -echo && set +o history && printf '\\nQUIET_%s\\n' YES\n")
+            receive(b'\r\nQUIET_YES\r\n')
+            os.write(master, ("bash <<'Y_INIT'\n" + script + "Y_INIT\nprintf '\\nDONE:%s\\n' \"$?\"\n").encode())
+>           output = receive(b'DONE:0')
+                     ^^^^^^^^^^^^^^^^^^
+
+tests/test_v1771_startup.py:144: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+marker = b'DONE:0'
+
+    def receive(marker):
+        data = b''
+        end = time.time() + 12
+        while marker not in data and time.time() < end:
+            if select.select([master], [], [], .1)[0]:
+                data += os.read(master, 65536)
+>       assert marker in data, data.decode(errors='replace')
+E       AssertionError: > > > > > > > > > > > > > > > > > > > > > > > YOISAKI_INIT_FAILED: required image files missing in this container.
+E         bash-5.2# 
+E         DONE:42
+E         bash-5.2# 
+E       assert b'DONE:0' in b'> > > > > > > > > > > > > > > > > > > > > > > YOISAKI_INIT_FAILED: required image files missing in this container.\r\nbash-5.2# \r\nDONE:42\r\nbash-5.2# '
+
+tests/test_v1771_startup.py:137: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_controlnet.py::ControlTests::test_authenticated_api_real_canny
+FAILED tests/test_engine.py::test_auth_health_and_limits - AssertionError: as...
+FAILED tests/test_engine.py::test_panel_no_gpu - ModuleNotFoundError: No modu...
+FAILED tests/test_ui_release_metadata.py::test_engine_api_metadata_and_auth
+FAILED tests/test_v171_cloudcompute.py::test_launcher_end_to_end_auth_health_lock_and_clean_stop
+FAILED tests/test_v171_cloudcompute.py::test_diagnostics_report_without_gpu
+FAILED tests/test_v171_cloudcompute.py::test_notebook_package_is_byte_identical_to_engine
+FAILED tests/test_v171_cloudcompute.py::test_engine_files_match_current_package_manifest
+FAILED tests/test_v172_drive_sync.py::test_real_launcher_serves_engine_and_sync_routes
+FAILED tests/test_v175_autostart.py::test_provision_starts_background_engine_with_website_token
+FAILED tests/test_v175_autostart.py::test_177_image_cmd_after_onstart_waits_instead_of_stopping_the_container
+FAILED tests/test_v175_autostart.py::test_engine_directory_is_byte_identical_to_174
+FAILED tests/test_v1771_startup.py::test_parallel_repeated_provision_does_not_reload_or_create_waiting_supervisors
+FAILED tests/test_v1771_startup.py::test_changed_token_restarts_once_and_detached_supervisor_survives_caller
+FAILED tests/test_v1771_startup.py::test_foreground_waiter_forwards_shutdown_to_detached_supervisor
+FAILED tests/test_v1771_startup.py::test_real_browser_terminal_shell_echo_and_detachment
+16 failed, 274 passed, 21 skipped in 425.47s (0:07:05)

@@ -1,0 +1,92 @@
+{
+ "anime_tiles": {
+  "gt_faces": 39,
+  "strong_tp": 38,
+  "strong_fp": 1,
+  "weak_tp": 1,
+  "weak_fp": 5,
+  "auto_selected": 31,
+  "auto_correct": 31,
+  "choose": 2,
+  "none": 0,
+  "single_tiles": 33,
+  "median_ms_512": 48.4,
+  "max_ms_512": 106.2
+ },
+ "strong_tp_by_detector": {
+  "human": 2,
+  "anime+human": 29,
+  "anime": 7
+ },
+ "negatives_faces": {
+  "neg_baboon.jpg": 0,
+  "neg_building.jpg": 0,
+  "neg_fruits.jpg": 0,
+  "neg_graf1.png": 0,
+  "neg_home.jpg": 0,
+  "neg_orange.jpg": 0,
+  "neg_smarties.png": 0,
+  "neg_starry_night.jpg": 0
+ },
+ "human_photos": {
+  "lena.jpg": [
+   [
+    147,
+    208,
+    0.909
+   ]
+  ],
+  "messi.jpg": [
+   [
+    32,
+    41,
+    0.9153
+   ],
+   [
+    22,
+    27,
+    0.4128
+   ],
+   [
+    22,
+    27,
+    0.362
+   ],
+   [
+    22,
+    27,
+    0.5133
+   ],
+   [
+    20,
+    27,
+    0.3768
+   ],
+   [
+    18,
+    22,
+    0.5143
+   ],
+   [
+    17,
+    21,
+    0.3584
+   ],
+   [
+    17,
+    19,
+    0.3995
+   ],
+   [
+    15,
+    16,
+    0.4276
+   ],
+   [
+    13,
+    15,
+    0.3838
+   ]
+  ]
+ }
+}

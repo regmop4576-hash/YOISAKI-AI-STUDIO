@@ -1,0 +1,86 @@
+Page text at failure:
+YOISAKI AI STUDIO
+Библиотека моделей
+GPU ОТКЛЮЧЁН
+
+Google Drive, модели на GPU и синхронизация между ними
+
+CLOUDCOMPUTE · СОСТОЯНИЕ
+НЕ ГОТОВ
+API
+НЕ НАСТРОЕН
+ИНСТАНС
+НЕ СОЗДАН ЗДЕСЬ
+ДВИЖОК
+НЕ ПОДКЛЮЧЁН
+CUDA
+НЕ ПРОВЕРЕНА
+GPU
+—
+VRAM
+—
+ДИСК МОДЕЛЕЙ
+—
+GOOGLE DRIVE
+НЕ ПОДКЛЮЧЁН
+СИНХРОНИЗАЦИЯ
+Ожидание
+
+GPU-движок не подключён.
+
+GOOGLE DRIVE · АККАУНТ И ПАПКА
+
+Вход и выбор папки работают без GPU. У каждого пользователя — свой Google-аккаунт.
+
+Войти в Google
+Настройка OAuth
+
+В сборке ещё не настроен OAuth-клиент Google. Автор сборки может настроить его один раз для пользователей; также можно указать свой клиент ниже.
+
+Google Cloud → включить Google Drive API → настроить экран согласия и тестовых пользователей → создать OAuth client типа Desktop app. Для распространения сборки: config/google-desktop-client.json. Подробности в docs/INTEGRATIONS_SETUP_RU.md.
+
+Google Client ID
+Google Client Secret
+Сохранить настройки
+
+Доступ только на чтение. Токены хранятся в закрытом каталоге приложения и обновляются автоматически. Пароль Google вводится только на странице Google.
+
+GOOGLE DRIVE
+МОДЕЛИ GPU
+СИНХРОНИЗАЦИЯ
+GOOGLE DRIVE — БИБЛИОТЕКА МОДЕЛЕЙ
+Ещё не проверялось
+АККАУНТ
+Не подключён
+GPU
+Офлайн — для просмотра Drive не нужен
+ПАПКА МОДЕЛЕЙ
+не выбрана
+СПИСОК
+не загружен
+ПРОВЕРИТЬ GOOGLE DRIVE
+Все модели
+По папкам
+ВЫБОР ДЛЯ СИНХРОНИЗАЦИИ: 0
+Ничего не выбрано. Отметьте модели — выбор сохранится на телефоне и будет использован, когда GPU станет доступен. Вся коллекция автоматически не скачивается.
+ВСЕ
+CHECKPOINTS
+LORA
+VAE
+CONTROLNET
+ДРУГОЕ
+
+Войдите в Google в блоке «Аккаунт и папка» выше.
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+locator.waitFor: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for getByRole('heading', { name: 'GOOGLE DRIVE AUTO SYNC', exact: true }) to be visible[22m
+
+    at /tmp/claude-0/-home-user-YOISAKI-AI-STUDIO/a9a74c62-eeeb-5697-b417-ff8c1661a045/scratchpad/work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/drive-sync-browser.mjs:34:156 {
+  name: 'TimeoutError'
+}
+
+Node.js v22.22.0

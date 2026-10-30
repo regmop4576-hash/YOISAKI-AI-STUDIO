@@ -1,0 +1,296 @@
+[
+  {
+    "job_type": "facefix",
+    "duration_seconds": 0.903,
+    "before": {
+      "ram_available_bytes": 14698749952,
+      "ram_used_bytes": 2174058496,
+      "process_rss_bytes": 1259216896,
+      "cuda_free_bytes": null,
+      "cuda_allocated_bytes": null,
+      "cuda_reserved_bytes": null,
+      "cuda_peak_allocated_bytes": null,
+      "cuda_peak_reserved_bytes": null
+    },
+    "after_cleanup": {
+      "ram_available_bytes": 14697492480,
+      "ram_used_bytes": 2175315968,
+      "process_rss_bytes": 1310121984,
+      "cuda_free_bytes": null,
+      "cuda_allocated_bytes": null,
+      "cuda_reserved_bytes": null,
+      "cuda_peak_allocated_bytes": null,
+      "cuda_peak_reserved_bytes": null
+    },
+    "peak_system_ram_used_bytes": 2175315968,
+    "peak_process_rss_bytes": 1310126080,
+    "ram_sampling_interval_seconds": 0.25,
+    "loaded_before": {
+      "pipeline_type": null,
+      "adapter_count": 0,
+      "optional_components": []
+    },
+    "inference_pipeline": "StableDiffusionXLInpaintPipeline",
+    "model_reused": true,
+    "pipeline_type": "StableDiffusionXLPipeline",
+    "adapter_count": 0,
+    "optional_components": [],
+    "cleanup": "ok",
+    "face_fix": {
+      "detector": "auto",
+      "detectors_run": [
+        "anime",
+        "human"
+      ],
+      "detected_faces": 2,
+      "detection_seconds": 0.0,
+      "requested_faces": 2,
+      "refined_faces": 2
+    }
+  },
+  {
+    "job_type": "facefix",
+    "duration_seconds": 0.83,
+    "before": {
+      "ram_available_bytes": 14697492480,
+      "ram_used_bytes": 2175315968,
+      "process_rss_bytes": 1310121984,
+      "cuda_free_bytes": null,
+      "cuda_allocated_bytes": null,
+      "cuda_reserved_bytes": null,
+      "cuda_peak_allocated_bytes": null,
+      "cuda_peak_reserved_bytes": null
+    },
+    "after_cleanup": {
+      "ram_available_bytes": 14697496576,
+      "ram_used_bytes": 2175311872,
+      "process_rss_bytes": 1310441472,
+      "cuda_free_bytes": null,
+      "cuda_allocated_bytes": null,
+      "cuda_reserved_bytes": null,
+      "cuda_peak_allocated_bytes": null,
+      "cuda_peak_reserved_bytes": null
+    },
+    "peak_system_ram_used_bytes": 2175315968,
+    "peak_process_rss_bytes": 1310445568,
+    "ram_sampling_interval_seconds": 0.25,
+    "loaded_before": {
+      "pipeline_type": null,
+      "adapter_count": 0,
+      "optional_components": []
+    },
+    "inference_pipeline": "StableDiffusionXLInpaintPipeline",
+    "model_reused": true,
+    "pipeline_type": "StableDiffusionXLPipeline",
+    "adapter_count": 0,
+    "optional_components": [],
+    "cleanup": "ok",
+    "face_fix": {
+      "detector": "auto",
+      "detectors_run": [
+        "anime",
+        "human"
+      ],
+      "detected_faces": 2,
+      "detection_seconds": 0.0,
+      "requested_faces": 2,
+      "refined_faces": 2
+    }
+  },
+  {
+    "job_type": "facefix",
+    "duration_seconds": 0.979,
+    "before": {
+      "ram_available_bytes": 14697496576,
+      "ram_used_bytes": 2175311872,
+      "process_rss_bytes": 1310441472,
+      "cuda_free_bytes": null,
+      "cuda_allocated_bytes": null,
+      "cuda_reserved_bytes": null,
+      "cuda_peak_allocated_bytes": null,
+      "cuda_peak_reserved_bytes": null
+    },
+    "after_cleanup": {
+      "ram_available_bytes": 14697500672,
+      "ram_used_bytes": 2175307776,
+      "process_rss_bytes": 1310470144,
+      "cuda_free_bytes": null,
+      "cuda_allocated_bytes": null,
+      "cuda_reserved_bytes": null,
+      "cuda_peak_allocated_bytes": null,
+      "cuda_peak_reserved_bytes": null
+    },
+    "peak_system_ram_used_bytes": 2175311872,
+    "peak_process_rss_bytes": 1310474240,
+    "ram_sampling_interval_seconds": 0.25,
+    "loaded_before": {
+      "pipeline_type": null,
+      "adapter_count": 0,
+      "optional_components": []
+    },
+    "inference_pipeline": "StableDiffusionXLInpaintPipeline",
+    "model_reused": true,
+    "pipeline_type": "StableDiffusionXLPipeline",
+    "adapter_count": 0,
+    "optional_components": [],
+    "cleanup": "ok",
+    "face_fix": {
+      "detector": "auto",
+      "detectors_run": [
+        "anime",
+        "human"
+      ],
+      "detected_faces": 2,
+      "detection_seconds": 0.0,
+      "requested_faces": 2,
+      "refined_faces": 2
+    }
+  },
+  {
+    "job_type": "facefix",
+    "duration_seconds": 0.954,
+    "before": {
+      "ram_available_bytes": 14697500672,
+      "ram_used_bytes": 2175307776,
+      "process_rss_bytes": 1310470144,
+      "cuda_free_bytes": null,
+      "cuda_allocated_bytes": null,
+      "cuda_reserved_bytes": null,
+      "cuda_peak_allocated_bytes": null,
+      "cuda_peak_reserved_bytes": null
+    },
+    "after_cleanup": {
+      "ram_available_bytes": 14697500672,
+      "ram_used_bytes": 2175307776,
+      "process_rss_bytes": 1310478336,
+      "cuda_free_bytes": null,
+      "cuda_allocated_bytes": null,
+      "cuda_reserved_bytes": null,
+      "cuda_peak_allocated_bytes": null,
+      "cuda_peak_reserved_bytes": null
+    },
+    "peak_system_ram_used_bytes": 2175307776,
+    "peak_process_rss_bytes": 1310482432,
+    "ram_sampling_interval_seconds": 0.25,
+    "loaded_before": {
+      "pipeline_type": null,
+      "adapter_count": 0,
+      "optional_components": []
+    },
+    "inference_pipeline": "StableDiffusionXLInpaintPipeline",
+    "model_reused": true,
+    "pipeline_type": "StableDiffusionXLPipeline",
+    "adapter_count": 0,
+    "optional_components": [],
+    "cleanup": "ok",
+    "face_fix": {
+      "detector": "auto",
+      "detectors_run": [
+        "anime",
+        "human"
+      ],
+      "detected_faces": 2,
+      "detection_seconds": 0.0,
+      "requested_faces": 2,
+      "refined_faces": 2
+    }
+  },
+  {
+    "job_type": "facefix",
+    "duration_seconds": 1.005,
+    "before": {
+      "ram_available_bytes": 14697500672,
+      "ram_used_bytes": 2175307776,
+      "process_rss_bytes": 1310478336,
+      "cuda_free_bytes": null,
+      "cuda_allocated_bytes": null,
+      "cuda_reserved_bytes": null,
+      "cuda_peak_allocated_bytes": null,
+      "cuda_peak_reserved_bytes": null
+    },
+    "after_cleanup": {
+      "ram_available_bytes": 14697500672,
+      "ram_used_bytes": 2175307776,
+      "process_rss_bytes": 1310478336,
+      "cuda_free_bytes": null,
+      "cuda_allocated_bytes": null,
+      "cuda_reserved_bytes": null,
+      "cuda_peak_allocated_bytes": null,
+      "cuda_peak_reserved_bytes": null
+    },
+    "peak_system_ram_used_bytes": 2175307776,
+    "peak_process_rss_bytes": 1310482432,
+    "ram_sampling_interval_seconds": 0.25,
+    "loaded_before": {
+      "pipeline_type": null,
+      "adapter_count": 0,
+      "optional_components": []
+    },
+    "inference_pipeline": "StableDiffusionXLInpaintPipeline",
+    "model_reused": true,
+    "pipeline_type": "StableDiffusionXLPipeline",
+    "adapter_count": 0,
+    "optional_components": [],
+    "cleanup": "ok",
+    "face_fix": {
+      "detector": "auto",
+      "detectors_run": [
+        "anime",
+        "human"
+      ],
+      "detected_faces": 2,
+      "detection_seconds": 0.0,
+      "requested_faces": 2,
+      "refined_faces": 1
+    }
+  },
+  {
+    "job_type": "facefix",
+    "duration_seconds": 0.942,
+    "before": {
+      "ram_available_bytes": 14697500672,
+      "ram_used_bytes": 2175307776,
+      "process_rss_bytes": 1310478336,
+      "cuda_free_bytes": null,
+      "cuda_allocated_bytes": null,
+      "cuda_reserved_bytes": null,
+      "cuda_peak_allocated_bytes": null,
+      "cuda_peak_reserved_bytes": null
+    },
+    "after_cleanup": {
+      "ram_available_bytes": 14697500672,
+      "ram_used_bytes": 2175307776,
+      "process_rss_bytes": 1310527488,
+      "cuda_free_bytes": null,
+      "cuda_allocated_bytes": null,
+      "cuda_reserved_bytes": null,
+      "cuda_peak_allocated_bytes": null,
+      "cuda_peak_reserved_bytes": null
+    },
+    "peak_system_ram_used_bytes": 2175307776,
+    "peak_process_rss_bytes": 1310531584,
+    "ram_sampling_interval_seconds": 0.25,
+    "loaded_before": {
+      "pipeline_type": null,
+      "adapter_count": 0,
+      "optional_components": []
+    },
+    "inference_pipeline": "StableDiffusionXLInpaintPipeline",
+    "model_reused": true,
+    "pipeline_type": "StableDiffusionXLPipeline",
+    "adapter_count": 0,
+    "optional_components": [],
+    "cleanup": "ok",
+    "face_fix": {
+      "detector": "auto",
+      "detectors_run": [
+        "anime",
+        "human"
+      ],
+      "detected_faces": 2,
+      "detection_seconds": 0.0,
+      "requested_faces": 2,
+      "refined_faces": 2
+    }
+  }
+]
