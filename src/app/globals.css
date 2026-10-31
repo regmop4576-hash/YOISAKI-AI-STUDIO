@@ -79,16 +79,12 @@ label.field{display:flex;flex-direction:column;gap:6px}
 /* ---------- buttons ---------- */
 button,.btn{font:inherit;font-family:var(--font-pixel);font-size:var(--fs-s);font-weight:700;letter-spacing:.3px;color:var(--text);min-height:var(--tap);padding:4px 10px;display:inline-flex;align-items:center;justify-content:center;gap:7px;text-decoration:none;cursor:pointer;user-select:none;-webkit-user-select:none;
  border:6px solid transparent;border-image:var(--fx-btn) 3 / 6px stretch;background:var(--night-4) padding-box;position:relative;line-height:1.15;text-align:center;touch-action:manipulation}
-button:hover:not(:disabled),.btn:hover{border-image:var(--fx-btn-hover) 3 / 6px stretch;color:var(--gold-hi)}
 button:active:not(:disabled),.btn:active,button.is-pressed{border-image:var(--fx-btn-down) 3 / 6px stretch;transform:translateY(var(--u))}
 button:disabled{cursor:not-allowed;opacity:.5;filter:saturate(.4)}
 button.primary,.btn.primary{border-image:var(--fx-primary) 3 / 6px stretch;background:linear-gradient(180deg,#ffb23d,#ff8a14 60%,#f07208) padding-box;color:#2a1302;text-shadow:1px 1px 0 #ffd58a}
-button.primary:hover:not(:disabled),.btn.primary:hover{border-image:var(--fx-primary) 3 / 6px stretch;background:linear-gradient(180deg,#ffc35a,#ff9a24 60%,#ff7a0e) padding-box;color:#1a0b00}
 button.primary:active:not(:disabled),.btn.primary:active{border-image:var(--fx-primary-down) 3 / 6px stretch}
 button.danger,.btn.danger,button.pill.danger{color:var(--bad)}
-button.danger:hover:not(:disabled){border-image:var(--fx-danger) 3 / 6px stretch;background:var(--bad-bg) padding-box;color:#ffc2b8}
 button.ghost{border-color:transparent;border-image:none;background:transparent}
-button.ghost:hover:not(:disabled){border-image:none;background:#ffffff0d}
 button.icon,.icon-btn{min-width:var(--tap);padding:4px}
 button.block,.btn.block{width:100%}
 button.is-loading{color:transparent!important;text-shadow:none!important}
@@ -189,7 +185,6 @@ html.decor-compact .brand-title{top:30px}html.decor-compact .brand-title b{font-
 .bottomnav{position:fixed;left:0;right:0;bottom:0;z-index:50;display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:6px 6px calc(6px + env(safe-area-inset-bottom));
  background:linear-gradient(180deg,#0d1226,#070a18);border-top:4px solid var(--ink);box-shadow:0 -2px 0 var(--gold-lo),0 -8px 16px #0009}
 .bottomnav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:52px;padding:4px 2px;color:var(--muted);text-decoration:none;font-size:11px;font-weight:700;letter-spacing:.2px;border:6px solid transparent;text-align:center;line-height:1.1}
-.bottomnav a:hover{color:var(--gold-hi)}
 .bottomnav a.active{border-image:var(--fx-selected) 3 / 6px stretch;background:linear-gradient(180deg,#ffb23d,#ff8a14) padding-box;color:#2a1302}
 .bottomnav a:active{transform:translateY(var(--u))}
 .sidebar{display:none}
@@ -256,7 +251,6 @@ html.decor-compact .brand-title{top:30px}html.decor-compact .brand-title b{font-
 /* ---------- GENERATE hero button ---------- */
 .hero-btn{width:100%;min-height:74px;font-family:var(--font-display);font-size:clamp(13px,4.2vw,18px);letter-spacing:1px;border:12px solid transparent;border-image:var(--fx-hero) 6 / 12px stretch;
  background:linear-gradient(180deg,#ffc04a 0%,#ff9a1f 55%,#f07a0a 100%) padding-box;color:#2a1302;text-shadow:2px 2px 0 #ffd58a;overflow:hidden;isolation:isolate;flex-direction:column;gap:2px}
-.hero-btn:hover:not(:disabled){border-image:var(--fx-hero) 6 / 12px stretch;background:linear-gradient(180deg,#ffcd66 0%,#ffa62e 55%,#ff8410 100%) padding-box;color:#1a0b00}
 .hero-btn:active:not(:disabled){border-image:var(--fx-hero-down) 6 / 12px stretch}
 .hero-btn .hero-main{display:flex;align-items:center;gap:12px}
 .hero-btn .hero-main .px-icon{filter:drop-shadow(1px 1px 0 #ffd58a)}
@@ -264,11 +258,11 @@ html.decor-compact .brand-title{top:30px}html.decor-compact .brand-title b{font-
 .hero-btn .hero-fill{position:absolute;inset:0 auto 0 0;width:var(--p,0%);z-index:-1;background:repeating-linear-gradient(90deg,#ffe08a55 0 8px,#ffffff22 8px 12px);transition:width .4s steps(8)}
 .hero-btn .hero-spark{position:absolute;top:50%;width:9px;height:9px;margin-top:-5px;background:url(/pixel/sparkle.png) center/9px no-repeat;image-rendering:pixelated;filter:brightness(.25)}
 .hero-btn .hero-spark.l{left:12px}.hero-btn .hero-spark.r{right:12px}
-.hero-btn[data-state=busy]{border-image:var(--fx-hero-busy) 6 / 12px stretch;background:linear-gradient(180deg,#3a2a10,#21180c) padding-box;color:var(--gold-hi);text-shadow:2px 2px 0 #000}
-.hero-btn[data-state=busy] .hero-fill{background:repeating-linear-gradient(90deg,#ff9a1f 0 8px,#ffb84d 8px 12px);opacity:.55}
-.hero-btn[data-state=busy] .hero-spark{filter:none}
-.hero-btn[data-state=done]{border-image:var(--fx-ok) 3 / 12px stretch;background:linear-gradient(180deg,#1d4a2a,#0d2014) padding-box;color:var(--ok);text-shadow:2px 2px 0 #000}
-.hero-btn[data-state=error]{border-image:var(--fx-danger) 3 / 12px stretch;background:var(--bad-bg) padding-box;color:var(--bad);text-shadow:2px 2px 0 #000}
+.hero-btn.hero-btn[data-state=busy]{border-image:var(--fx-hero-busy) 6 / 12px stretch;background:linear-gradient(180deg,#3a2a10,#21180c) padding-box;color:var(--gold-hi);text-shadow:2px 2px 0 #000}
+.hero-btn.hero-btn[data-state=busy] .hero-fill{background:repeating-linear-gradient(90deg,#ff9a1f 0 8px,#ffb84d 8px 12px);opacity:.55}
+.hero-btn.hero-btn[data-state=busy] .hero-spark{filter:none}
+.hero-btn.hero-btn[data-state=done]{border-image:var(--fx-ok) 3 / 12px stretch;background:linear-gradient(180deg,#1d4a2a,#0d2014) padding-box;color:var(--ok);text-shadow:2px 2px 0 #000}
+.hero-btn.hero-btn[data-state=error]{border-image:var(--fx-danger) 3 / 12px stretch;background:var(--bad-bg) padding-box;color:var(--bad);text-shadow:2px 2px 0 #000}
 .hero-btn:disabled{opacity:.6}
 /* ---------- generate page ---------- */
 .generator{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--gap)}
@@ -283,7 +277,7 @@ html.decor-compact .brand-title{top:30px}html.decor-compact .brand-title b{font-
 .editor-shell{display:grid;grid-template-columns:48px minmax(0,1fr);gap:8px;align-items:start}
 .tool-rail{display:flex;flex-direction:column;gap:4px;position:sticky;top:8px}
 .tool-rail button{min-height:44px;min-width:44px;padding:0}
-.tool-rail button[aria-pressed=true]{border-image:var(--fx-selected) 3 / 6px stretch;background:linear-gradient(180deg,#ffb23d,#ff8a14) padding-box;color:#2a1302}
+.tool-rail.tool-rail button[aria-pressed=true]{border-image:var(--fx-selected) 3 / 6px stretch;background:linear-gradient(180deg,#ffb23d,#ff8a14) padding-box;color:#2a1302}
 .editorcanvas{position:relative;width:100%;min-height:300px;overflow:hidden;touch-action:none;display:flex;align-items:center;justify-content:center;
  background:repeating-conic-gradient(#0c1124 0 25%,#121a36 0 50%) 0 0/20px 20px;box-shadow:inset 0 0 0 2px var(--gold-deep)}
 .editorcanvas canvas{touch-action:none}
@@ -305,7 +299,7 @@ html.decor-compact .brand-title{top:30px}html.decor-compact .brand-title b{font-
 .gallerycard .g-open{display:block;width:100%;padding:0;border:0;border-image:none;background:none;min-height:0;aspect-ratio:1/1}
 .gallerycard .g-open:active{transform:none}
 .gallerycard img{display:block;width:100%;height:100%;aspect-ratio:1/1;object-fit:cover}
-.gallerycard .g-menu,.gallerycard .g-fav{position:absolute;min-height:32px;min-width:32px;padding:0;background:#070a18d9 padding-box;border-width:4px;border-image:var(--fx-chip) 2 / 4px stretch}
+.gallerycard.gallerycard .g-menu,.gallerycard.gallerycard .g-fav{position:absolute;min-height:32px;min-width:32px;padding:0;background:#070a18d9 padding-box;border-width:4px;border-image:var(--fx-chip) 2 / 4px stretch}
 .gallerycard .g-menu{top:4px;right:4px}.gallerycard .g-fav{bottom:4px;right:4px}
 .gallerycard .g-fav[aria-pressed=true]{color:var(--amber)}
 .gallerycard .g-check{position:absolute;top:6px;left:6px;pointer-events:none}
@@ -340,7 +334,7 @@ html.decor-compact .brand-title{top:30px}html.decor-compact .brand-title b{font-
 .settings-nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .settings-nav::-webkit-scrollbar{display:none}
 .settings-nav button{justify-content:flex-start;min-height:44px;padding:2px 6px;font-size:13px;min-width:0;text-align:left;overflow-wrap:anywhere}
-.settings-nav button[aria-current=true]{border-image:var(--fx-selected) 3 / 6px stretch;background:linear-gradient(180deg,#ffb23d,#ff8a14) padding-box;color:#2a1302}
+.settings-nav.settings-nav button[aria-current=true]{border-image:var(--fx-selected) 3 / 6px stretch;background:linear-gradient(180deg,#ffb23d,#ff8a14) padding-box;color:#2a1302}
 .setting-row{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:var(--tap);padding:6px 0;border-bottom:2px dashed #2a2240}
 .setting-row:last-child{border-bottom:0}
 .setting-row>div{min-width:0}
@@ -417,6 +411,15 @@ html.decor-compact .brand-title{top:30px}html.decor-compact .brand-title b{font-
  .editor-layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(320px,.8fr);gap:var(--gap);align-items:start}
  .toast-wrap{bottom:24px}
  .gallery-actions{bottom:12px}
+}
+/* hover only where a mouse exists: no sticky hover on Android after a tap */
+@media(hover:hover){
+button:hover:not(:disabled),.btn:hover{border-image:var(--fx-btn-hover) 3 / 6px stretch;color:var(--gold-hi)}
+button.primary:hover:not(:disabled),.btn.primary:hover{border-image:var(--fx-primary) 3 / 6px stretch;background:linear-gradient(180deg,#ffc35a,#ff9a24 60%,#ff7a0e) padding-box;color:#1a0b00}
+button.danger:hover:not(:disabled){border-image:var(--fx-danger) 3 / 6px stretch;background:var(--bad-bg) padding-box;color:#ffc2b8}
+button.ghost:hover:not(:disabled){border-image:none;background:#ffffff0d}
+.bottomnav a:hover{color:var(--gold-hi)}
+.hero-btn:hover:not(:disabled):not([data-state=busy]):not([data-state=done]):not([data-state=error]){border-image:var(--fx-hero) 6 / 12px stretch;background:linear-gradient(180deg,#ffcd66 0%,#ffa62e 55%,#ff8410 100%) padding-box;color:#1a0b00}
 }
 /* ---------- motion ---------- */
 @keyframes px-spin{to{transform:rotate(360deg)}}

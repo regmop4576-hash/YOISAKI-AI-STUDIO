@@ -49,7 +49,7 @@ function GpuModels({onImport}:{onImport:()=>void}){
   <SectionTitle icon={<Boxes size={20}/>} right={<span className={'lib-badge '+(online?'ok':'')}>{online?t('mod.online'):t('mod.offline')}</span>}>{t('mod.onGpu')}</SectionTitle>
   {!online&&remote.length>0&&<div className="notice dangernotice" role="status">{t('mod.cacheNote')}</div>}
   {online&&stale&&<div className="notice" role="status">{t('mod.staleNote')}</div>}
-  <Tabs options={['checkpoint','lora','vae','controlnet']} value={tab} onChange={v=>setTab(v as Kind)} labels={{checkpoint:`Checkpoints ${count('checkpoint')}`,lora:`LoRA ${count('lora')}`,vae:`VAE ${count('vae')}`,controlnet:`ControlNet ${count('controlnet')}`}}/>
+  <Tabs fit options={['checkpoint','lora','vae','controlnet']} value={tab} onChange={v=>setTab(v as Kind)} labels={{checkpoint:`Checkpoints ${count('checkpoint')}`,lora:`LoRA ${count('lora')}`,vae:`VAE ${count('vae')}`,controlnet:`ControlNet ${count('controlnet')}`}}/>
   <div className="row"><input className="grow" type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder={t('picker.searchModels')} aria-label={t('picker.searchModels')}/><ActionButton className="icon" aria-label={t('models.refresh')} title={t('models.refresh')} disabled={!hasUrl} onAction={refresh} successText={t('models.refreshed')}><RefreshCw size={18}/></ActionButton></div>
   {visible.length?<div className="px-list">{visible.map(m=><ModelRow key={m.id} m={m} on={inUse(m)} onClick={()=>setMenu(m)} right={<MoreV size={18}/>}/>)}</div>
    :<div className="empty-models"><Search size={32}/><h3>{remote.length?t('picker.nothingFound'):t('mod.emptyTitle')}</h3><p>{t('mod.emptyText')}</p></div>}

@@ -67,7 +67,7 @@ export default function Page(){
    <div className="notice infonotice tiny">{t('set.storageNote')}</div>
    <Row title={t('set.galleryCount')}><b className="gold">{images??'—'}</b></Row>
    <Row title={t('set.draftsSize')} hint={t('set.draftsWhere')}><b className="gold">{drafts.count} · {mb(drafts.bytes)}</b></Row>
-   <Row title={t('set.settingsWhere')} hint={t('set.settingsWhereHint')}><span className="tiny muted">/api/settings</span></Row>
+   <Row title={t('set.settingsWhere')} hint={t('set.settingsWhereHint')}><b className="gold">Termux</b></Row>
   </>,
   gallery:<>
    <Row title={t('gal.exportMeta')} hint={t('set.metaHint')}><ActionButton onAction={async()=>{const items=await getImages();downloadJSON({version:1,items:items.map(({id,name,created,favorite,prompt,origin,type})=>({id,name,created,favorite,prompt,origin,type}))},'gallery-metadata.json')}} successText={t('gal.metaExported')}><Download size={16}/>JSON</ActionButton></Row>

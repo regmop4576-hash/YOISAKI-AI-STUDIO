@@ -1,4 +1,10 @@
-# YOISAKI AI STUDIO v1.8.1 — SMART FACE FIX
+# YOISAKI AI STUDIO v1.9.0 — PIXEL FANTASY EDITION
+
+Новое оформление Pixel Fantasy, полный русский интерфейс, страница «Настройки» и сохранение работы Редактора между страницами. Движок и блокнот прежние (v1.8.1). Отчёт: `YOISAKI_PIXEL_FANTASY_REPORT.md`, обновление в Termux: `YOISAKI_V1.9.0_INSTALL_GUIDE_RU.md`.
+
+---
+
+## v1.8.1 — SMART FACE FIX
 
 Рабочий блокнот: `colab/YOISAKI_ENGINE_V1.8.1_SMART_FACE_FIX.ipynb`. Установка и обновление на Android: `YOISAKI_V1.8.1_INSTALL_GUIDE_RU.md`.
 
