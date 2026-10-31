@@ -57,7 +57,7 @@
 
 Новые: `src/i18n/{index,ru,en}.ts`, `src/components/{ui,icons}.tsx`, `src/app/settings/page.tsx`,
 `src/app/pixel-frames.css`, `src/stores/session.ts`, `src/lib/storage/drafts.ts`, `scripts/pixel-frames.mjs`,
-`public/{fonts,pixel,brand,licenses}/*`, `tests/v190-pixel-fantasy-browser.mjs`, `docs/screenshots/v1.9.0/*`,
+`public/{fonts,pixel,brand,licenses}/*`, `tests/v190-pixel-fantasy-browser.mjs`, `docs/ui-screens/v1.9.0/*`,
 этот отчёт, `YOISAKI_V1.9.0_INSTALL_GUIDE_RU.md`.
 
 Изменённые: `src/app/globals.css`, `src/app/{engine,gallery,models}/page.tsx`, `src/components/{Common,Shell,
@@ -167,7 +167,7 @@ preparation … No engine requests are made», «No face detection or inpainting
 | `npm run build` (production) | OK |
 | `npm test` (node, 158 тестов) | 153 pass, 5 skipped, 0 fail |
 | `node tests/v190-pixel-fantasy-browser.mjs` (Playwright, Chromium) | **21/21 PASS** |
-| `node scripts/make-release.mjs` (манифест SHA-256, verify-package, build-identity, `unzip -t`, повторная распаковка) | OK, 491 файл |
+| `node scripts/make-release.mjs` (манифест SHA-256, verify-package, build-identity, `unzip -t`, повторная распаковка) | OK, 515 файлов |
 | `tests/release-install-smoke.py` — чистая установка, повторная установка, запуск, обновление, ветка Termux | PASS |
 | `tests/update-release.py` — обновление установленной **v1.8.1** архивом v1.9.0 и откат | PASS |
 
@@ -209,4 +209,4 @@ v1.8.1 → v1.9.0 `state.json` совпадает с исходным, байт�
 кода и данных, откат на 1.8.1 работает.
 
 Скриншоты реализованного приложения (реальный рендер Chromium, не сгенерированные изображения):
-`docs/screenshots/v1.9.0/`. Обновление через Termux: `YOISAKI_V1.9.0_INSTALL_GUIDE_RU.md`.
+`docs/ui-screens/v1.9.0/`. Обновление через Termux: `YOISAKI_V1.9.0_INSTALL_GUIDE_RU.md`.
