@@ -1,0 +1,42 @@
+# CloudCompute documentation research (2026-10-25)
+
+Direct fetch of the official pages FAILED from the development sandbox (egress policy):
+  WebFetch https://cloudcompute.ru/start/docker-entrypoint          -> getaddrinfo ENOTFOUND cloudcompute.ru
+  WebFetch https://cloudcompute.ru/docs/getting-started-quick-start -> getaddrinfo ENOTFOUND cloudcompute.ru
+  WebFetch https://cloudcompute.ru/start/ssh                        -> getaddrinfo ENOTFOUND cloudcompute.ru
+  WebFetch https://cloudcompute.ru/docs/billing-pricing             -> getaddrinfo ENOTFOUND cloudcompute.ru
+  WebFetch https://cloudcompute.ru/docs/inference-compute-api       -> getaddrinfo ENOTFOUND cloudcompute.ru
+  curl https://cloudcompute.ru/  -> "CONNECT tunnel failed, response 403" (proxy status: connect_rejected cloudcompute.ru:443)
+
+Facts below come from web-search snippets of official cloudcompute.ru pages (not full page text):
+  https://cloudcompute.ru/            - choose a GPU configuration or upload your own Docker image
+  https://cloudcompute.ru/faq         - custom Docker images or ready-made templates; access via SSH, RDP or web interface
+                                        depending on configuration; add an SSH key at creation; hourly billing, no minimum term;
+                                        "Если баланс ушёл в ноль — инстансы останавливаются, но не уничтожаются; данные остаются,
+                                        при этом продолжает списываться хранение до удаления/перевода в offline";
+                                        on-demand vs interruptible is fixed at creation
+  https://cloudcompute.ru/glossary/infrastructure/nvidia-container-toolkit
+                                      - NVIDIA Container Toolkit preinstalled on GPU instances; `--gpus all` works
+  https://cloudcompute.ru/changelog/instance-logs
+                                      - container and system logs in the panel (also for stopped / failed instances)
+  https://cloudcompute.ru/solutions/personal-chat/backups
+                                      - a second folder on the same rented disk does not protect against instance deletion
+  https://cloudcompute.ru/models/deepseek-r1-14b
+                                      - example `docker run --gpus all` with a port mapping
+
+NOT verified (no page text available) and therefore NOT assumed by the implementation:
+  - VM-with-Docker vs container instance        -> start-cloudcompute.sh auto-selects docker or native
+  - path of the persistent disk (/workspace?)   -> configurable YOISAKI_DATA_ROOT + .yoisaki-data-id persistence probe
+  - inbound ports / public networking           -> not needed (outbound Cloudflare quick tunnel only)
+  - entrypoint semantics of custom images       -> image CMD runs the launcher; scripts also work inside the image
+  - host NVIDIA driver versions                 -> GPU preflight on every start
+  - storage price, offline mode, deletion/migration behaviour -> documented as "check in the panel"
+
+Other environment facts measured here:
+  - api.trycloudflare.com does not resolve in this sandbox: a real quick tunnel could not be created.
+  - PyPI torch: 2.10.0 is the newest release whose default Linux wheels require nvidia-*-cu12 (CUDA 12.8);
+    2.11.0+ require nvidia-cudnn-cu13 (CUDA 13).
+  - cloudflared 2026.9.3 linux-amd64 from github.com release: sha256 77e26d8d900e0b8469f416239d14b5f296525fdf79fee6f511ef55609e3fbac2
+    ("cloudflared version 2026.9.3 (built 2026-09-24-16:07 UTC)").
+  - nvidia/cuda:12.8.1-base-ubuntu24.04 digest sha256:133c78a0575303be34164d0b90137a042172bdf60696af01a3c424ab402d86e2 (Docker Hub API).
+  - diffusers 0.36.0 loaders/single_file.py:251 allow_patterns = ["**/*.json", "*.json", "*.txt", "**/*.txt", "**/*.model"].

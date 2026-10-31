@@ -1,0 +1,7 @@
+# Host (Python 3.13.17, Node v22.22.0): deployment suites incl. Node cross-checks
+SKIPPED [1] tests/test_v172_drive_sync.py:510: rclone not installed
+SKIPPED [1] tests/test_v172_drive_sync.py:550: Engine import requires torch; GPU not required
+SKIPPED [1] tests/test_v172_drive_sync.py:595: rclone not installed
+SKIPPED [1] tests/test_v172_drive_sync.py:651: rclone not installed
+SKIPPED [1] tests/test_v172_drive_sync.py:665: engine dependencies (run inside the YOISAKI image)
+136 passed, 27 skipped, 1 warning in 24.87s

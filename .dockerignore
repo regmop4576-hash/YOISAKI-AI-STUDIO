@@ -1,0 +1,14 @@
+# Build context = the package root; only the engine and the CloudCompute runtime enter the image.
+*
+!Dockerfile
+!engine/
+!cloudcompute/
+!start-cloudcompute.sh
+!stop-cloudcompute.sh
+!check-cloudcompute.sh
+!fetch-models-cloudcompute.sh
+!drive-sync-cloudcompute.sh
+engine/.venv
+engine/.results
+engine/**/__pycache__
+cloudcompute/**/__pycache__

@@ -1,0 +1,53 @@
+$ docker build (provider-style bootstrap layer on top of 1.7.5)
+#5 0.080 E: List directory /var/lib/apt/lists/partial is missing. - Acquire (13: Permission denied)
+#5 ERROR: process "/bin/sh -c apt-get update -qq && apt-get install -y -qq --no-install-recommends openssh-server >/dev/null" did not complete successfully: exit code: 100
+0.080 E: List directory /var/lib/apt/lists/partial is missing. - Acquire (13: Permission denied)
+ERROR: failed to build: failed to solve: process "/bin/sh -c apt-get update -qq && apt-get install -y -qq --no-install-recommends openssh-server >/dev/null" did not complete successfully: exit code: 100
+$ docker run -d --name yoisaki-bootstrap-test local/derived-test
+
+Run 'docker run --help' for more information
+$ docker start yoisaki-bootstrap-test
+Error response from daemon: No such container: yoisaki-bootstrap-test
+failed to start containers: yoisaki-bootstrap-test
+$ docker exec (runtime bootstrap as image user) apt-get install openssh-server
+Reading package lists...
+E: List directory /var/lib/apt/lists/partial is missing. - Acquire (13: Permission denied)
+mkdir: cannot create directory '/var/run/sshd': Permission denied
+exit=1
+
+=== local/yoisaki-engine:1.7.5-local : provider order onstart → image CMD (tini PID 1)
+after 15 s: running=true exit=0
+2026-10-28 04:20:17 Этап GPU_CHECK_FAILED не опубликован: URLError.
+2026-10-28 04:20:17 ОШИБКА: GPU не прошёл проверку. Движок не запущен, чтобы не тратить оплачиваемое время. Подробности выше.
+2026-10-28 04:20:18 Движок завершился (код 3). Повтор через 20 с (1/4).
+=== local/yoisaki-engine:1.7.7-overlay : provider order onstart → image CMD (tini PID 1)
+after 15 s: running=true exit=0
+2026-10-28 04:20:30 Автозапуск уже работает в этом контейнере: он сам применит новый токен. Ожидаю его завершения.
+=== local/yoisaki-engine:1.7.5-local : onstart → 2 s → image CMD (tini PID 1)
+after 15 s: running=false exit=0
+2026-10-28 04:20:58 Автозапуск уже работает в этом контейнере: он сам применит новый токен.
+=== local/yoisaki-engine:1.7.7-overlay : onstart → 2 s → image CMD (tini PID 1)
+after 15 s: running=true exit=0
+2026-10-28 04:21:13 Автозапуск уже работает в этом контейнере: он сам применит новый токен. Ожидаю его завершения.
+
+$ docker build (provider-style bootstrap layer on top of 1.7.7 overlay)
+#5 [2/2] RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends openssh-server >/dev/null && echo BOOTSTRAP_LAYER_OK
+#5 10.88 BOOTSTRAP_LAYER_OK
+
+$ default CMD as root, engine user check (preflight disabled to keep the launcher alive briefly)
+Error response from daemon: container 96f0fa929fd9a1aba41ace8997eebfa9f08ed92e1c4fc4f915f2d66e63140a90 is not running
+2026-10-28 04:18:02 Запуск YOISAKI ENGINE (данные: /data)…
+2026-10-28 04:18:02 YOISAKI ENGINE · CloudCompute deployment 1.7.7 · данные: /data
+2026-10-28 04:18:02 ОШИБКА: PermissionError: [Errno 1] Operation not permitted: '/data/runtime/state'
+$ 1.7.5 forced to root (--user 0), default CMD — same defect
+2026-10-28 04:18:26 YOISAKI ENGINE · CloudCompute deployment 1.7.5 · данные: /data
+2026-10-28 04:18:26 ОШИБКА: PermissionError: [Errno 13] Permission denied: '/data/runtime/state'
+
+$ 1.7.7 overlay after fix: default CMD as root, preflight off
+root           1       0 /usr/bin/tini -- /opt/yoisaki/cloudcompute/autostart-image.sh
+root           7       1 bash /opt/yoisaki/cloudcompute/autostart-image.sh
+yoisaki       17       7 /opt/yoisaki/venv/bin/python /opt/yoisaki/cloudcompute/launcher.py run
+yoisaki       19      17 /opt/yoisaki/venv/bin/python /opt/yoisaki/cloudcompute/serve_cloud.py
+2026-10-28 04:19:55 Запуск YOISAKI ENGINE (данные: /data)…
+2026-10-28 04:19:55 YOISAKI ENGINE · CloudCompute deployment 1.7.7 · данные: /data
+2026-10-28 04:19:55 Проверка GPU пропущена (YOISAKI_GPU_PREFLIGHT=0).

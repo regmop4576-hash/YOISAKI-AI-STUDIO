@@ -1,0 +1,59 @@
+# data dir prepared earlier by host root (start-cloudcompute.sh docker mode) and used by engine uid 1000
+drwxr-xr-x 10 root   root   4096 Oct 25 22:48 <scratch>/e2e-data
+drwx------  2 root   root   4096 Oct 25 22:48 <scratch>/e2e-data/config
+drwx------  2 ubuntu ubuntu 4096 Oct 25 22:48 <scratch>/e2e-data/runtime/state
+# v1.7.1 native mode INSIDE the image (custom-image scenario), uid 1000, YOISAKI_IN_IMAGE=1
+
+$ ./start-cloudcompute.sh
+YOISAKI ENGINE · CloudCompute · режим: native · данные: /data
+⚠ Свободно 2 ГБ на диске данных: мало для моделей и кэша.
+Жду готовности: проверка GPU → сервер → (прогрев) → туннель Cloudflare…
+2026-10-25 22:54:07 Сервер готов: YOISAKI ENGINE v1.7.0 · GPU TEST_DOUBLE_NOT_REAL_GPU · VRAM 15360/16384 МБ
+2026-10-25 22:54:07 YOISAKI ENGINE готов. Модель SDXL загружается при первой генерации (если не включён прогрев).
+
+Проверка: ./check-cloudcompute.sh   ·   Остановка: ./stop-cloudcompute.sh
+
+💰 Остановка движка НЕ останавливает оплату GPU-инстанса.
+   Остановите или удалите инстанс в панели CloudCompute. Остановленный инстанс продолжает
+   оплачивать хранение диска; удаление инстанса может безвозвратно удалить модели на его диске.
+[exit 0]
+engine server processes: 1; launchers: 1
+
+$ ./start-cloudcompute.sh
+YOISAKI ENGINE · CloudCompute · режим: native · данные: /data
+⚠ Свободно 2 ГБ на диске данных: мало для моделей и кэша.
+✔ Движок уже запущен.
+Туннель ещё готовится: ./check-cloudcompute.sh link
+2026-10-25 22:54:07 Сервер готов: YOISAKI ENGINE v1.7.0 · GPU TEST_DOUBLE_NOT_REAL_GPU · VRAM 15360/16384 МБ
+2026-10-25 22:54:07 YOISAKI ENGINE готов. Модель SDXL загружается при первой генерации (если не включён прогрев).
+
+Проверка: ./check-cloudcompute.sh   ·   Остановка: ./stop-cloudcompute.sh
+
+💰 Остановка движка НЕ останавливает оплату GPU-инстанса.
+   Остановите или удалите инстанс в панели CloudCompute. Остановленный инстанс продолжает
+   оплачивать хранение диска; удаление инстанса может безвозвратно удалить модели на его диске.
+[exit 0]
+$ ./check-cloudcompute.sh json -> engine_state
+{"model_loaded": false, "link_ready": false, "health_state": "READY"}
+
+$ ./stop-cloudcompute.sh
+Останавливаю движок (PID 36)…
+✔ YOISAKI ENGINE остановлен. Ссылка на сайте больше не работает.
+
+💰 Остановка движка НЕ останавливает оплату GPU-инстанса.
+   Остановите или удалите инстанс в панели CloudCompute. Остановленный инстанс продолжает
+   оплачивать хранение диска; удаление инстанса может безвозвратно удалить модели на его диске.
+[exit 0]
+engine server processes after stop: 0; launchers: 0
+
+# hard-kill recovery: SIGKILL the launcher; stop must clean the orphaned engine server
+launchers alive: 0; orphaned engine servers: 1
+
+$ ./stop-cloudcompute.sh
+✔ YOISAKI ENGINE остановлен. Ссылка на сайте больше не работает.
+
+💰 Остановка движка НЕ останавливает оплату GPU-инстанса.
+   Остановите или удалите инстанс в панели CloudCompute. Остановленный инстанс продолжает
+   оплачивать хранение диска; удаление инстанса может безвозвратно удалить модели на его диске.
+[exit 0]
+orphaned engine servers after stop: 0

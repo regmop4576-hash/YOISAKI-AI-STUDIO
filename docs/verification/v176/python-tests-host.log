@@ -1,0 +1,16 @@
+# host: python Python 3.13.17, rclone v1.60.1-DEV; no torch/cv2/ipywidgets (engine image suites not runnable here; engine/ unchanged)
+        """Synthetic transport test ONLY. Does not claim CUDA or diffusion success."""
+>       import torch
+E       ModuleNotFoundError: No module named 'torch'
+
+tests/test_engine.py:64: ModuleNotFoundError
+=========================== short test summary info ============================
+FAILED tests/test_controlnet.py::ControlTests::test_authenticated_api_real_canny
+FAILED tests/test_controlnet.py::ControlTests::test_canny_real_deterministic_letterbox
+FAILED tests/test_engine.py::test_panel_no_gpu - ModuleNotFoundError: No modu...
+FAILED tests/test_engine.py::test_job_protocol_with_test_double - ModuleNotFo...
+ERROR tests/test_v161_stability.py::test_aud006_preprocess_resumes_same_operation_and_never_runs_untracked
+ERROR tests/test_v161_stability.py::test_aud006_preprocess_errors_and_busy_queue
+ERROR tests/test_v161_stability.py::test_aud007_more_than_100_jobs_with_safe_pruning
+ERROR tests/test_v161_stability.py::test_aud007_old_failures_pruned_after_grace
+4 failed, 208 passed, 7 skipped, 4 errors in 39.10s
