@@ -1,6 +1,6 @@
 import release from '../package.json' with {type:'json'};
 export const WEBSITE_VERSION=release.version;
-export const STUDIO_EDITION='SMART FACE FIX';
+export const STUDIO_EDITION='PIXEL FANTASY';
 export const COMPATIBLE_ENGINE_FAMILY='1.7.0 / 1.7.6 / 1.8.0 / 1.8.1 (API 1.7.0)';
 export function engineCompatibility(info){
  if(!info)return 'NOT_CONNECTED';

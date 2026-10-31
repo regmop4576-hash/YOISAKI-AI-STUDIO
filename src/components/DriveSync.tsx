@@ -1,6 +1,6 @@
 'use client';
 import {useCallback,useEffect,useRef,useState} from 'react';
-import {CloudDownload} from 'lucide-react';
+import {CloudDownload} from './icons';
 import {useDirect} from '@/lib/engine/direct';
 import {useStudio} from '@/stores/studio';
 import {localApi} from '@/lib/local-api';

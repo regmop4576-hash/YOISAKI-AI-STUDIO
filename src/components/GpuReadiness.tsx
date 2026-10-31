@@ -1,6 +1,6 @@
 'use client';
 import {useEffect} from 'react';
-import {ExternalLink} from 'lucide-react';
+import {ExternalLink} from './icons';
 import {useLibrary,bytesText,SYNC_TEXT} from '@/lib/model-library';
 import {useDirect} from '@/lib/engine/direct';
 import {useStudio} from '@/stores/studio';

@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useMemo,useRef,useState} from 'react';
-import {ArrowRightLeft,RotateCcw,Square,Download,ExternalLink} from 'lucide-react';
+import {ArrowRightLeft,RotateCcw,Square,Download,ExternalLink} from './icons';
 import {useLibrary,bytesText,durationText,savedJobId,type MonitorView,type CompareRow} from '@/lib/model-library';
 import {useDirect} from '@/lib/engine/direct';
 import {useT} from './DriveLibrary';

@@ -1,6 +1,6 @@
 'use client';
 import {useCallback,useEffect,useMemo,useState} from 'react';
-import {Cloud,Folder,FolderUp,RefreshCw,Search,ScanSearch} from 'lucide-react';
+import {Cloud,Folder,FolderUp,RefreshCw,Search,ScanSearch} from './icons';
 import {useLibrary,bytesText,type DriveItem,type CompareRow,type LibraryState} from '@/lib/model-library';
 import {useDirect} from '@/lib/engine/direct';
 import {useStudio} from '@/stores/studio';
