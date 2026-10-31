@@ -50,7 +50,7 @@ class ControlTests(unittest.TestCase):
                 r=c.post('/controlnet/preprocess',headers=headers,json=self.request());self.assertEqual(r.status_code,200,r.text)
                 self.assertEqual(r.json()['type'],'Canny')
                 self.assertEqual(c.post('/controlnet/preprocess',headers=headers,json=dict(self.request(),image='bad')).status_code,422)
-                h=c.get('/health',headers=headers).json();self.assertEqual(h['engine_version'],'1.7.0');self.assertTrue(h['capabilities']['controlnet'])
+                h=c.get('/health',headers=headers).json();self.assertEqual(h['engine_version'],'1.8.1');self.assertTrue(h['capabilities']['controlnet'])
     def test_pipeline_sharing_and_release_contract(self):
         # Test orchestration independently of unavailable torch/CUDA, not model accuracy.
         class Model:

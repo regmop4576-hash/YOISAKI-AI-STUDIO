@@ -29,9 +29,9 @@ def test_auth_health_and_limits(tmp_path):
     assert parse_qs(urlsplit('https://example.trycloudflare.com/#token='+TOKEN).fragment)['token']==[TOKEN]
     with TestClient(create_app(tmp_path,TOKEN)) as c:
         for url in ['/health','/models','/jobs/no','/results/no']:assert c.get(url).status_code==401
-        assert c.get('/health',headers=AUTH).json()['engine_version']=='1.7.0'
+        assert c.get('/health',headers=AUTH).json()['engine_version']=='1.8.1'
         assert c.get('/models',headers=AUTH).json()=={'models':[]}
-        assert c.post('/generate',headers=AUTH,content='x'*12582913).status_code==413
+        assert c.post('/generate',headers=AUTH,content='x'*20971521).status_code==413
         assert c.get('/results/../etc/passwd',headers=AUTH).status_code==404
         assert c.get('/jobs/no',headers=AUTH).status_code==404
         assert c.options('/generate',headers={'Origin':'https://studio.example','Access-Control-Request-Method':'POST','Access-Control-Request-Headers':'authorization,content-type'}).status_code==200
