@@ -39,7 +39,7 @@ export default function Page(){
   interface:<>
    <Switch label={t('set.motionOff')} hint={t('set.motionHint')} checked={ui.motion==='off'} onChange={v=>st.setUi({motion:v?'off':'system'})}/>
    <Switch label={t('set.compact')} hint={t('set.compactHint')} checked={ui.decor==='compact'} onChange={v=>st.setUi({decor:v?'compact':'full'})}/>
-   <Switch label={t('set.plainFont')} hint={t('set.plainFontHint')} checked={ui.plainFont} onChange={v=>st.setUi({plainFont:v})}/>
+   <Switch label={t('set.plainFont')} hint={t('set.plainFontHint')} checked={ui.pixelText} onChange={v=>st.setUi({pixelText:v})}/>
    <Switch label={t('set.largeText')} hint={t('set.largeTextHint')} checked={ui.largeText} onChange={v=>st.setUi({largeText:v})}/>
    <p className="tiny muted">{t('set.themeNote')}</p>
   </>,
@@ -75,8 +75,8 @@ export default function Page(){
   </>,
   advanced:<>
    <Row title={t('set.diagnostics')} hint={t('set.diagnosticsHint')}><ActionButton onAction={async()=>setDiag(JSON.stringify(await localApi('/api/diagnostics'),null,1))}><Terminal size={16}/>{t('gpu.showLogs')}</ActionButton></Row>
-   <Row title={t('set.resetUi')} hint={t('set.resetUiHint')}><button type="button" onClick={()=>{st.setUi({motion:'system',decor:'full',plainFont:false,largeText:false,showCloudCompute:false});toast('ok',t('set.saved'))}}><RotateCcw size={16}/>{t('common.reset')}</button></Row>
-   <Row title={t('set.licenses')} hint="Tiny5, Press Start 2P (OFL-1.1) · Pixelarticons (MIT)"><a className="btn" href="/licenses/TINY5_OFL.txt" target="_blank" rel="noopener"><ExternalLink size={15}/>Tiny5</a><a className="btn" href="/licenses/PRESS_START_2P_OFL.txt" target="_blank" rel="noopener"><ExternalLink size={15}/>PS2P</a><a className="btn" href="/licenses/PIXELARTICONS_MIT.txt" target="_blank" rel="noopener"><ExternalLink size={15}/>MIT</a></Row>
+   <Row title={t('set.resetUi')} hint={t('set.resetUiHint')}><button type="button" onClick={()=>{st.setUi({motion:'system',decor:'full',pixelText:false,largeText:false,showCloudCompute:false});toast('ok',t('set.saved'))}}><RotateCcw size={16}/>{t('common.reset')}</button></Row>
+   <Row title={t('set.licenses')} hint="Onest, Tiny5, Press Start 2P (OFL-1.1) · Pixelarticons (MIT)"><a className="btn" href="/licenses/ONEST_OFL.txt" target="_blank" rel="noopener"><ExternalLink size={15}/>Onest</a><a className="btn" href="/licenses/TINY5_OFL.txt" target="_blank" rel="noopener"><ExternalLink size={15}/>Tiny5</a><a className="btn" href="/licenses/PRESS_START_2P_OFL.txt" target="_blank" rel="noopener"><ExternalLink size={15}/>PS2P</a><a className="btn" href="/licenses/PIXELARTICONS_MIT.txt" target="_blank" rel="noopener"><ExternalLink size={15}/>MIT</a></Row>
    <div className="row tiny muted" style={{gap:12}}><Mascot size={56} variant="avatar" alt={t('brand.mascot')}/><span>{t('set.mascotNote')}</span></div>
   </>,
  };

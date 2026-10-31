@@ -8,8 +8,8 @@ export type Parameters={regional:Regional;prompt:string;negative:string;checkpoi
 export const defaults:Parameters={regional:{mode:'OFF',regions:[]},prompt:'',negative:'',checkpoint:'',vae:'auto',loras:[],width:1024,height:1024,steps:30,cfg:5,sampler:'Euler',scheduler:'Normal',seed:'',randomSeed:true,batch:1,denoise:.5,controlEnabled:false,controlType:'OpenPose',controlPreprocessor:'openpose',controlStrength:.8,controlStart:0,controlEnd:1,mode:'text2img'};
 export type Preset={id:string;name:string;version:1;settings:Parameters};
 /** v1.9.0 PIXEL FANTASY: interface preferences. Every switch here changes real behaviour (see Shell / Settings). */
-export type UiPrefs={motion:'system'|'off';decor:'full'|'compact';plainFont:boolean;largeText:boolean;showCloudCompute:boolean};
-export const uiDefaults:UiPrefs={motion:'system',decor:'full',plainFont:false,largeText:false,showCloudCompute:false};
+export type UiPrefs={motion:'system'|'off';decor:'full'|'compact';pixelText:boolean;largeText:boolean;showCloudCompute:boolean};
+export const uiDefaults:UiPrefs={motion:'system',decor:'full',pixelText:false,largeText:false,showCloudCompute:false};
 export type EditorMode='IMG2IMG'|'INPAINT'|'FACE FIX';
 /** v1.9.0: editor working parameters live here (persisted with the settings), so Editor → Gallery → Editor keeps them. */
 export type EditorPrefs={mode:EditorMode;classic:boolean;
@@ -32,7 +32,7 @@ function mergeEditor(saved:unknown):EditorPrefs{
   faceRegion:{padding:num(fr.padding,.15),denoise:num(fr.denoise,.25),blur:num(fr.blur,8),width:num(fr.width,512),height:num(fr.height,512)},
   faceFix:{strength:num(ff.strength,DEFAULT_STRENGTH),profile:{...FACE_DEFAULTS,...(ff.profile||{})},showUncertain:ff.showUncertain===true}};
 }
-function mergeUi(saved:unknown):UiPrefs{const s=(saved&&typeof saved==='object'?saved:{}) as Partial<UiPrefs>;return {motion:s.motion==='off'?'off':'system',decor:s.decor==='compact'?'compact':'full',plainFont:s.plainFont===true,largeText:s.largeText===true,showCloudCompute:s.showCloudCompute===true}}
+function mergeUi(saved:unknown):UiPrefs{const s=(saved&&typeof saved==='object'?saved:{}) as Partial<UiPrefs>;return {motion:s.motion==='off'?'off':'system',decor:s.decor==='compact'?'compact':'full',pixelText:s.pixelText===true,largeText:s.largeText===true,showCloudCompute:s.showCloudCompute===true}}
 export const useStudio=create<Studio>()(persist((set,get)=>({settings:defaults,presets:[],language:'Русский',ui:uiDefaults,editor:editorDefaults,
  update:partial=>set(s=>({settings:{...s.settings,...partial}})),
  save:name=>set(s=>({presets:[...s.presets,{id:crypto.randomUUID(),name,version:1,settings:structuredClone(s.settings)}]})),

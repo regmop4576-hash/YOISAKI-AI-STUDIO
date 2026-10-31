@@ -58,7 +58,7 @@
 Новые: `src/i18n/{index,ru,en}.ts`, `src/components/{ui,icons}.tsx`, `src/app/settings/page.tsx`,
 `src/app/pixel-frames.css`, `src/stores/session.ts`, `src/lib/storage/drafts.ts`, `scripts/pixel-frames.mjs`,
 `public/{fonts,pixel,brand,licenses}/*`, `tests/v190-pixel-fantasy-browser.mjs`, `docs/ui-screens/v1.9.0/*`,
-этот отчёт, `YOISAKI_V1.9.0_INSTALL_GUIDE_RU.md`.
+этот отчёт, `YOISAKI_V1.9.1_INSTALL_GUIDE_RU.md`.
 
 Изменённые: `src/app/globals.css`, `src/app/{engine,gallery,models}/page.tsx`, `src/components/{Common,Shell,
 Generator,Editor,FaceFix,JobProgress,JobHistory}.tsx`, импорт иконок в `DriveLibrary`, `DriveSync`,
@@ -209,4 +209,4 @@ v1.8.1 → v1.9.0 `state.json` совпадает с исходным, байт�
 кода и данных, откат на 1.8.1 работает.
 
 Скриншоты реализованного приложения (реальный рендер Chromium, не сгенерированные изображения):
-`docs/ui-screens/v1.9.0/`. Обновление через Termux: `YOISAKI_V1.9.0_INSTALL_GUIDE_RU.md`.
+`docs/ui-screens/v1.9.0/`. Обновление через Termux: `YOISAKI_V1.9.1_INSTALL_GUIDE_RU.md`.

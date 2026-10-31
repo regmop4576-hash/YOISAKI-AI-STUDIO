@@ -23,7 +23,7 @@ test('both providers: separate endpoints, explicit reconnect, no secrets on disk
   const surfaces=JSON.stringify([await h.call('/api/gpu/status'),await h.call('/api/diagnostics'),await h.call('/api/settings'),await fs.readFile(path.join(dir,'state.json'),'utf8'),await fs.readFile(path.join(dir,'state.json.bak'),'utf8')]);
   for(const token of Object.values(tokens))assert(!surfaces.includes(token));
   await h.app.close();const n=calls.length;h=await harness(upstream,dir);x=await h.call('/api/gpu/status');assert.equal(x.provider,'cloudcompute');assert.equal(x.state,'OFFLINE');assert.deepEqual(x.endpoints,urls);assert.equal(calls.length,n);
-  const v=await h.call('/api/version');assert.equal(v.studio_version,'1.9.0');assert.equal(v.engine_version,null);
+  const v=await h.call('/api/version');assert.equal(v.studio_version,'1.9.1');assert.equal(v.engine_version,null);
  }finally{await h.app.close();await fs.rm(dir,{recursive:true,force:true})}
 });
 test('late health from a disconnected provider cannot revive a session',async()=>{

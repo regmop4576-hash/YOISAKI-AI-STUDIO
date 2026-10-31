@@ -80,12 +80,12 @@ function Viewer({item,list,onNavigate,onClose,onToggle,onDelete,onSaved,locale}:
  const {t}=useI18n();const [notes,setNotes]=useState(item.prompt);const info=useFileInfo(item);useEffect(()=>setNotes(item.prompt),[item.id,item.prompt]);
  const i=list.findIndex(x=>x.id===item.id);const prev=i>0?list[i-1]:null,next=i>=0&&i<list.length-1?list[i+1]:null;
  const p=(item.parameters||{}) as Record<string,unknown>;
- const rows:[string,string][]=[[t('gal.mDate'),new Date(item.created).toLocaleString(locale)],[t('gal.mOrigin'),item.origin==='generated'?t('gal.mGenerated'):t('gal.importBadge')],[t('gal.mFile'),`${(item.type||'').replace('image/','').toUpperCase()}${info?` · ${info.w}×${info.h} · ${kb(info.size)}`:''}`]];
+ const rows:[string,string][]=[[t('gal.mName'),item.name],[t('gal.mDate'),new Date(item.created).toLocaleString(locale)],[t('gal.mOrigin'),item.origin==='generated'?t('gal.mGenerated'):t('gal.importBadge')],[t('gal.mFile'),`${(item.type||'').replace('image/','').toUpperCase()}${info?` · ${info.w}×${info.h} · ${kb(info.size)}`:''}`]];
  if(p.mode)rows.push([t('gal.mMode'),String(p.mode)]);if(item.seed!=null)rows.push(['Seed',String(item.seed)]);
  if(p.steps!=null)rows.push([t('params.steps'),String(p.steps)]);if(p.cfg_scale!=null)rows.push(['CFG',String(p.cfg_scale)]);if(p.sampler)rows.push(['Sampler',`${p.sampler} · ${p.scheduler??''}`]);
  if(p.width)rows.push([t('gal.mSize'),`${p.width}×${p.height}`]);if(Array.isArray(p.lora_adapters)&&p.lora_adapters.length)rows.push(['LoRA',String(p.lora_adapters.length)]);
  if(typeof p.negative_prompt==='string'&&p.negative_prompt)rows.push([t('prompt.negative'),p.negative_prompt]);
- return <Modal title={item.name} onClose={onClose} wide label={t('gal.viewer')}>
+ return <Modal title={t('gal.viewer')} onClose={onClose} wide>
   <div className="viewer stack"><img src={item.url||''} alt={item.name}/>
    <div className="grid3"><button type="button" disabled={!prev} onClick={()=>prev&&onNavigate(prev.id)} aria-label={t('gal.prev')}><ChevronLeft size={18}/></button><span className="tiny muted" style={{alignSelf:'center',textAlign:'center'}}>{i+1} / {list.length}</span><button type="button" disabled={!next} onClick={()=>next&&onNavigate(next.id)} aria-label={t('gal.next')}><ChevronRight size={18}/></button></div>
    <dl className="meta-list">{rows.flatMap(([k,v])=>[<dt key={k+'k'}>{k}</dt>,<dd key={k+'v'}>{v}</dd>])}</dl>

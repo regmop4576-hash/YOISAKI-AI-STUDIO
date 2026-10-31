@@ -278,7 +278,7 @@ test('diagnostics: downloadable JSON with stages and provider status; no API key
   const r=await h.raw('/api/cloudcompute/diagnostics');assert.equal(r.status,200);assert.match(r.headers.get('content-disposition'),new RegExp(DIAGNOSTICS_FILENAME));
   const text=await r.text(),rep=JSON.parse(text),token=(await h.secretsFile()).deployment.token;
   for(const secret of [token,KEY,'cc-another_secret_99'])assert(!text.includes(secret),secret);
-  assert.equal(rep.website.version,'1.9.0');assert.equal(rep.instance.id,'9001');assert.equal(rep.instance.provider_status,'running');assert.equal(rep.instance.bootstrap_profile,'worker');
+  assert.equal(rep.website.version,'1.9.1');assert.equal(rep.instance.id,'9001');assert.equal(rep.instance.provider_status,'running');assert.equal(rep.instance.bootstrap_profile,'worker');
   assert.equal(rep.initialization.instance_running,true);assert.equal(rep.initialization.engine_ready,false);assert(rep.initialization.stage_history.length>=3);
   assert.equal(rep.engine.version,'unavailable');assert.equal(rep.gpu.driver,'unavailable');assert.equal(rep.gpu.model_source,'CloudCompute offer (advertised)');
   assert.equal(rep.image.reference,ENGINE_IMAGE);

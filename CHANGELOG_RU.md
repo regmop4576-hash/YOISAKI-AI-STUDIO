@@ -1,6 +1,14 @@
+# v1.9.1 PIXEL FANTASY HOTFIX
+
+Шрифты и установка на Android. Движок, Colab, GPU API и данные не изменены. Отчёт: `YOISAKI_V1.9.1_HOTFIX_REPORT.md`.
+
+- **Читаемость:** описания, формы, промпты, уведомления, LoRA и метаданные — Onest (полная кириллица); пиксельные шрифты — для логотипа, заголовков и главной кнопки. Нет текста меньше 12 px и разрывов слов в кнопках.
+- **PWA:** web app manifest, PNG-иконки Ёоисаки 192/512 + maskable, favicon, apple-touch-icon, MIME-типы. Chromium сообщает 0 ошибок установки. На устройстве Android не проверялось.
+- **Галерея:** изображение в окне просмотра больше не сжимается в полосу; длинное имя файла переносится.
+
 # v1.9.0 PIXEL FANTASY EDITION
 
-Сайт 1.9.0. Движок, Colab-блокнот (`colab/YOISAKI_ENGINE_V1.8.1_SMART_FACE_FIX.ipynb`), API 1.7.0 и формат данных не изменены. Отчёт: `YOISAKI_PIXEL_FANTASY_REPORT.md`, обновление: `YOISAKI_V1.9.0_INSTALL_GUIDE_RU.md`, скриншоты: `docs/ui-screens/v1.9.0/`.
+Сайт 1.9.0. Движок, Colab-блокнот (`colab/YOISAKI_ENGINE_V1.8.1_SMART_FACE_FIX.ipynb`), API 1.7.0 и формат данных не изменены. Отчёт: `YOISAKI_PIXEL_FANTASY_REPORT.md`, обновление: `YOISAKI_V1.9.1_INSTALL_GUIDE_RU.md`, скриншоты: `docs/ui-screens/v1.9.0/`.
 
 - **Pixel Fantasy:** дизайн-система с пиксельными рамками, токенами и состояниями элементов; шапка с ночным готическим городом; шрифты Tiny5 и Press Start 2P (корректная кириллица); иконки Pixelarticons; маскот Ёоисаки.
 - **Русский по умолчанию:** ключевая локализация (`src/i18n`), английский словарь типизирован по тем же ключам.

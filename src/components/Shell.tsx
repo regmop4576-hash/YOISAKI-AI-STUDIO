@@ -12,7 +12,7 @@ import {LocaleBridge} from './LocaleBridge';
 import {Toasts,useGpuLabel,Mascot} from './ui';
 const links:[string,MessageKey,typeof WandSparkles][]=[['/generate','nav.generate',WandSparkles],['/edit','nav.editor',Paintbrush],['/models','nav.models',Boxes],['/gallery','nav.gallery',Images],['/engine','nav.gpu',Cpu]];
 /** Applies interface preferences to <html> (motion, decorations, font, text size, language). */
-function useUiClasses(){const ui=useStudio(s=>s.ui);const {lang}=useI18n();useEffect(()=>{const c=document.documentElement.classList;c.toggle('motion-off',ui.motion==='off');c.toggle('decor-compact',ui.decor==='compact');c.toggle('font-plain',ui.plainFont);c.toggle('text-large',ui.largeText);document.documentElement.lang=lang},[ui,lang])}
+function useUiClasses(){const ui=useStudio(s=>s.ui);const {lang}=useI18n();useEffect(()=>{const c=document.documentElement.classList;c.toggle('motion-off',ui.motion==='off');c.toggle('decor-compact',ui.decor==='compact');c.toggle('text-pixel',ui.pixelText);c.toggle('text-large',ui.largeText);document.documentElement.lang=lang},[ui,lang])}
 export function Shell({children}:{children:ReactNode}){
  const pathname=usePathname();const {t}=useI18n();const [drawer,setDrawer]=useState(false);const gpu=useGpuLabel();useUiClasses();
  useEffect(()=>{setDrawer(false)},[pathname]);

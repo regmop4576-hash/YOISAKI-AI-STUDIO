@@ -79,14 +79,14 @@ def main():
             run('node', 'scripts/verify-package.mjs')
             assert (app / 'start.sh').read_text().splitlines()[0] == '#!' + str(bin_dir / 'bash')
             run('./start.sh')
-            assert json.loads(get('/api/session', True))['version'] == '1.9.0'
+            assert json.loads(get('/api/session', True))['version'] == '1.9.1'
             page = get('/').decode()
-            assert '1.9.0' in page
+            assert '1.9.1' in page
             for asset in re.findall(r'(?:src|href)="(/assets/[^\"]+)"', page):
                 assert len(get(asset)) > 0
             run('bash', 'stop.sh')
             run('bash', 'update.sh', str(archive), str(app))
-            assert json.loads(get('/api/session', True))['version'] == '1.9.0'
+            assert json.loads(get('/api/session', True))['version'] == '1.9.1'
             run('node', 'scripts/verify-package.mjs')
             run('node', 'scripts/build-identity.mjs')
             assert before == {p: hashlib.sha256(p.read_bytes()).hexdigest() for p in protected}
