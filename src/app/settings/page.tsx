@@ -10,7 +10,7 @@ import {clearImages,getImages} from '@/lib/storage/gallery';
 import {clearAllDrafts,draftSummary} from '@/lib/storage/drafts';
 import {localApi} from '@/lib/local-api';
 import {STUDIO_VERSION,STUDIO_EDITION} from '@/lib/release';
-import {downloadJSON} from '@/components/Common';
+import {downloadJSON,NumberField} from '@/components/Common';
 import {PageHead,ActionButton,toast,Modal,Mascot} from '@/components/ui';
 import {Settings,Languages,Monitor,WandSparkles,Paintbrush,Boxes,Plug,Database,Images,Terminal,Download,Upload,Trash2,RotateCcw,ExternalLink,Warning} from '@/components/icons';
 import {useI18n,LANGS,type MessageKey} from '@/i18n';
@@ -44,7 +44,7 @@ export default function Page(){
    <p className="tiny muted">{t('set.themeNote')}</p>
   </>,
   generation:<>
-   <div className="grid2 keep"><div className="field"><label>{t('set.defWidth')}</label><input type="number" inputMode="numeric" min="256" max="1536" step="8" value={st.settings.width} onChange={e=>st.update({width:Number(e.target.value)})}/></div><div className="field"><label>{t('set.defHeight')}</label><input type="number" inputMode="numeric" min="256" max="1536" step="8" value={st.settings.height} onChange={e=>st.update({height:Number(e.target.value)})}/></div></div>
+   <div className="grid2 keep"><div className="field"><label>{t('set.defWidth')}</label><NumberField aria-label={t('set.defWidth')} value={st.settings.width} onCommit={width=>st.update({width})}/></div><div className="field"><label>{t('set.defHeight')}</label><NumberField aria-label={t('set.defHeight')} value={st.settings.height} onCommit={height=>st.update({height})}/></div></div>
    <Row title={t('set.presets')} hint={t('set.presetsHint')}><b className="gold">{st.presets.length}</b><Link href="/generate" className="btn">{t('nav.generate')}</Link></Row>
    <Row title={t('set.resetGen')} hint={t('set.resetGenHint')}><button type="button" onClick={()=>{if(confirm(t('presets.resetConfirm'))){st.reset();toast('ok',t('presets.reset'))}}}><RotateCcw size={16}/>{t('common.reset')}</button></Row>
   </>,

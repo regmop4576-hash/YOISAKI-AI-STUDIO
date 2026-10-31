@@ -1,8 +1,10 @@
-# YOISAKI AI STUDIO v1.9.1 — PIXEL FANTASY EDITION
+# YOISAKI AI STUDIO v1.9.2 — PIXEL FANTASY EDITION
+
+v1.9.2: исправлен ввод в поля с экранной клавиатуры Android. Отчёт: `YOISAKI_V1.9.2_INPUT_FIX_REPORT.md`.
 
 v1.9.1: читаемый шрифт Onest для текста, иконка Ёоисаки и manifest для установки на главный экран. Отчёт: `YOISAKI_V1.9.1_HOTFIX_REPORT.md`.
 
-Новое оформление Pixel Fantasy, полный русский интерфейс, страница «Настройки» и сохранение работы Редактора между страницами. Движок и блокнот прежние (v1.8.1). Отчёт: `YOISAKI_PIXEL_FANTASY_REPORT.md`, обновление в Termux: `YOISAKI_V1.9.1_INSTALL_GUIDE_RU.md`.
+Новое оформление Pixel Fantasy, полный русский интерфейс, страница «Настройки» и сохранение работы Редактора между страницами. Движок и блокнот прежние (v1.8.1). Отчёт: `YOISAKI_PIXEL_FANTASY_REPORT.md`, обновление в Termux: `YOISAKI_V1.9.2_INSTALL_GUIDE_RU.md`.
 
 ---
 

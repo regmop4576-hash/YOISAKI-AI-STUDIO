@@ -17,7 +17,7 @@ import {navigate} from '@/compat/navigation';
 import {useStudio,defaults,type Parameters,type Preset,type LoRA} from '@/stores/studio';
 import {useSession} from '@/stores/session';
 import {api,type LiveEngine,type LiveModel} from '@/lib/engine/live';
-import {Prompt,Slider,ImageUpload,downloadJSON,Tabs} from './Common';
+import {Prompt,Slider,ImageUpload,downloadJSON,Tabs,NumberField} from './Common';
 import {LoraTagEditor} from './LoraTagEditor';
 import {type LoraTags,joinTags,appendTags,selectedTags} from '@/lib/lora-tags';
 import {Copy,RefreshCw,Plus,Trash2,Download,Boxes,Sparkles,ChevronRight,Ratio,Sliders,Image as ImageIcon,Search,Dice,Layers,Grid,Star,WandSparkles,Paintbrush,Smile,Check,X,Hourglass} from './icons';
@@ -86,13 +86,13 @@ function ParamsModal({s,onApply,onClose,editing}:{s:Parameters;onApply:(p:Partia
  return <Modal title={t('params.title')} onClose={onClose} footer={<><button type="button" onClick={onClose}>{t('common.cancel')}</button><button type="button" className="primary" onClick={()=>{onApply(d);onClose()}}>{t('common.apply')}</button></>}>
   {editing&&<div className="notice tiny">{t('params.editingNote')}</div>}
   <div className="field"><label>{t('params.aspect')}</label><div className="tile-grid" style={{gridTemplateColumns:'repeat(5,minmax(0,1fr))'}}>{ratios.map(([label,w,h])=>{const on=d.width===w&&d.height===h;return <button type="button" key={label} className={'pill'+(on?' selected':'')} aria-pressed={on} style={{flexDirection:'column',minHeight:62,padding:2}} onClick={()=>up({width:w,height:h})}><span aria-hidden style={{width:w/64,height:h/64,boxShadow:'inset 0 0 0 2px currentColor'}}/>{label}</button>})}</div></div>
-  <div className="grid2 keep"><div className="field"><label>{t('params.width')}</label><input aria-label="Width" type="number" inputMode="numeric" min="256" max="1536" step="8" value={d.width} onChange={e=>up({width:Number(e.target.value)})}/></div><div className="field"><label>{t('params.height')}</label><input aria-label="Height" type="number" inputMode="numeric" min="256" max="1536" step="8" value={d.height} onChange={e=>up({height:Number(e.target.value)})}/></div></div>
+  <div className="grid2 keep"><div className="field"><label>{t('params.width')}</label><NumberField aria-label="Width" value={d.width} onCommit={width=>up({width})}/></div><div className="field"><label>{t('params.height')}</label><NumberField aria-label="Height" value={d.height} onCommit={height=>up({height})}/></div></div>
   <Slider label="Steps" caption={t('params.steps')} min={1} max={60} step={1} value={d.steps} onChange={steps=>up({steps})}/>
   <Slider label="CFG Scale" caption="CFG" min={1} max={20} step={.5} value={d.cfg} onChange={cfg=>up({cfg})}/>
   <div className="grid2 keep"><div className="field"><label>Sampler</label><select aria-label="Sampler" value={d.sampler} onChange={e=>up({sampler:e.target.value})}>{SAMPLERS.map(x=><option key={x}>{x}</option>)}</select></div><div className="field"><label>Scheduler</label><select aria-label="Scheduler" value={d.scheduler} onChange={e=>up({scheduler:e.target.value})}>{SCHEDULERS.map(x=><option key={x}>{x}</option>)}</select></div></div>
   {d.sampler==='Euler a'&&d.scheduler==='Karras'&&<div className="notice dangernotice tiny">{t('params.eulerKarras')}</div>}
   <label className="px-switch"><span>{t('params.randomSeed')}</span><input type="checkbox" role="switch" checked={d.randomSeed} onChange={e=>up({randomSeed:e.target.checked})}/></label>
-  <div className="row"><input className="grow" inputMode="numeric" aria-label="Seed" placeholder={t('params.seedPh')} disabled={d.randomSeed} value={d.seed} onChange={e=>up({seed:e.target.value.replace(/[^\d-]/g,'')})}/><button type="button" className="icon" aria-label={t('params.copySeed')} disabled={!d.seed} onClick={()=>void copyText(d.seed,t('toast.copied'),t('toast.copyFailed'))}><Copy size={16}/></button><button type="button" className="icon" aria-label={t('params.newSeed')} onClick={()=>up({randomSeed:false,seed:String(Math.floor(Math.random()*2147483647))})}><Dice size={16}/></button></div>
+  <div className="row"><input className="grow" type="text" inputMode="numeric" autoComplete="off" enterKeyHint="done" aria-label="Seed" placeholder={t('params.seedPh')} disabled={d.randomSeed} value={d.seed} onChange={e=>up({seed:e.target.value.replace(/[^\d-]/g,'')})}/><button type="button" className="icon" aria-label={t('params.copySeed')} disabled={!d.seed} onClick={()=>void copyText(d.seed,t('toast.copied'),t('toast.copyFailed'))}><Copy size={16}/></button><button type="button" className="icon" aria-label={t('params.newSeed')} onClick={()=>up({randomSeed:false,seed:String(Math.floor(Math.random()*2147483647))})}><Dice size={16}/></button></div>
   {!editing&&<Slider label="Batch size" caption={t('params.batch')} min={1} max={2} step={1} value={d.batch} onChange={batch=>up({batch})}/>}
  </Modal>;
 }

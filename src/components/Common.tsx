@@ -1,6 +1,6 @@
 'use client';
 // Shared form pieces (v1.9.0 PIXEL FANTASY). Same exports and props as before so every page keeps working.
-import {useState,useRef,type CSSProperties,type ReactNode} from 'react';
+import {useState,useRef,useEffect,type CSSProperties,type ReactNode,type InputHTMLAttributes} from 'react';
 import {Copy,Trash2,Upload,ChevronDown,ChevronUp,Pencil} from './icons';
 import {downloadBlob,validateImage} from '@/lib/storage/gallery';
 import {useI18n} from '@/i18n';
@@ -26,3 +26,17 @@ export function ImageUpload({onFile,label,className=''}:{onFile:(f:File)=>void;l
  return <><input ref={input} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={async e=>{const f=e.target.files?.[0];if(!f)return;try{await validateImage(f);setError('');onFile(f)}catch(err){setError((err as Error).message)}e.target.value=''}}/><button type="button" className={className} onClick={()=>input.current?.click()}><Upload size={18}/>{label??t('common.uploadImage')}</button>{error&&<div className="notice dangernotice tiny" role="alert">{error}</div>}</>;
 }
 export function downloadJSON(data:unknown,name:string){downloadBlob(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),name)}
+/** v1.9.2 · Numeric field that is safe to edit with the Android on-screen keyboard.
+ * While focused it keeps the raw text, so the user can erase it completely, paste, or type "24," / "-" step by step;
+ * the parent receives a number only when the text is a valid number. On blur the field shows the committed value
+ * again. `type="text"` + `inputMode` gives the numeric keyboard without the type="number" sanitising quirks. */
+export function NumberField({value,onCommit,onEmpty,decimal=false,negative=false,...rest}:{value:number|null|undefined;onCommit:(n:number)=>void;onEmpty?:()=>void;decimal?:boolean;negative?:boolean}&Omit<InputHTMLAttributes<HTMLInputElement>,'value'|'onChange'|'type'|'defaultValue'>){
+ const shown=value==null||!Number.isFinite(value)?'':String(value);
+ const [text,setText]=useState(shown);const focused=useRef(false);
+ useEffect(()=>{if(!focused.current)setText(shown)},[shown]);
+ const ok=decimal?(negative?/^-?\d*[.,]?\d*$/:/^\d*[.,]?\d*$/):(negative?/^-?\d*$/:/^\d*$/);
+ return <input {...rest} type="text" inputMode={decimal?'decimal':'numeric'} autoComplete="off" autoCorrect="off" spellCheck={false} enterKeyHint="done" value={text}
+  onFocus={e=>{focused.current=true;rest.onFocus?.(e)}}
+  onChange={e=>{const raw=e.target.value.replace(/\s/g,'');if(!ok.test(raw))return;setText(raw);if(raw===''){onEmpty?.();return}const n=Number(raw.replace(',','.'));if(raw!=='-'&&!raw.endsWith('.')&&!raw.endsWith(',')&&Number.isFinite(n))onCommit(n)}}
+  onBlur={e=>{focused.current=false;setText(shown);rest.onBlur?.(e)}}/>;
+}

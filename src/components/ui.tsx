@@ -38,9 +38,17 @@ export function ActionButton({onAction,children,className='',disabled,errorToast
 /* ---------- modal ---------- */
 export function Modal({title,onClose,children,footer,wide=false,label}:{title:ReactNode;onClose:()=>void;children:ReactNode;footer?:ReactNode;wide?:boolean;label?:string}){
  const {t}=useI18n();const box=useRef<HTMLElement>(null);
- useEffect(()=>{const prev=document.activeElement as HTMLElement|null;const key=(e:KeyboardEvent)=>{if(e.key==='Escape'){e.stopPropagation();onClose()}};document.addEventListener('keydown',key);const first=box.current?.querySelector<HTMLElement>('input,select,textarea,button:not([data-close])');(first||box.current)?.focus({preventScroll:true});const o=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.removeEventListener('keydown',key);document.body.style.overflow=o;prev?.focus?.({preventScroll:true})}},[onClose]);
- return <div className="modalback" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}><section ref={box} tabIndex={-1} className={'modal stack'+(wide?' wide':'')} role="dialog" aria-modal="true" aria-label={label||(typeof title==='string'?title:undefined)} data-localized="true">
-  <div className="modal-head"><h2 className="h-spark">{title}</h2><button type="button" data-close className="icon ghost" aria-label={t('common.close')} onClick={onClose}><X size={20}/></button></div>
+ // v1.9.2 Android input fix: callers pass inline `onClose` arrows that change on every parent render (the Generate page
+ // re-renders every 2 s while polling history). Depending on `onClose` re-ran this effect each time: its cleanup moved
+ // focus away from the field being typed in and the effect focused the first button, so Android closed the keyboard.
+ // The effect now runs once per opened dialog and reads the latest callback from a ref.
+ const close=useRef(onClose);close.current=onClose;
+ useEffect(()=>{const prev=document.activeElement as HTMLElement|null;const key=(e:KeyboardEvent)=>{if(e.key==='Escape'){e.stopPropagation();close.current()}};document.addEventListener('keydown',key);
+  // Focus the dialog itself (not a text field) so opening a picker never pops up the on-screen keyboard.
+  box.current?.focus({preventScroll:true});const o=document.body.style.overflow;document.body.style.overflow='hidden';
+  return()=>{document.removeEventListener('keydown',key);document.body.style.overflow=o;if(prev&&document.contains(prev))prev.focus?.({preventScroll:true})}},[]);
+ return <div className="modalback" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)close.current()}}><section ref={box} tabIndex={-1} onFocus={e=>{const el=e.target as HTMLElement;if(/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))setTimeout(()=>{if(document.activeElement===el)el.scrollIntoView({block:'center',behavior:'smooth'})},350)}} className={'modal stack'+(wide?' wide':'')} role="dialog" aria-modal="true" aria-label={label||(typeof title==='string'?title:undefined)} data-localized="true">
+  <div className="modal-head"><h2 className="h-spark">{title}</h2><button type="button" data-close className="icon ghost" aria-label={t('common.close')} onClick={()=>close.current()}><X size={20}/></button></div>
   {children}
   {footer&&<div className="modal-foot">{footer}</div>}
  </section></div>;

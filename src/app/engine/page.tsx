@@ -3,6 +3,7 @@
 // ones; every indicator is read from /api/gpu/status (the local server checks the engine health), so READY is never
 // shown for an engine that does not answer. CloudCompute is listed only when enabled in Settings or already selected.
 import {useEffect,useState} from 'react';
+import {NumberField} from '@/components/Common';
 import {CloudComputeAPI} from '@/components/CloudComputeAPI';
 import {GpuReadiness} from '@/components/GpuReadiness';
 import {useDirect,type Provider,type Phase} from '@/lib/engine/direct';
@@ -140,7 +141,7 @@ export default function Page(){
     <li><b>{t('Остановить инстанс в панели','Stop the instance in the panel')}</b>{t(': оплата GPU прекращается, но хранение диска оплачивается — проверьте текущие условия в панели. Модели на диске сохраняются, если диск постоянный.',': GPU billing stops, disk storage is still billed — check the rate in the panel. Models stay if the disk is persistent.')}</li>
     <li><b>{t('Удалить инстанс','Delete the instance')}</b>{t(': оплата прекращается полностью, диск с моделями удаляется. Модели останутся в вашем Google Drive.',': billing stops completely, the disk with models is deleted. Models remain in your Google Drive.')}</li>
    </ul>
-   <label className="field">{t('Тариф GPU, ₽/час (для расчёта)','GPU rate, RUB/hour (for the estimate)')}<input inputMode="decimal" value={tariff||''} placeholder="24.94" onChange={e=>{const v=Number(e.target.value.replace(',','.'));const next=Number.isFinite(v)&&v>0?v:0;setTariff(next);try{localStorage.setItem(TARIFF_KEY,String(next))}catch{}}}/></label>
+   <label className="field">{t('Тариф GPU, ₽/час (для расчёта)','GPU rate, RUB/hour (for the estimate)')}<NumberField decimal value={tariff||null} placeholder="24.94" onCommit={v=>{const next=v>0?v:0;setTariff(next);try{localStorage.setItem(TARIFF_KEY,String(next))}catch{}}} onEmpty={()=>{setTariff(0);try{localStorage.setItem(TARIFF_KEY,'0')}catch{}}}/></label>
    {gpu.url?<p className="tiny">{t(`Подключено ${minutes} мин`,`Connected ${minutes} min`)}{tariff?t(` ≈ ${(minutes/60*tariff).toFixed(2)} ₽ — это минимум: оплата идёт с момента запуска инстанса, а не с подключения.`,` ≈ ${(minutes/60*tariff).toFixed(2)} RUB — a minimum: billing runs since the instance started.`):''}</p>:<p className="tiny muted">{t('Не подключено. Если инстанс запущен, он оплачивается, даже когда сайт отключён.','Not connected. A running instance is billed even when the site is disconnected.')}</p>}
    {gpu.url&&idle>=15&&<div className="notice" role="alert">{t(`GPU простаивает ${idle} мин${tariff?` (≈ ${(idle/60*tariff).toFixed(2)} ₽)`:''}. Если генерация больше не нужна, остановите или удалите инстанс в панели CloudCompute.`,`The GPU has been idle for ${idle} min. Stop or delete the instance in the CloudCompute panel if you are done.`)}</div>}
   </section>}

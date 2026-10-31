@@ -4,7 +4,7 @@
 // strength and the detection/mask/generation profile live in the persisted studio store.
 import {useEffect,useRef,useState} from 'react';
 import Link from 'next/link';
-import {ImageUpload,Slider,Prompt} from './Common';
+import {ImageUpload,Slider,Prompt,NumberField} from './Common';
 import {JobProgress} from './JobProgress';
 import {TERMINAL,type LiveJob} from './Generator';
 import {useStudio} from '@/stores/studio';
@@ -160,7 +160,7 @@ export function FaceFix({onClassic}:{onClassic:()=>void}){
     <Slider label="Steps" caption={t('params.steps')} min={1} max={60} step={1} value={profile.steps} onChange={steps=>set({steps})}/>
     <Slider label="CFG" caption="CFG" min={1} max={20} step={.5} value={profile.cfg} onChange={cfg=>set({cfg})}/>
     <div className="grid2 keep"><div className="field"><label>Sampler</label><select aria-label="Sampler" value={profile.sampler} onChange={e=>set({sampler:e.target.value})}>{['Euler','Euler a','DPM++ 2M'].map(x=><option key={x}>{x}</option>)}</select></div><div className="field"><label>Scheduler</label><select aria-label="Scheduler" value={profile.scheduler} onChange={e=>set({scheduler:e.target.value})}>{['Normal','Karras'].map(x=><option key={x}>{x}</option>)}</select></div></div>
-    <div className="grid2 keep"><div className="field"><label>{t('ff.workW')}</label><input aria-label={t('ff.workW')} type="number" inputMode="numeric" min={256} max={1536} step={8} value={profile.workWidth} onChange={e=>set({workWidth:Number(e.target.value)})}/></div><div className="field"><label>{t('ff.workH')}</label><input aria-label={t('ff.workH')} type="number" inputMode="numeric" min={256} max={1536} step={8} value={profile.workHeight} onChange={e=>set({workHeight:Number(e.target.value)})}/></div></div>
+    <div className="grid2 keep"><div className="field"><label>{t('ff.workW')}</label><NumberField aria-label={t('ff.workW')} value={profile.workWidth} onCommit={workWidth=>set({workWidth})}/></div><div className="field"><label>{t('ff.workH')}</label><NumberField aria-label={t('ff.workH')} value={profile.workHeight} onCommit={workHeight=>set({workHeight})}/></div></div>
     <span className="tiny muted">{t('ff.workNote')}</span>
     <label className="row tiny"><input type="checkbox" checked={profile.randomSeed} onChange={e=>set({randomSeed:e.target.checked})}/> {t('params.randomSeed')}</label>
     {!profile.randomSeed&&<input aria-label="Seed" inputMode="numeric" value={profile.seed} onChange={e=>set({seed:e.target.value.replace(/\D/g,'')})} placeholder="Seed"/>}

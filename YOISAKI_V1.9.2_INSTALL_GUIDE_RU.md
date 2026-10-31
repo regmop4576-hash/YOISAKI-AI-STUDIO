@@ -5,25 +5,25 @@
 
 ## Обновление существующей установки
 
-1. Скачайте `YOISAKI_AI_STUDIO_V1.9.1_PIXEL_FANTASY.zip` в папку «Загрузки» телефона.
+1. Скачайте `YOISAKI_AI_STUDIO_V1.9.2_PIXEL_FANTASY.zip` в папку «Загрузки» телефона.
 2. В Termux (один раз) дайте доступ к памяти: `termux-setup-storage`.
 3. Запустите обновление из установленной папки:
 
 ```bash
 cd ~/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION
-bash update.sh ~/storage/downloads/YOISAKI_AI_STUDIO_V1.9.1_PIXEL_FANTASY.zip
+bash update.sh ~/storage/downloads/YOISAKI_AI_STUDIO_V1.9.2_PIXEL_FANTASY.zip
 ```
 
 Скрипт проверит целостность всех файлов (SHA-256), соберёт сайт, остановит старую версию, сохранит резервные
 копии и запустит новую. Если запуск не удастся, прежняя версия восстанавливается автоматически.
 
-4. Откройте `http://127.0.0.1:3000/engine` и убедитесь, что внизу карточки GPU указано `1.9.1`.
+4. Откройте `http://127.0.0.1:3000/engine` и убедитесь, что внизу карточки GPU указано `1.9.2`.
    В браузере обновите страницу (потяните вниз), чтобы загрузить новое оформление.
 
 ## Новая установка
 
 ```bash
-cd ~ && unzip -q ~/storage/downloads/YOISAKI_AI_STUDIO_V1.9.1_PIXEL_FANTASY.zip
+cd ~ && unzip -q ~/storage/downloads/YOISAKI_AI_STUDIO_V1.9.2_PIXEL_FANTASY.zip
 cd YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION && bash install.sh && ./start.sh
 ```
 
