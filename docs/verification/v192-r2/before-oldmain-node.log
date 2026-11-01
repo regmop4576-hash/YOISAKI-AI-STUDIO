@@ -1,0 +1,250 @@
+TAP version 13
+# Subtest: GPU READY at a new address does not adopt or poll jobs of an earlier GPU session
+not ok 1 - GPU READY at a new address does not adopt or poll jobs of an earlier GPU session
+  ---
+  duration_ms: 114.450326
+  type: 'test'
+  location: '<repo>/tests/v192-regression.test.mjs:52:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    record must be marked as belonging to an earlier GPU session
+    + actual - expected
+    
+    + undefined
+    - false
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: false
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file://<repo>/tests/v192-regression.test.mjs:58:11)
+    process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+# Subtest: "check and delete" with GPU of another session: explicit local removal, no GPU cancel, gallery kept
+not ok 2 - "check and delete" with GPU of another session: explicit local removal, no GPU cancel, gallery kept
+  ---
+  duration_ms: 46.616728
+  type: 'test'
+  location: '<repo>/tests/v192-regression.test.mjs:62:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    {"error":"Сначала подключитесь к прежней сессии GPU и проверьте задание. При потере связи оно может ещё выполняться.","code":"JOB_UNCONFIRMED"}
+    
+    409 !== 200
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 200
+  actual: 409
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file://<repo>/tests/v192-regression.test.mjs:66:84)
+    process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: several stale records are removed together without GPU, persist after restart and never reappear
+not ok 3 - several stale records are removed together without GPU, persist after restart and never reappear
+  ---
+  duration_ms: 21.309987
+  type: 'test'
+  location: '<repo>/tests/v192-regression.test.mjs:70:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    {"error":"API не найден.","code":"NOT_FOUND"}
+    
+    404 !== 200
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 200
+  actual: 404
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file://<repo>/tests/v192-regression.test.mjs:73:76)
+    process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: bulk removal never forgets a job confirmed RUNNING in the current session
+not ok 4 - bulk removal never forgets a job confirmed RUNNING in the current session
+  ---
+  duration_ms: 72.562016
+  type: 'test'
+  location: '<repo>/tests/v192-regression.test.mjs:81:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    404 !== 200
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 200
+  actual: 404
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file://<repo>/tests/v192-regression.test.mjs:85:87)
+    process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: a removal racing with an in-flight poll does not bring the record back
+not ok 5 - a removal racing with an in-flight poll does not bring the record back
+  ---
+  duration_ms: 84.760638
+  type: 'test'
+  location: '<repo>/tests/v192-regression.test.mjs:89:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    404 !== 200
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 200
+  actual: 404
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file://<repo>/tests/v192-regression.test.mjs:94:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: recovery: reconnecting to the same session collects the result once; nothing is generated again
+not ok 6 - recovery: reconnecting to the same session collects the result once; nothing is generated again
+  ---
+  duration_ms: 65.966276
+  type: 'test'
+  location: '<repo>/tests/v192-regression.test.mjs:97:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    + actual - expected
+    
+    + undefined
+    - true
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file://<repo>/tests/v192-regression.test.mjs:100:98)
+    process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: a job unknown to the reconnected GPU becomes INTERRUPTED (closable), never re-sent
+ok 7 - a job unknown to the reconnected GPU becomes INTERRUPTED (closable), never re-sent
+  ---
+  duration_ms: 45.304434
+  type: 'test'
+  ...
+# Subtest: legacy saved "2 ПЕРСОНАЖА" with three stored regions shows and sends exactly two
+not ok 8 - legacy saved "2 ПЕРСОНАЖА" with three stored regions shows and sends exactly two
+  ---
+  duration_ms: 0.429782
+  type: 'test'
+  location: '<repo>/tests/v192-regression.test.mjs:117:1'
+  failureType: 'testCodeFailure'
+  error: 'normalizeRegional is not a function'
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    TestContext.<anonymous> (file://<repo>/tests/v192-regression.test.mjs:118:67)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: OFF → 2 → 3 → 2 → OFF: tabs, masks and request regions agree; region C data survives
+not ok 9 - OFF → 2 → 3 → 2 → OFF: tabs, masks and request regions agree; region C data survives
+  ---
+  duration_ms: 0.352823
+  type: 'test'
+  location: '<repo>/tests/v192-regression.test.mjs:122:1'
+  failureType: 'testCodeFailure'
+  error: 'normalizeRegional is not a function'
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    TestContext.<anonymous> (file://<repo>/tests/v192-regression.test.mjs:123:8)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: CUSTOM uses the configured number of regions
+not ok 10 - CUSTOM uses the configured number of regions
+  ---
+  duration_ms: 0.37319
+  type: 'test'
+  location: '<repo>/tests/v192-regression.test.mjs:130:1'
+  failureType: 'testCodeFailure'
+  error: 'normalizeRegional is not a function'
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    TestContext.<anonymous> (file://<repo>/tests/v192-regression.test.mjs:131:21)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: disabled region is saved but not sent; OFF keeps all saved settings
+not ok 11 - disabled region is saved but not sent; OFF keeps all saved settings
+  ---
+  duration_ms: 0.134112
+  type: 'test'
+  location: '<repo>/tests/v192-regression.test.mjs:136:1'
+  failureType: 'testCodeFailure'
+  error: 'normalizeRegional is not a function'
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    TestContext.<anonymous> (file://<repo>/tests/v192-regression.test.mjs:137:21)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: Regional OFF + ControlNet Depth/Canny/OpenPose allowed; Regional ON + ControlNet ON blocked
+not ok 12 - Regional OFF + ControlNet Depth/Canny/OpenPose allowed; Regional ON + ControlNet ON blocked
+  ---
+  duration_ms: 0.281354
+  type: 'test'
+  location: '<repo>/tests/v192-regression.test.mjs:141:1'
+  failureType: 'testCodeFailure'
+  error: 'normalizeRegional is not a function'
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    TestContext.<anonymous> (file://<repo>/tests/v192-regression.test.mjs:143:45)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 1
+# fail 11
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 596.564807

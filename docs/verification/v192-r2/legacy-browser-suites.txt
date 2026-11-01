@@ -1,0 +1,6 @@
+regional-compatibility-browser: before(stability)=  - waiting for getByText('GPU: MOCK GPU', { exact: true }) to be visible | after=  - waiting for getByText('GPU: MOCK GPU', { exact: true }) to be visible
+controlnet-browser: before(stability)=  - waiting for getByText('GPU: TEST ONLY', { exact: true }) to be visible | after=  - waiting for getByText('GPU: TEST ONLY', { exact: true }) to be visible
+history-browser: before(stability)=AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value: | after=AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+img2img-browser: before(stability)=  - waiting for getByText('GPU: TEST ONLY', { exact: true }) to be visible | after=  - waiting for getByText('GPU: TEST ONLY', { exact: true }) to be visible
+v180-editor-browser: before(stability)=  - waiting for getByText('GPU: TEST ONLY', { exact: true }) to be visible | after=  - waiting for getByText('GPU: TEST ONLY', { exact: true }) to be visible
+v181-facefix-browser: before(stability)=  - waiting for getByText('GPU: TEST ONLY', { exact: true }) to be visible | after=  - waiting for getByText('GPU: TEST ONLY', { exact: true }) to be visible

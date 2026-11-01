@@ -1,0 +1,19 @@
+FAIL READY GPU: old-session job is not presented as the current generation: Expected values to be strictly equal:
+PASS "2 ПЕРСОНАЖА" shows exactly Region A, Region B
+PASS 2 characters → request carries 2 regions
+PASS "3 ПЕРСОНАЖА" shows three regions; back to two shows two
+PASS selected tab is valid after the count shrinks (no empty editor)
+PASS CUSTOM keeps the real configured count
+PASS OFF hides region tabs and the regional hint
+PASS Regional OFF + ControlNet Depth: no warning, regions [] in request JSON
+PASS Regional OFF + ControlNet Canny: no warning, regions [] in request JSON
+PASS Regional OFF + ControlNet OpenPose: no warning, regions [] in request JSON
+PASS Regional ON + ControlNet ON is still blocked with the warning
+FAIL reload: OFF persists, no false warning, saved regions intact (C kept): Expected values to be strictly equal:
+FAIL legacy saved "2 ПЕРСОНАЖА" with 3 stored regions (old build) shows 2 after reload: Expected values to be strictly deep-equal:
+FAIL "Проверить и удалить" removes an old-session record after confirmation, without GPU: timeout: record removed
+FAIL remaining stale records are removed together; counters update: locator.click: Timeout 6000ms exceeded.
+FAIL removed records do not reappear after reload and repeated polling: Expected values to be strictly equal:
+PASS no GPU cancel / status call was sent for old jobs; no automatic re-generation
+PASS no browser runtime errors
+Failures: 6/18; root=<scratch>/stability; SYNTHETIC engine, Chromium mobile emulation (not Android/T4).

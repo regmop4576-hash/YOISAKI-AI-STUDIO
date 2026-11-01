@@ -41,7 +41,7 @@ export function isAppNavigation(req,method,route,url){
  return method==='GET'&&req.headers['sec-fetch-mode']==='navigate'&&req.headers['sec-fetch-dest']==='document'
   &&APP_PAGES.includes(route)&&!url.searchParams.has('state')&&!url.searchParams.has('code');
 }
-export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,serviceKey='',discoverAddress=discover,discoverProgress=rendezvousProgress,exchange=exchangeCode,providerRequest=providerHttp,providerBytesRequest=providerBytes,defaultGoogle=null,sleep=ms=>new Promise(r=>setTimeout(r,ms).unref?.()),deployInterval=10000,driveInterval=3000,autoResume=true,terminalInitialize=initializeTerminal,monitorMinGap=MONITOR_LIMITS.min_gap_ms,monitorTimers}={}){
+export async function createLocalApp({dataDir,distDir,build='',upstream=requestUpstream,serviceKey='',discoverAddress=discover,discoverProgress=rendezvousProgress,exchange=exchangeCode,providerRequest=providerHttp,providerBytesRequest=providerBytes,defaultGoogle=null,sleep=ms=>new Promise(r=>setTimeout(r,ms).unref?.()),deployInterval=10000,driveInterval=3000,autoResume=true,terminalInitialize=initializeTerminal,monitorMinGap=MONITOR_LIMITS.min_gap_ms,monitorTimers}={}){
  const store=await new Store(dataDir).init();
  // v1.7.3: remembered connections and the Google OAuth client live in secrets.json (0600), never in state.json.
  const secrets=await new SecretStore(dataDir).init();const oauth=new OAuthFlows();let oauthResult=null,oauthGeneration=0;
@@ -62,7 +62,11 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
  const diagnostics=[];
  const note=(code)=>{diagnostics.push({at:new Date().toISOString(),code});if(diagnostics.length>30)diagnostics.shift()};
  // No credentials are ever stored in state.json. Unfinished histories can resume on explicit reconnect.
- const historySnapshot=()=>({items:store.data.history.map(j=>({...j,terminal:isTerminal(j),can_delete:isTerminal(j)&&!jobs.has(j.id),can_forget:j.status==='CONNECTION_LOST'&&!submissions.has(j.id)})),limit:HISTORY_LIMIT});
+ // current_session: true = the job belongs to the GPU connected now (same provider + address); false = a GPU is
+ // connected but the job was created in an earlier session; null = no GPU connected. READY of the current GPU
+ // never makes an earlier job "active": only the GPU that accepted it can confirm it.
+ const jobView=j=>j&&({...j,terminal:isTerminal(j),can_delete:isTerminal(j)&&!jobs.has(j.id),can_forget:j.status==='CONNECTION_LOST'&&!submissions.has(j.id),current_session:connection?sameProvider(j,connection):null});
+ const historySnapshot=()=>({items:store.data.history.map(jobView),limit:HISTORY_LIMIT});
  let providers=providerConfig(store.data.preferences);
  const currentPhase=()=>connection?(state==='ERROR'?'ERROR':state==='LOADING'?'LOADING':'READY'):phase;
  const status=()=>{
@@ -126,7 +130,7 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
   setPhase('LOADING','Движок отвечает. Загружаю список моделей…');
   let inv=null,modelsError=null;try{inv=await loadModels(c)}catch(e){if(e.code==='AUTH_REJECTED')throw e;modelsError=e}
   if(version!==epoch)fail('SUPERSEDED','Подключение отменено.',409);
-  await store.change(d=>{for(const j of d.history)if(!['COMPLETED','FAILED','CANCELLED','INTERRUPTED'].includes(j.status)){j.status='CONNECTION_LOST';j.connection_error='Ожидается подтверждение GPU'}});
+  await store.change(d=>{for(const j of d.history)if(!['COMPLETED','FAILED','CANCELLED','INTERRUPTED'].includes(j.status)){j.status='CONNECTION_LOST';j.connection_error=sameProvider(j,c)?'Ожидается подтверждение GPU':'Задание прежней сессии GPU (другой адрес). Текущий GPU его не подтверждает; повторная генерация не запускается.'}});
   if(version!==epoch)fail('SUPERSEDED','Подключение отменено.',409);jobs.clear();acknowledgements.clear();connection=c;c.resultAck=h.capabilities?.result_ack===true||/^1\.[5-8]\./.test(h.engine_version||'');info=h;state=h.state;auto=null;connectedAt=Date.now();lastSeenAt=connectedAt;
   if(inv){await mergeModels(inv,c);modelsState.error='';modelsState.code=''}else{modelsState.error=publicError(modelsError).error;modelsState.code=modelsError.code||'LOCAL_ERROR';note('MODELS_'+modelsState.code)}
   await store.change(d=>{d.preferences={...d.preferences,last_host:c.origin}});
@@ -370,7 +374,7 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
   if(route.startsWith('/api/')){
    const image=method==='GET'&&/^\/api\/gallery\/[a-f0-9_-]+\/file$/.test(route);
    if(!image&&req.headers['x-yoisaki-local']!=='1')fail('LOCAL_ONLY','Откройте приложение на 127.0.0.1.',403);
-   if(route==='/api/session'&&method==='GET'){res.setHeader('Set-Cookie',`yoisaki_local=${session}; HttpOnly; SameSite=Strict; Path=/`);return send(res,{ok:true,version:WEBSITE_VERSION,storage_warning:store.warning})}
+   if(route==='/api/session'&&method==='GET'){res.setHeader('Set-Cookie',`yoisaki_local=${session}; HttpOnly; SameSite=Strict; Path=/`);return send(res,{ok:true,version:WEBSITE_VERSION,build,storage_warning:store.warning})}
    if(!(req.headers.cookie||'').split(';').some(x=>x.trim()==='yoisaki_local='+session))fail('SESSION_REQUIRED','Локальная сессия завершилась. Обновите страницу.',401);
    if(route==='/api/gpu/provider'&&method==='POST'){
     const b=await jsonBody(req);const selected=providerName(b.provider);
@@ -678,11 +682,11 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
        await setJob(job.id,{connection_error:publicError(e).error});return store.data.history.find(x=>x.id===job.id);
       }finally{submissions.delete(job.id)}
     });
-    submissionChain=task;const result=await task;return send(res,result,result.status==='CONNECTION_LOST'?202:201);
+    submissionChain=task;const result=await task;return send(res,jobView(result),result.status==='CONNECTION_LOST'?202:201);
    }
    const jobMatch=route.match(/^\/api\/gpu\/jobs\/([a-f0-9-]{36})$/);
    if(jobMatch){const id=jobMatch[1];const job=store.data.history.find(x=>x.id===id);if(!job)fail('JOB_NOT_FOUND','Задание не найдено.',404);
-    if(method==='GET')return send(res,job);
+    if(method==='GET')return send(res,jobView(job));
     if(method==='DELETE'){if(!terminal.includes(job.status)){const c=jobs.get(id)||(connection&&sameProvider(job,connection)?connection:null);if(!c)fail('GPU_OFFLINE','Нет связи с GPU. Отмена не подтверждена.',409);const remote=await upstream(c,'/jobs/'+id,{method:'DELETE'});if(remote.status==='CANCELLED'){jobs.delete(id);await setJob(id,{status:'CANCELLED',connection_error:undefined})}else{jobs.set(id,c);await pollJobs()}}return send(res,{status:store.data.history.find(x=>x.id===id)?.status||'CANCELLED'})}}
    if(route==='/api/history'&&method==='GET')return send(res,historySnapshot());
    const historyMatch=route.match(/^\/api\/history\/([a-f0-9-]{36})$/);
@@ -709,6 +713,20 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
      d.history=d.history.filter(j=>j.id!==id);
     });
     return send(res,historySnapshot());
+   }
+   // Several unconfirmed records at once (e.g. left from earlier Colab sessions). LOCAL only: never calls the GPU.
+   // A record that is being submitted or is confirmed QUEUED/RUNNING right now is skipped, not removed.
+   if(route==='/api/history/forget'&&method==='POST'){
+    const body=await jsonBody(req);
+    if(!Array.isArray(body.ids)||!body.ids.length||body.ids.length>1000||body.ids.some(id=>typeof id!=='string'||!/^[a-f0-9-]{36}$/.test(id)))fail('INVALID_HISTORY','Неверный список записей.');
+    const selected=new Set(body.ids);let removed=0,skipped=0;
+    await store.change(d=>{d.history=d.history.filter(j=>{
+     if(!selected.has(j.id))return true;
+     if(j.status!=='CONNECTION_LOST'||submissions.has(j.id)){skipped++;return true}
+     removed++;return false;
+    })});
+    for(const id of selected)if(!store.data.history.some(j=>j.id===id)){jobs.delete(id);acknowledgements.delete(id)}
+    note('HISTORY_FORGET');return send(res,{...historySnapshot(),removed,skipped});
    }
    if(route==='/api/history/cleanup'&&method==='POST'){
     const body=await jsonBody(req);

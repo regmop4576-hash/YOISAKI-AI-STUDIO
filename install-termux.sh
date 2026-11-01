@@ -260,7 +260,7 @@ case "${1:-help}" in
              echo 'GitHub недоступен для загрузки установщика — использую сохранённую копию.'; bash "$INSTALLER" --update "$@"
            else echo 'Установщик не найден. Выполните команду установки из README ещё раз.'; exit 1; fi ;;
   open)    command -v termux-open-url >/dev/null && termux-open-url "$url" || echo "Откройте в браузере: $url" ;;
-  version) need_app; node -e 'console.log(require(process.argv[1]).version)' "$APP/package.json" ;;
+  version) need_app; node -e 'const p=require("path"),a=process.argv[1];let b="";try{b=require(p.join(a,"dist/release.json")).source_sha256.slice(0,12)}catch{}console.log(require(p.join(a,"package.json")).version+(b&&process.argv[2]==="--build"?" "+b:""))' "$APP" "${2:-}" ;;
   dir)     echo "$APP" ;;
   help|-h|--help|*) cat <<HELP
 YOISAKI AI STUDIO — команды:
@@ -270,7 +270,7 @@ YOISAKI AI STUDIO — команды:
   yoisaki status    диагностика: версия, Node.js, сервер, журнал
   yoisaki update    обновить до последнего релиза (резервные копии, автоматический откат)
   yoisaki open      открыть сайт в браузере
-  yoisaki version   установленная версия
+  yoisaki version   установленная версия (yoisaki version --build — с идентификатором сборки)
 HELP
   ;;
 esac
@@ -293,7 +293,7 @@ else
 fi
 if [[ "$NO_START" == 0 ]]; then
   for _ in 1 2 3 4 5 6 7 8 9 10; do
-    if curl -fsS -m 2 -H 'X-Yoisaki-Local: 1' "$URL/api/session" </dev/null >/dev/null 2>&1; then ok "Сайт отвечает: версия $(curl -fsS -m 2 -H 'X-Yoisaki-Local: 1' "$URL/api/session" </dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.parse(s).version)}catch{console.log("?")}})')"; break; fi
+    if curl -fsS -m 2 -H 'X-Yoisaki-Local: 1' "$URL/api/session" </dev/null >/dev/null 2>&1; then ok "Сайт отвечает: версия $(curl -fsS -m 2 -H 'X-Yoisaki-Local: 1' "$URL/api/session" </dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s);console.log(j.version+(j.build?" · сборка "+j.build:""))}catch{console.log("?")}})')"; break; fi
     sleep 1
   done
 fi

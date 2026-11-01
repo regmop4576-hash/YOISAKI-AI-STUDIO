@@ -1,0 +1,47 @@
+== 1. fresh install with the one-line command (no node/curl/unzip present)
+PASS  node, curl, unzip absent before install
+PASS  one-liner exits 0
+PASS  pkg installed nodejs-lts unzip curl
+PASS  integrity check ran
+PASS  SHA-256 verified against SHA256SUMS.txt
+PASS  site answers on 127.0.0.1:3000 with 1.9.2
+PASS  installer prints http://127.0.0.1:3000
+PASS  yoisaki command works
+PASS  scripts use Termux bash
+== 2. re-run is safe and downloads nothing
+PASS  re-run exits 0
+PASS  no archive downloaded
+PASS  reports latest already installed
+== 3. second concurrent run is refused
+PASS  concurrent run refused
+PASS  stale lock is recovered
+== 4. yoisaki update to 1.9.3, interrupted download resumes, data kept
+PASS  update exits 0
+PASS  download resumed with HTTP Range
+PASS  site now 1.9.3
+PASS  code and data backups created
+PASS  user data unchanged
+== 5. failed update (1.9.4 does not start) rolls back
+PASS  failed update exits non-zero
+PASS  previous version 1.9.3 restored and running
+PASS  restored install passes integrity check
+PASS  user data unchanged
+== 6. older release is not installed over a newer one
+PASS  downgrade refused
+== 7. checksum mismatch stops everything
+PASS  SHA256SUMS vs GitHub digest mismatch refused
+PASS  downloaded file with wrong SHA-256 refused and deleted
+PASS  installed version untouched
+== 8. release without assets gives a clear message
+PASS  missing assets reported
+== 9. damaged installation is repaired, data kept
+PASS  repair exits 0
+PASS  broken copy moved aside
+PASS  repaired install passes integrity check and runs
+PASS  user data unchanged
+== 10. stop / start commands
+PASS  yoisaki stop
+PASS  yoisaki start
+PASS  yoisaki start when already running is OK
+
+RESULT: 35 passed, 0 failed  (logs: /tmp/tmp.Jbx7dzHKIl)

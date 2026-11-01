@@ -1,0 +1,16 @@
+PASS original public 1.9.2 installed (old build, no build id in /api/session)
+PASS REPRODUCED: main-branch installer skips same-version 1.9.2 update ("скачивание не требуется")
+PASS repaired installer updates the manual install of the same version
+PASS repaired ZIP chosen among original / stability / repaired assets
+PASS running server reports the repaired build e017fb3153a5 (version stays 1.9.2)
+PASS installer output names the build
+PASS yoisaki version --build shows the build
+PASS served page and script carry the same build (no stale bundle on disk)
+PASS static files are revalidated by the browser (Cache-Control: no-cache)
+PASS user data kept: marker, presets, prompt, legacy regional draft
+PASS the four lost records survive the update, unconfirmed, without GPU
+PASS stale records removed locally on the installed build
+PASS removal persists across restart of the app
+PASS repeat update: nothing downloaded
+PASS main-branch installer (installed via installer) also selects the repaired ZIP by name
+RESULT: 15 passed, 0 failed; old build=8c85874f796a/none, repaired build=e017fb3153a5; logs: /tmp/tmp.PjRv7qFO86; simulated Termux only

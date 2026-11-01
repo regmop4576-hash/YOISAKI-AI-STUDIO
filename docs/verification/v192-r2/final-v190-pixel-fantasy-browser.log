@@ -1,0 +1,28 @@
+PASS · offline: every page opens without script errors, header never claims GPU ready
+PASS · no horizontal scroll at 360 / 390 / 430 / 768 / 1280 px on every page
+PASS · Russian by default: visible UI contains no untranslated English words
+PASS · generate without GPU: honest error, the button never shows success
+PASS · Android input: fields keep focus through background re-renders; erase / type / paste work (Width, Height, Seed, LoRA search, Settings, Face Fix)
+PASS · GPU error state: a failed connection shows an error and never READY
+PASS · CloudCompute hidden for public users; Settings switch reveals it and persists
+PASS · interface switches change real behaviour and survive reload
+PASS · English can be selected without code changes and back
+PASS · GPU ready: connecting shows real engine data
+PASS · model picker, LoRA picker and weight are saved to settings
+PASS · prompt survives Generate → Gallery → Generate and a reload
+PASS · Generate: the button shows the real job progress, then completion; result saved to gallery
+PASS · Editor: mode, image, mask and strength survive Editor → Gallery → Editor
+PASS · Editor: draft restored after a page reload (IndexedDB), parameters from Termux
+PASS · Editor: tool switching, undo / redo, and Apply Inpaint sends a real mask
+PASS · Editor: another image resets the mask (no stale strokes)
+PASS · Face Fix: automatic detection, selection kept after a page switch
+PASS · Gallery: context menu delete and multi-select delete update the real gallery
+PASS · Models: catalogue rows are the real engine list; "use for generation" updates settings
+PASS · no script errors during the online flow
+PASS · API error: a failed job shows the engine error and the error state
+PASS · fonts: readable text uses Onest with Cyrillic; logo, headings and main button stay pixel
+PASS · no word is split across lines in buttons, tabs, navigation and tiles (360 / 412 px)
+PASS · PWA: manifest linked and valid, PNG icons 192 / 512 / maskable and favicon served with correct types
+PASS · PWA: full Chromium (persistent profile) reports no installability errors and fires beforeinstallprompt
+
+26/26 passed (synthetic GPU; real GPU generation not tested)
