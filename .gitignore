@@ -1,7 +1,27 @@
-node_modules
-.next
-out
-*.tsbuildinfo
-.env*
+# Dependencies, build output, caches (dist/ is built into the release ZIP, not committed)
+node_modules/
+dist/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.zip
+
+# Local secrets and per-installation data — never commit
+.env
+.env.*
 !.env.example
-.DS_Store
+config/google-desktop-client.json
+secrets.json
+secrets.json.*
+state.json
+state.json.*
+rclone.conf
+*.token
+yoisaki.env
+!cloudcompute/yoisaki.env.example
+engine/.venv/
+engine/.results/
+build-meta.json
+validation/
+screenshots/
+mobile-results.json

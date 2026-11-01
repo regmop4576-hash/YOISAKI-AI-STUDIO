@@ -1,0 +1,1 @@
+PASS mobile browser 390x844: Img2Img tab, source upload/preview, size from source, Denoise steps, real request (prompt/negative/LoRA/size/steps/denoise), centre-crop source, low-Denoise guard, result in preview + gallery without base64, Text2Img unchanged, Editor IMG2IMG submits; synthetic upstream only.

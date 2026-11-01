@@ -1,0 +1,17 @@
+# v1.6.2 browser tests: Chromium (preinstalled build), synthetic GPU upstream, NOT T4 inference
+controlnet-browser: PASS
+  PASS mobile browser: 3 modes, SDPose-OOD selector/routing/invalidation/ready map, preview, missing map, mode/dimension invalidation, stale async response ignored, disabled plain request; synthetic upstream only.
+browser-e2e: PASS
+  PASS: real browser/local API connection, tag edit, request, synthetic result, preview, download, gallery and reload. NOT GPU inference.
+history-browser: PASS
+  PASS mobile 390x844: collapsed history, visible active jobs, 44px deletion, reload persistence, confirmation dismiss/accept, bulk deletion, gallery+favorites+triggers intact, separate compatible versions.
+regional-compatibility-browser: PASS
+  PASS Chromium mobile: Regional UI, v1.6.2 request with PNG masks, explicit unavailable warning, plain Text2Img preserved. Synthetic upstream; NOT T4 inference.
+ui-check: PASS
+  PASS browser 390 touch, undo/reset, modes, requests, no horizontal overflow
+  PASS browser 1280 touch, undo/reset, modes, requests, no horizontal overflow
+memory-ui: PASS
+  PASS compact completed card and textual progress 390
+  PASS compact completed card and textual progress 1280
+mobile: PASS
+  PASS: mobile routes + settings at 360/390/430

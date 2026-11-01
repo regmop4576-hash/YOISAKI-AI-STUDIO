@@ -1,0 +1,1 @@
+PASS mobile 390x844: collapsed history, visible active jobs, 44px deletion, reload persistence, confirmation dismiss/accept, bulk deletion, gallery+favorites+triggers intact, separate compatible versions.

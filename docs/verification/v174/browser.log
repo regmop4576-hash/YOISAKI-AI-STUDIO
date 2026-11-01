@@ -1,0 +1,1 @@
+PASS: mobile 360/390/430, browser OAuth callback without GPU, choose folder, reload persistence, explicit GPU binding, CC key/password, discovery, stale/error recovery, no credentials in browser storage/DOM. Providers mocked; live Google and live GPU NOT verified.

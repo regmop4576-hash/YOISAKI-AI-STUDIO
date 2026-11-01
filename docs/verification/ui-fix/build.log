@@ -1,0 +1,6 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> yoisaki-ai-studio-local@1.7.1 build
+> node scripts/build.mjs
+
+Production build ready: dist/ · 1.7.1

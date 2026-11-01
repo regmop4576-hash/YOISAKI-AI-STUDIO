@@ -1,0 +1,8 @@
+== environment
+Tue Oct 27 01:19:07 UTC 2026
+Linux 6.18.44-fc-v165 x86_64
+v22.22.0
+Python 3.13.17
+torch 2.14.1+cu130 (CPU, NOT the pinned 2.10.0 CUDA build; no GPU) diffusers 0.36.0 fastapi 0.115.12 cuda_available False
+rclone v1.60.1-DEV
+Chromium for browser tests: preinstalled 153 mapped onto Playwright 1.56.1 (pins Chromium 141)

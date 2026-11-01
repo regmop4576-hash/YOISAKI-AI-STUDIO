@@ -1,0 +1,1080 @@
+openapi: 3.0.3
+info:
+  title: 'CloudCompute.ru Compute API'
+  description: 'CloudCompute REST API for GPU offers, instances, and SSH keys.'
+  version: 1.0.0
+servers:
+  -
+    url: 'https://app.cloudcompute.ru/api/v1'
+tags:
+  -
+    name: 'Compute API'
+    description: "\nLaunch managed application GPU instances (e.g. ComfyUI) via API."
+  -
+    name: Endpoints
+    description: ''
+components:
+  securitySchemes:
+    default:
+      type: http
+      scheme: bearer
+      description: 'Create a key at <b>/api-access</b> in the dashboard. The raw token is shown once at creation.'
+security:
+  -
+    default: []
+paths:
+  '/api/v1/applications/{slug}/launch':
+    post:
+      summary: 'Launch application instance'
+      operationId: launchApplicationInstance
+      description: "Creates a GPU instance provisioned for the given application slug. Use `auto_select: true`\nto pick the best matching offer from live inventory without supplying `ask_id`."
+      parameters: []
+      responses: {  }
+      tags:
+        - 'Compute API'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ask_id:
+                  type: integer
+                  description: 'optional Exact marketplace offer id. Required unless `auto_select` is true. A taken or ineligible offer returns 422; it is not replaced.'
+                  example: 12345
+                  nullable: true
+                auto_select:
+                  type: boolean
+                  description: 'optional When true, pick the best offer automatically. This is the only launch mode that may choose a different host.'
+                  example: true
+                price_hour:
+                  type: integer
+                  description: 'optional Price ceiling in kopecks for failover.'
+                  example: 5000
+                  nullable: true
+                model_preset_id:
+                  type: string
+                  description: 'optional Model preset id when the app supports presets.'
+                  example: default
+                  nullable: true
+                ssh_key_ids:
+                  type: array
+                  description: 'optional SSH key ids to attach. Defaults to all keys for the API key user.'
+                  example:
+                    - 1
+                  items:
+                    type: integer
+                user_setup_script:
+                  type: string
+                  description: 'optional Shell script exported as CC_USER_SETUP_B64 on boot (apps with supports_user_script only).'
+                  example: architecto
+                  nullable: true
+                name:
+                  type: string
+                  description: 'optional Instance display name.'
+                  example: architecto
+                  nullable: true
+                label:
+                  type: string
+                  description: 'optional Instance label.'
+                  example: architecto
+                  nullable: true
+                disk_gb:
+                  type: integer
+                  description: 'optional Provisioned disk size in GB.'
+                  example: 16
+                  nullable: true
+                offer_disk_space:
+                  type: number
+                  description: 'optional Disk capacity in GB from the selected offer. Send this alongside disk_gb when selecting an offer.'
+                  example: 4326.41688
+                  nullable: true
+                offer_filters:
+                  type: object
+                  description: 'optional Minimum requirements for auto_select (e.g. datacenter, direct_port_count, reliability_min, geolocation).'
+                  example: []
+                  properties:
+                    strict_tier_only:
+                      type: boolean
+                      description: 'optional When true, do not fall back to relaxed/basic tiers if strict search is empty.'
+                      example: false
+                      nullable: true
+                    no_tier_fallback:
+                      type: boolean
+                      description: ''
+                      example: false
+                      nullable: true
+                    reliability_min:
+                      type: integer
+                      description: 'Значение поля value должно быть не меньше 10. Значение поля value не может быть больше 100.'
+                      example: 8
+                      nullable: true
+                    geolocation:
+                      type: string
+                      description: 'Количество символов в поле value не может превышать 512.'
+                      example: v
+                      nullable: true
+                    disk_space:
+                      type: integer
+                      description: 'Значение поля value должно быть не меньше 1. Значение поля value не может быть больше 100000.'
+                      example: 1
+                      nullable: true
+                    disk_bw_min:
+                      type: integer
+                      description: 'Значение поля value должно быть не меньше 0. Значение поля value не может быть больше 50000.'
+                      example: 5
+                      nullable: true
+                    gpu_ram:
+                      type: integer
+                      description: 'Значение поля value должно быть не меньше 1024. Значение поля value не может быть больше 2000000.'
+                      example: 19
+                      nullable: true
+                    inet_down:
+                      type: integer
+                      description: 'Значение поля value должно быть не меньше 1. Значение поля value не может быть больше 100000.'
+                      example: 17
+                      nullable: true
+                    inet_up:
+                      type: integer
+                      description: 'Значение поля value должно быть не меньше 1. Значение поля value не может быть больше 100000.'
+                      example: 5
+                      nullable: true
+                    direct_port_count:
+                      type: integer
+                      description: 'Значение поля value должно быть не меньше 0. Значение поля value не может быть больше 1000.'
+                      example: 8
+                      nullable: true
+                    cuda_max_good:
+                      type: number
+                      description: 'Значение поля value должно быть не меньше 1. Значение поля value не может быть больше 30.'
+                      example: 14
+                      nullable: true
+                    datacenter:
+                      type: boolean
+                      description: ''
+                      example: false
+                      nullable: true
+                    reliable_only:
+                      type: boolean
+                      description: ''
+                      example: false
+                      nullable: true
+                    free_traffic_only:
+                      type: boolean
+                      description: ''
+                      example: true
+                      nullable: true
+                    geolocation_in:
+                      type: array
+                      description: 'Must contain only letters. Количество символов в поле value должно быть равным 2.'
+                      example:
+                        - wa
+                      items:
+                        type: string
+                  nullable: true
+    parameters:
+      -
+        in: path
+        name: slug
+        description: 'Application slug (e.g. `comfyui-sdxl`).'
+        example: comfyui-sdxl
+        required: true
+        schema:
+          type: string
+  /api/v1/chat/completions:
+    post:
+      summary: ''
+      operationId: postApiV1ChatCompletions
+      description: ''
+      parameters: []
+      responses: {  }
+      tags:
+        - Endpoints
+  /api/v1/responses:
+    post:
+      summary: ''
+      operationId: postApiV1Responses
+      description: ''
+      parameters: []
+      responses: {  }
+      tags:
+        - Endpoints
+  /api/v1/messages:
+    post:
+      summary: ''
+      operationId: postApiV1Messages
+      description: ''
+      parameters: []
+      responses: {  }
+      tags:
+        - Endpoints
+  /api/v1/models:
+    get:
+      summary: ''
+      operationId: getApiV1Models
+      description: ''
+      parameters: []
+      responses:
+        401:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error:
+                    message: 'Invalid API key.'
+                    type: invalid_request_error
+                    code: 401
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: 'Invalid API key.'
+                      type:
+                        type: string
+                        example: invalid_request_error
+                      code:
+                        type: integer
+                        example: 401
+      tags:
+        - Endpoints
+  /api/v1/proxies/catalog:
+    get:
+      summary: ''
+      operationId: getApiV1ProxiesCatalog
+      description: ''
+      parameters: []
+      responses:
+        401:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error:
+                    message: 'Invalid API key.'
+                    code: invalid_api_key
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: 'Invalid API key.'
+                      code:
+                        type: string
+                        example: invalid_api_key
+      tags:
+        - Endpoints
+  /api/v1/proxies/options:
+    get:
+      summary: ''
+      operationId: getApiV1ProxiesOptions
+      description: ''
+      parameters: []
+      responses:
+        401:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error:
+                    message: 'Invalid API key.'
+                    code: invalid_api_key
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: 'Invalid API key.'
+                      code:
+                        type: string
+                        example: invalid_api_key
+      tags:
+        - Endpoints
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                service:
+                  type: string
+                  description: ''
+                  example: architecto
+                plan:
+                  type: string
+                  description: 'Must match the regex /^[a-z0-9-]+$/D. Количество символов в поле value не может превышать 64.'
+                  example: 'n'
+                  nullable: true
+              required:
+                - service
+  /api/v1/proxies/quotes:
+    post:
+      summary: ''
+      operationId: postApiV1ProxiesQuotes
+      description: ''
+      parameters: []
+      responses: {  }
+      tags:
+        - Endpoints
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                service:
+                  type: string
+                  description: ''
+                  example: architecto
+                configuration:
+                  type: object
+                  description: ''
+                  example: []
+                  properties: {  }
+              required:
+                - service
+                - configuration
+  /api/v1/proxies/orders:
+    get:
+      summary: ''
+      operationId: getApiV1ProxiesOrders
+      description: ''
+      parameters: []
+      responses:
+        401:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error:
+                    message: 'Invalid API key.'
+                    code: invalid_api_key
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: 'Invalid API key.'
+                      code:
+                        type: string
+                        example: invalid_api_key
+      tags:
+        - Endpoints
+    post:
+      summary: ''
+      operationId: postApiV1ProxiesOrders
+      description: ''
+      parameters: []
+      responses: {  }
+      tags:
+        - Endpoints
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                quote_id:
+                  type: string
+                  description: 'Значение поля value должно быть корректным UUID.'
+                  example: 6ff8f7f6-1eb3-3525-be4a-3932c805afed
+              required:
+                - quote_id
+  '/api/v1/proxies/orders/{orderId}':
+    get:
+      summary: ''
+      operationId: getApiV1ProxiesOrdersOrderId
+      description: ''
+      parameters: []
+      responses:
+        401:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error:
+                    message: 'Invalid API key.'
+                    code: invalid_api_key
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: 'Invalid API key.'
+                      code:
+                        type: string
+                        example: invalid_api_key
+      tags:
+        - Endpoints
+    parameters:
+      -
+        in: path
+        name: orderId
+        description: ''
+        example: '564'
+        required: true
+        schema:
+          type: string
+  '/api/v1/proxies/orders/{orderId}/credentials':
+    get:
+      summary: ''
+      operationId: getApiV1ProxiesOrdersOrderIdCredentials
+      description: ''
+      parameters: []
+      responses:
+        401:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error:
+                    message: 'Invalid API key.'
+                    code: invalid_api_key
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: 'Invalid API key.'
+                      code:
+                        type: string
+                        example: invalid_api_key
+      tags:
+        - Endpoints
+    parameters:
+      -
+        in: path
+        name: orderId
+        description: ''
+        example: '564'
+        required: true
+        schema:
+          type: string
+  /api/v1/offers:
+    get:
+      summary: ''
+      operationId: getApiV1Offers
+      description: ''
+      parameters: []
+      responses:
+        401:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error:
+                    message: 'Invalid API key.'
+                    code: invalid_api_key
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: 'Invalid API key.'
+                      code:
+                        type: string
+                        example: invalid_api_key
+      tags:
+        - Endpoints
+  /api/v1/instances:
+    get:
+      summary: ''
+      operationId: getApiV1Instances
+      description: ''
+      parameters: []
+      responses:
+        401:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error:
+                    message: 'Invalid API key.'
+                    code: invalid_api_key
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: 'Invalid API key.'
+                      code:
+                        type: string
+                        example: invalid_api_key
+      tags:
+        - Endpoints
+    post:
+      summary: ''
+      operationId: postApiV1Instances
+      description: ''
+      parameters: []
+      responses: {  }
+      tags:
+        - Endpoints
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: integer
+                  description: ''
+                  example: 1
+                  enum:
+                    - 0
+                    - 1
+                  nullable: true
+                ask_id:
+                  type: integer
+                  description: 'This field is required when <code>auto_select</code> is not present. This field is required when <code>auto_select</code> is <code>false</code>.'
+                  example: 16
+                  nullable: true
+                auto_select:
+                  type: boolean
+                  description: ''
+                  example: true
+                strict_offer:
+                  type: boolean
+                  description: ''
+                  example: false
+                max_price_hour_minor:
+                  type: integer
+                  description: 'This field is required when <code>currency</code> is present. Значение поля value должно быть не меньше 1.'
+                  example: 22
+                currency:
+                  type: string
+                  description: 'This field is required when <code>max_price_hour_minor</code> is present. Количество символов в поле value должно быть равным 3.'
+                  example: gzm
+                expires_at:
+                  type: string
+                  description: 'Значение поля value не является датой. Значение поля value должно быть датой после <code>now</code>. Значение поля value должно быть датой до или равной <code>2026-10-27T16:21:05+00:00</code>.'
+                  example: '2022-11-20'
+                offer_filters:
+                  type: object
+                  description: ''
+                  example: null
+                  properties:
+                    preferred_gpu_name:
+                      type: string
+                      description: 'This field is required when <code>auto_select</code> is <code>true</code>. Количество символов в поле value не может превышать 128.'
+                      example: 'n'
+                      nullable: true
+                    preferred_num_gpus:
+                      type: integer
+                      description: 'This field is required when <code>auto_select</code> is <code>true</code>. Значение поля value должно быть не меньше 1.'
+                      example: 67
+                      nullable: true
+                    max_price_rub:
+                      type: number
+                      description: 'Значение поля value должно быть не меньше 0.'
+                      example: 12
+                      nullable: true
+                  nullable: true
+                name:
+                  type: string
+                  description: 'Количество символов в поле value не может превышать 255.'
+                  example: m
+                  nullable: true
+                stats:
+                  type: string
+                  description: ''
+                  example: architecto
+                  nullable: true
+                template_image:
+                  type: string
+                  description: 'Must match the regex /^$|^([a-z0-9][a-z0-9._\/-]*)(?::[@a-zA-Z0-9][@a-zA-Z0-9._-]*|@sha256:[a-fA-F0-9]{64})?$/u. Количество символов в поле value не может превышать 255.'
+                  example: 'n'
+                  nullable: true
+                template_id:
+                  type: integer
+                  description: ''
+                  example: 16
+                  nullable: true
+                template_hash_id:
+                  type: string
+                  description: 'Количество символов в поле value не может превышать 64.'
+                  example: 'n'
+                  nullable: true
+                runtype:
+                  type: string
+                  description: ''
+                  example: architecto
+                  nullable: true
+                disk_gb:
+                  type: integer
+                  description: 'Значение поля value должно быть не меньше 8. Значение поля value не может быть больше 100000.'
+                  example: 22
+                  nullable: true
+                offer_disk_space:
+                  type: number
+                  description: 'Значение поля value должно быть не меньше 1. Значение поля value не может быть больше 100000.'
+                  example: 7
+                  nullable: true
+                install_monitoring:
+                  type: boolean
+                  description: ''
+                  example: false
+                  nullable: true
+                bootstrap_profile:
+                  type: string
+                  description: ''
+                  example: full
+                  enum:
+                    - full
+                    - access_only
+                    - worker
+                    - none
+                  nullable: true
+                onstart:
+                  type: string
+                  description: 'Количество символов в поле value не может превышать 50000.'
+                  example: z
+                  nullable: true
+                ssh_key_ids:
+                  type: array
+                  description: 'Must match an existing stored value.'
+                  example:
+                    - 16
+                  items:
+                    type: integer
+  /api/v1/usage:
+    get:
+      summary: ''
+      operationId: getApiV1Usage
+      description: ''
+      parameters: []
+      responses:
+        401:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error:
+                    message: 'Invalid API key.'
+                    code: invalid_api_key
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: 'Invalid API key.'
+                      code:
+                        type: string
+                        example: invalid_api_key
+      tags:
+        - Endpoints
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                after_id:
+                  type: integer
+                  description: 'Значение поля value должно быть не меньше 0.'
+                  example: 27
+                limit:
+                  type: integer
+                  description: 'Значение поля value должно быть не меньше 1. Значение поля value не может быть больше 500.'
+                  example: 22
+                instance_id:
+                  type: integer
+                  description: 'Значение поля value должно быть не меньше 1.'
+                  example: 67
+  '/api/v1/instances/{instanceId}':
+    get:
+      summary: ''
+      operationId: getApiV1InstancesInstanceId
+      description: ''
+      parameters: []
+      responses:
+        401:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error:
+                    message: 'Invalid API key.'
+                    code: invalid_api_key
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: 'Invalid API key.'
+                      code:
+                        type: string
+                        example: invalid_api_key
+      tags:
+        - Endpoints
+    patch:
+      summary: ''
+      operationId: patchApiV1InstancesInstanceId
+      description: ''
+      parameters: []
+      responses: {  }
+      tags:
+        - Endpoints
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                label:
+                  type: string
+                  description: 'Количество символов в поле value не может превышать 100.'
+                  example: b
+                  nullable: true
+                name:
+                  type: string
+                  description: 'Количество символов в поле value не может превышать 255.'
+                  example: 'n'
+                  nullable: true
+                expires_at:
+                  type: string
+                  description: 'Значение поля value не является датой. Значение поля value должно быть датой после <code>now</code>. Значение поля value должно быть датой до или равной <code>2026-10-27T16:21:05+00:00</code>.'
+                  example: '2022-11-20'
+    delete:
+      summary: ''
+      operationId: deleteApiV1InstancesInstanceId
+      description: ''
+      parameters: []
+      responses: {  }
+      tags:
+        - Endpoints
+    parameters:
+      -
+        in: path
+        name: instanceId
+        description: ''
+        example: '564'
+        required: true
+        schema:
+          type: string
+  '/api/v1/instances/{instanceId}/terminal-token':
+    post:
+      summary: ''
+      operationId: postApiV1InstancesInstanceIdTerminalToken
+      description: ''
+      parameters: []
+      responses: {  }
+      tags:
+        - Endpoints
+    parameters:
+      -
+        in: path
+        name: instanceId
+        description: ''
+        example: '564'
+        required: true
+        schema:
+          type: string
+  /api/v1/ssh-keys:
+    get:
+      summary: ''
+      operationId: getApiV1SshKeys
+      description: ''
+      parameters: []
+      responses:
+        401:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error:
+                    message: 'Invalid API key.'
+                    code: invalid_api_key
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: 'Invalid API key.'
+                      code:
+                        type: string
+                        example: invalid_api_key
+      tags:
+        - Endpoints
+    post:
+      summary: ''
+      operationId: postApiV1SshKeys
+      description: ''
+      parameters: []
+      responses: {  }
+      tags:
+        - Endpoints
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                public_key:
+                  type: string
+                  description: ''
+                  example: architecto
+                name:
+                  type: string
+                  description: ''
+                  example: architecto
+              required:
+                - public_key
+                - name
+  '/api/v1/ssh-keys/{sshKeyId}':
+    delete:
+      summary: ''
+      operationId: deleteApiV1SshKeysSshKeyId
+      description: ''
+      parameters: []
+      responses: {  }
+      tags:
+        - Endpoints
+    parameters:
+      -
+        in: path
+        name: sshKeyId
+        description: ''
+        example: '564'
+        required: true
+        schema:
+          type: string
+  /api/v1/vps/catalog:
+    get:
+      summary: ''
+      operationId: getApiV1VpsCatalog
+      description: ''
+      parameters: []
+      responses:
+        401:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error:
+                    message: 'Invalid API key.'
+                    code: invalid_api_key
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: 'Invalid API key.'
+                      code:
+                        type: string
+                        example: invalid_api_key
+      tags:
+        - Endpoints
+  /api/v1/vps:
+    get:
+      summary: ''
+      operationId: getApiV1Vps
+      description: ''
+      parameters: []
+      responses:
+        401:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error:
+                    message: 'Invalid API key.'
+                    code: invalid_api_key
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: 'Invalid API key.'
+                      code:
+                        type: string
+                        example: invalid_api_key
+      tags:
+        - Endpoints
+    post:
+      summary: ''
+      operationId: postApiV1Vps
+      description: ''
+      parameters: []
+      responses: {  }
+      tags:
+        - Endpoints
+  '/api/v1/vps/{vpsId}':
+    get:
+      summary: ''
+      operationId: getApiV1VpsVpsId
+      description: ''
+      parameters: []
+      responses:
+        401:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error:
+                    message: 'Invalid API key.'
+                    code: invalid_api_key
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: 'Invalid API key.'
+                      code:
+                        type: string
+                        example: invalid_api_key
+      tags:
+        - Endpoints
+    delete:
+      summary: ''
+      operationId: deleteApiV1VpsVpsId
+      description: ''
+      parameters: []
+      responses: {  }
+      tags:
+        - Endpoints
+    parameters:
+      -
+        in: path
+        name: vpsId
+        description: ''
+        example: '564'
+        required: true
+        schema:
+          type: string
+  '/api/v1/vps/{vpsId}/start':
+    post:
+      summary: ''
+      operationId: postApiV1VpsVpsIdStart
+      description: ''
+      parameters: []
+      responses: {  }
+      tags:
+        - Endpoints
+    parameters:
+      -
+        in: path
+        name: vpsId
+        description: ''
+        example: '564'
+        required: true
+        schema:
+          type: string
+  '/api/v1/vps/{vpsId}/stop':
+    post:
+      summary: ''
+      operationId: postApiV1VpsVpsIdStop
+      description: ''
+      parameters: []
+      responses: {  }
+      tags:
+        - Endpoints
+    parameters:
+      -
+        in: path
+        name: vpsId
+        description: ''
+        example: '564'
+        required: true
+        schema:
+          type: string
+  '/api/v1/vps/{vpsId}/reboot':
+    post:
+      summary: ''
+      operationId: postApiV1VpsVpsIdReboot
+      description: ''
+      parameters: []
+      responses: {  }
+      tags:
+        - Endpoints
+    parameters:
+      -
+        in: path
+        name: vpsId
+        description: ''
+        example: '564'
+        required: true
+        schema:
+          type: string
+  '/api/v1/vps/{vpsId}/ssh-keys':
+    post:
+      summary: ''
+      operationId: postApiV1VpsVpsIdSshKeys
+      description: ''
+      parameters: []
+      responses: {  }
+      tags:
+        - Endpoints
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ssh_key_ids:
+                  type: array
+                  description: 'Must match an existing stored value.'
+                  example:
+                    - 16
+                  items:
+                    type: integer
+    parameters:
+      -
+        in: path
+        name: vpsId
+        description: ''
+        example: '564'
+        required: true
+        schema:
+          type: string

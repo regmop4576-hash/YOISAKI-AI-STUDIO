@@ -1,0 +1,101 @@
+# Python tests inside yoisaki-engine:1.7.5 (local build, uid 1000, CPU only, no GPU)
+torch 2.10.0+cu128 diffusers 0.36.0
+............................F........................................... [ 26%]
+...............................s........................................ [ 52%]
+........................................................................ [ 78%]
+....................................s.......................             [100%]
+=================================== FAILURES ===================================
+______________________________ test_panel_no_gpu _______________________________
+
+>       p=Panel();assert len(p.buttons)==4;assert 'GPU недоступен' in p.status.value
+
+tests/test_engine.py:44: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <panel.Panel object at 0x7fc2f9b68200>
+
+>       import ipywidgets as w
+E       ModuleNotFoundError: No module named 'ipywidgets'
+
+engine/panel.py:91: ModuleNotFoundError
+=============================== warnings summary ===============================
+../opt/yoisaki/venv/lib/python3.12/site-packages/starlette/testclient.py:37
+
+../opt/yoisaki/venv/lib/python3.12/site-packages/diffusers/models/transformers/transformer_kandinsky.py:168
+
+../opt/yoisaki/venv/lib/python3.12/site-packages/diffusers/models/transformers/transformer_kandinsky.py:272
+
+tests/test_controlnet_diffusers_cpu.py::RealDiffusersControlNet::test_aud001_invalid_values_rejected
+tests/test_v170_img2img.py::RealDiffusersImg2Img::test_controlnet_img2img_and_text2img_controlnet_unchanged
+
+tests/test_controlnet_diffusers_cpu.py: 18 warnings
+tests/test_diffusers_cpu.py: 1 warning
+tests/test_prompt_fidelity.py: 8 warnings
+tests/test_v162_sdpose.py: 1 warning
+tests/test_v170_img2img.py: 41 warnings
+
+tests/test_diffusers_cpu.py::RealFrameworkTest::test_sdxl_peft_routing_all_samplers_and_cleanup
+tests/test_prompt_fidelity.py::test_short_native_parity
+tests/test_prompt_fidelity.py::test_long_tail_both_encoders_and_negative
+tests/test_prompt_fidelity.py::test_A_B_C_D_E_real_cpu_inference
+tests/test_prompt_fidelity.py::test_limit_rejects_without_truncating
+tests/test_prompt_fidelity.py::test_different_tokenizer_lengths
+tests/test_prompt_fidelity.py::test_generate_entrypoint_scheduler_reset_trace_and_profiler
+tests/test_prompt_fidelity.py::test_regional_long_prompt_real_pipeline
+tests/test_prompt_fidelity.py::test_native_truncation_with_real_sdxl_tokenizers
+
+tests/test_diffusers_cpu.py::RealFrameworkTest::test_sdxl_peft_routing_all_samplers_and_cleanup
+tests/test_prompt_fidelity.py::test_generate_entrypoint_scheduler_reset_trace_and_profiler
+tests/test_prompt_fidelity.py::test_generate_entrypoint_scheduler_reset_trace_and_profiler
+tests/test_v170_img2img.py::RealDiffusersImg2Img::test_seed_denoise_source_batch_and_samplers
+tests/test_v170_img2img.py::RealDiffusersImg2Img::test_seed_denoise_source_batch_and_samplers
+
+tests/test_diffusers_cpu.py::RealFrameworkTest::test_sdxl_peft_routing_all_samplers_and_cleanup
+tests/test_v170_img2img.py::RealDiffusersImg2Img::test_seed_denoise_source_batch_and_samplers
+
+tests/test_diffusers_cpu.py::RealFrameworkTest::test_sdxl_peft_routing_all_samplers_and_cleanup
+tests/test_diffusers_cpu.py::RealFrameworkTest::test_sdxl_peft_routing_all_samplers_and_cleanup
+tests/test_v170_img2img.py::RealDiffusersImg2Img::test_seed_denoise_source_batch_and_samplers
+
+tests/test_v162_sdpose.py::Components::test_letterbox_keypoints_map_back_to_image
+tests/test_v162_sdpose.py::Components::test_letterbox_keypoints_map_back_to_image
+tests/test_v162_sdpose.py::Components::test_letterbox_keypoints_map_back_to_image
+
+tests/test_v162_sdpose.py::Components::test_letterbox_keypoints_map_back_to_image
+
+tests/test_v162_sdpose.py::Components::test_letterbox_keypoints_map_back_to_image
+
+tests/test_v162_sdpose.py::Components::test_letterbox_keypoints_map_back_to_image
+
+tests/test_v162_sdpose.py::Components::test_letterbox_keypoints_map_back_to_image
+
+tests/test_v162_sdpose.py::Components::test_letterbox_keypoints_map_back_to_image
+
+tests/test_v162_sdpose.py::Components::test_letterbox_keypoints_map_back_to_image
+
+tests/test_v162_sdpose.py::Components::test_letterbox_keypoints_map_back_to_image
+
+tests/test_v162_sdpose.py::Components::test_letterbox_keypoints_map_back_to_image
+
+tests/test_v162_sdpose.py::Components::test_letterbox_keypoints_map_back_to_image
+
+tests/test_v162_sdpose.py::Components::test_letterbox_keypoints_map_back_to_image
+
+tests/test_v162_sdpose.py::Routing::test_repeated_runs_do_not_accumulate
+
+tests/test_v170_img2img.py::RealDiffusersImg2Img::test_img2img_shares_loaded_components_and_returns_to_base
+
+tests/test_v170_img2img.py::RealDiffusersImg2Img::test_img2img_shares_loaded_components_and_returns_to_base
+
+tests/test_v170_img2img.py::RealDiffusersImg2Img::test_img2img_shares_loaded_components_and_returns_to_base
+
+tests/test_v170_img2img.py::RealDiffusersImg2Img::test_repeated_runs_do_not_accumulate_objects
+
+tests/test_v170_img2img.py::RealDiffusersImg2Img::test_repeated_runs_do_not_accumulate_objects
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_engine.py::test_panel_no_gpu - ModuleNotFoundError: No modu...
+SKIPPED [1] tests/test_v171_cloudcompute.py:196: Node.js (website server) not installed here
+SKIPPED [1] tests/test_v173_one_click.py:164: Node.js not installed
+1 failed, 273 passed, 2 skipped, 112 warnings in 369.08s (0:06:09)

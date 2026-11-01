@@ -1,0 +1,46 @@
+# v1.7.0 TypeScript + build + Node tests (Node v22.22.0, CPU only, synthetic GPU upstream; NOT GPU inference)
+tsc --noEmit: PASS
+Production build ready: dist/
+ok 1 - URL parser rejects missing token, unsafe host, path, credentials, query, IP and duplicate token
+ok 2 - IP policy rejects private, loopback, metadata, mapped IPv6 and reserved ranges
+ok 3 - proxy blocks arbitrary paths and DNS rebinding into a private network
+ok 4 - strict health/model contracts distinguish worker readiness from response format
+ok 5 - atomic persistence serializes writes and recovers damaged main file from backup
+ok 6 - loopback app rejects cross-site access, wrong Host, missing session and unrestricted proxy
+ok 7 - connection, authenticated contract, generation transport, file saving, gallery and restart (SYNTHETIC INFERENCE)
+ok 8 - expired token, outage and timeout report distinct failures; reconnect works
+ok 9 - three ControlNet modes transport exact isolated settings and preserve batch/LoRA
+ok 10 - missing map, stale type, invalid intervals, formats and combined modes rejected
+ok 11 - only v1.7.0 with ControlNet + SDPose + Img2Img capability is accepted
+ok 12 - individual terminal deletion persists through reload/restart/reconnect; Gallery and all user data preserved
+ok 13 - bulk scopes remove only confirmed selected records; queued/running/unknown are protected
+ok 14 - connection-lost cannot be silently forgotten; terminal remote reconciliation allows deletion
+ok 15 - unconfirmed completed result is saved to Gallery before history removal
+ok 16 - retention persists at 50 terminal jobs and keeps every nonterminal, ordered by timestamps
+ok 17 - serialized cleanup and concurrent completion do not lose unrelated changes; failure does not delete
+ok 18 - website and engine have synchronized versions and compatibility metadata
+ok 19 - deletion is atomic when a selected job becomes active before cleanup commits
+ok 20 - actual HTTPS carries Bearer, refuses redirects, classifies 401/malformed response/timeout
+ok 21 - full long positive/negative and exact multi-LoRA settings survive Termux validation
+ok 22 - legacy versions and explicit capabilities are evaluated conservatively
+ok 23 - health/status preserve capabilities, regional requests reach upstream only when supported, plain Text2Img unchanged
+ok 24 - queue: three intentional submissions, idempotent retry, recovery and targeted cancel
+ok 25 - regional contract transports masks and rejects duplicate global character adapter and T4 over-limit
+ok 26 - ACK only after durable gallery, retries without losing result or resubmitting
+ok 27 - AUD-002: 12 ControlNet jobs with ~2 MB maps do not grow state/history/gallery with base64 copies
+ok 28 - AUD-002: idempotent retry with the same request ID is not a conflict after compact storage
+ok 29 - AUD-002: existing v1.6.0 state.json migrates without data loss; original kept as backup
+ok 30 - storage: an unchanged change() does not rewrite state.json or .bak
+ok 31 - AUD-006: PENDING preprocessing is passed through with a sub-100 s hop and resumed with the identical body
+ok 32 - AUD-009: engine rejection reasons for /generate reach the user, sanitised
+ok 33 - preprocess validation: pose preprocessor only for OpenPose, classic is the default
+ok 34 - generation validation and history keep the preprocessor, never the map
+ok 35 - only an engine declaring SDPose is compatible
+ok 36 - route: SDPose request reaches the engine, the echo is checked, failures are explained, Canny/Depth unchanged
+ok 37 - validation: Img2Img fields are required and bounded; Text2Img requests stay byte-identical
+ok 38 - only an engine 1.7.0 declaring Img2Img is compatible
+ok 39 - history and gallery keep a digest of the source, never the base64 image
+ok 40 - route: Img2Img reaches the engine with all parameters, result lands in the gallery and is acknowledged
+# tests 40
+# pass 40
+# fail 0

@@ -1,0 +1,10 @@
+$ npm run typecheck
+> tsc --noEmit
+
+rc=0
+$ npm run build
+
+Production build ready: dist/ · 1.7.2
+$ node scripts/build-identity.mjs
+{"version":"1.7.2","source_sha256":"d31269ba4870cf17719b04cfba15520840f2f72b16437a943ee758ebe011b75a"}
+rc=0

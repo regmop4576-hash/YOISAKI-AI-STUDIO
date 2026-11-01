@@ -1,0 +1,8 @@
+uid=1000(yoisaki) gid=1000(yoisaki) groups=1000(yoisaki)
+torch 2.10.0+cu128 diffusers 0.36.0
+    return (sum(torch.is_tensor(o) for o in objs), sum(isinstance(o, DiffusionPipeline) for o in objs), sum(isinstance(o, torch.nn.Module) for o in objs))
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_engine.py::test_panel_no_gpu - ModuleNotFoundError: No modu...
+1 failed, 283 passed, 2 skipped, 112 warnings in 222.22s (0:03:42)

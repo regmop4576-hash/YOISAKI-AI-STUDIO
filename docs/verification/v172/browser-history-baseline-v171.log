@@ -1,0 +1,3 @@
+$ (baseline v1.7.1 archive, unmodified) node tests/history-browser.mjs
+[2m  - waiting for getByText('YOISAKI ENGINE v1.7.0', { exact: true }) to be visible[22m
+rc=1

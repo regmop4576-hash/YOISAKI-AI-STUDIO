@@ -1,0 +1,18 @@
+== v175-browser exit=0
+PASS v1.7.5 UI: 5 steps, GPU offers with verified price/estimate/storage note, billing acknowledgement + confirm, one paid POST, signed stages → automatic connection → GPU ready, mobile 360/390/430 without overflow, no secrets in DOM/storage, Advanced form preserved. CloudCompute/GPU mocked; live deployment NOT verified.
+== v174-browser exit=0
+PASS: mobile 360/390/430, browser OAuth callback without GPU, choose folder, reload persistence, explicit GPU binding, CC key/password, discovery, stale/error recovery, no credentials in browser storage/DOM. Providers mocked; live Google and live GPU NOT verified.
+== providers-browser exit=0
+PASS: provider forms, separate persisted endpoints, explicit connect, token clearing/isolation, real version, error UI, language switch/reload, 360/390/430px no overflow. Synthetic upstream only.
+== img2img-browser exit=0
+PASS mobile browser 390x844: Img2Img tab, source upload/preview, size from source, Denoise steps, real request (prompt/negative/LoRA/size/steps/denoise), centre-crop source, low-Denoise guard, result in preview + gallery without base64, Text2Img unchanged, Editor IMG2IMG submits; synthetic upstream only.
+== controlnet-browser exit=0
+PASS mobile browser: 3 modes, SDPose-OOD selector/routing/invalidation/ready map, preview, missing map, mode/dimension invalidation, stale async response ignored, disabled plain request; synthetic upstream only.
+== regional-compatibility-browser exit=0
+PASS Chromium mobile: Regional UI, v1.7.0 request with PNG masks, explicit unavailable warning, plain Text2Img preserved. Synthetic upstream; NOT T4 inference.
+== browser-e2e exit=0
+PASS: real browser/local API connection, tag edit, request, synthetic result, preview, download, gallery and reload. NOT GPU inference.
+== ui-check exit=0
+PASS browser 1280 touch, undo/reset, modes, requests, no horizontal overflow
+== memory-ui exit=0
+PASS compact completed card and textual progress 1280

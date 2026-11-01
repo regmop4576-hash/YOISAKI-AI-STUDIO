@@ -1,0 +1,34 @@
+=== local/yoisaki-engine:1.7.5-local
+image: local/yoisaki-engine:1.7.5-local  (linux/amd64|"1000:1000"|["/usr/bin/tini","--"]|["/opt/yoisaki/cloudcompute/autostart-image.sh"])
+PASS  platform linux/amd64
+PASS  ENTRYPOINT tini, CMD autostart-image.sh
+FAIL  container starts as "1000:1000" (provider bootstraps that need root fail)
+PASS  required files present
+PASS  imports + arch sm_70 sm_75 sm_80 sm_86 sm_90 sm_100 sm_120
+PASS  pip check
+PASS  default CMD without GPU: honest GPU-check refusal (exit 3), no crash
+PASS  engine (launcher.py) runs as uid 1000
+PASS  onstart as 1000:1000: token saved 0600 for uid 1000, never logged
+PASS  onstart as 0:0: token saved 0600 for uid 1000, never logged
+FAIL  provider-style bootstrap layer fails as image user: failed to solve: process 
+FAIL  onstart before CMD: image CMD exited and stopped the container
+
+RESULT: some runtime checks FAILED
+exit 1
+=== local/yoisaki-engine:1.7.7-overlay
+image: local/yoisaki-engine:1.7.7-overlay  (linux/amd64|"root"|["/usr/bin/tini","--"]|["/opt/yoisaki/cloudcompute/autostart-image.sh"])
+PASS  platform linux/amd64
+PASS  ENTRYPOINT tini, CMD autostart-image.sh
+PASS  container starts as root (provider bootstrap compatible)
+PASS  required files present
+PASS  imports + arch sm_70 sm_75 sm_80 sm_86 sm_90 sm_100 sm_120
+PASS  pip check
+PASS  default CMD without GPU: honest GPU-check refusal (exit 3), no crash
+PASS  engine (launcher.py) runs as uid 1000
+PASS  onstart as 1000:1000: token saved 0600 for uid 1000, never logged
+PASS  onstart as 0:0: token saved 0600 for uid 1000, never logged
+PASS  provider-style bootstrap layer (apt-get as image user) builds
+PASS  onstart before CMD: container keeps running
+
+RESULT: all runtime checks passed (no GPU: inference not tested)
+exit 0

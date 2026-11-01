@@ -1,0 +1,33 @@
+{
+  "source": "YOISAKI_AI_STUDIO_V1.7.3_ONE_CLICK_CONNECT.zip",
+  "engine_and_colab_unchanged": true,
+  "files_verified": 26,
+  "paths": [
+    "colab/YOISAKI_ENGINE_V1.7.0_IMG2IMG_EDITION.ipynb",
+    "engine/bootstrap.py",
+    "engine/diagnostics/__init__.py",
+    "engine/diagnostics/model_hashes.py",
+    "engine/diagnostics/runner.py",
+    "engine/diagnostics/ui.py",
+    "engine/inference/__init__.py",
+    "engine/inference/controlnet.py",
+    "engine/inference/diagnostic_hooks.py",
+    "engine/inference/img2img.py",
+    "engine/inference/prompt_encoding.py",
+    "engine/inference/regional.py",
+    "engine/inference/sdpose.py",
+    "engine/inference/sdpose_empty_embed.safetensors",
+    "engine/inference/text2img.py",
+    "engine/panel.py",
+    "engine/requirements.txt",
+    "engine/stress_memory.py",
+    "engine/worker/__init__.py",
+    "engine/worker/allocator_policy.py",
+    "engine/worker/direct_server.py",
+    "engine/worker/memory.py",
+    "engine/worker/memory_profiler.py",
+    "engine/worker/models.py",
+    "engine/worker/results.py",
+    "engine/worker/serve.py"
+  ]
+}
