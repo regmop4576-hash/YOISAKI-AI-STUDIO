@@ -32,6 +32,15 @@ const terminal=TERMINAL_STATUSES;
 async function readBody(req,max=12582912){const chunks=[];let n=0;for await(const b of req){n+=b.length;if(n>max)fail('BODY_TOO_LARGE','Слишком большой запрос.',413);chunks.push(b)}return Buffer.concat(chunks)}
 async function jsonBody(req,max){try{return JSON.parse((await readBody(req,max)).toString())}catch(e){if(e instanceof AppError)throw e;fail('INVALID_JSON','Неверный JSON запроса.')}}
 function send(res,value,status=200){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(value))}
+// Client-side routes that are served as the app shell (dist/index.html).
+export const APP_PAGES=['/','/generate','/edit','/models','/gallery','/engine','/settings'];
+// v1.9.2 hotfix (ORIGIN_DENIED on open from GitHub / Termux / Android shortcut): a browser marks a top-level page
+// load with Sec-Fetch-Mode: navigate and Sec-Fetch-Dest: document (iframes say "iframe", fetch/XHR say "cors"/"empty").
+// Only such a GET of an app page, without OAuth parameters, may come from another site.
+export function isAppNavigation(req,method,route,url){
+ return method==='GET'&&req.headers['sec-fetch-mode']==='navigate'&&req.headers['sec-fetch-dest']==='document'
+  &&APP_PAGES.includes(route)&&!url.searchParams.has('state')&&!url.searchParams.has('code');
+}
 export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,serviceKey='',discoverAddress=discover,discoverProgress=rendezvousProgress,exchange=exchangeCode,providerRequest=providerHttp,providerBytesRequest=providerBytes,defaultGoogle=null,sleep=ms=>new Promise(r=>setTimeout(r,ms).unref?.()),deployInterval=10000,driveInterval=3000,autoResume=true,terminalInitialize=initializeTerminal,monitorMinGap=MONITOR_LIMITS.min_gap_ms,monitorTimers}={}){
  const store=await new Store(dataDir).init();
  // v1.7.3: remembered connections and the Google OAuth client live in secrets.json (0600), never in state.json.
@@ -339,7 +348,10 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
   const u=new URL(req.url,'http://'+host);const route=u.pathname;const method=req.method;
   // v1.7.3: Google's OAuth redirect (cross-site navigation). Only a pending single-use state of this app is accepted.
   if(route==='/'&&method==='GET'&&oauth.has(u.searchParams.get('state')))return finishOAuth(u,res);
-  if(req.headers['sec-fetch-site']&& !['same-origin','none'].includes(req.headers['sec-fetch-site']))fail('ORIGIN_DENIED','Внешняя страница не имеет доступа.',403);
+  // v1.9.2 hotfix: a top-level GET navigation to an app page (link from GitHub, Termux, Android shortcut) only loads
+  // the static app shell; it carries no session and changes nothing. APIs, other methods, frames, subresources
+  // and the OAuth return URL stay same-origin only.
+  if(req.headers['sec-fetch-site']&& !['same-origin','none'].includes(req.headers['sec-fetch-site'])&&!isAppNavigation(req,method,route,u))fail('ORIGIN_DENIED','Внешняя страница не имеет доступа.',403);
   if(route==='/_yoisaki/service'){if(!serviceKey||req.headers['x-yoisaki-service']!==serviceKey)fail('LOCAL_ONLY','Нет доступа.',403);return send(res,{pid:process.pid,version:WEBSITE_VERSION})}
   if(route.startsWith('/api/')){
    const image=method==='GET'&&/^\/api\/gallery\/[a-f0-9_-]+\/file$/.test(route);
@@ -699,7 +711,7 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
   }
   if(!['GET','HEAD'].includes(method))fail('METHOD_DENIED','Метод не поддерживается.',405);
   const relative=decodeURIComponent(route).replace(/^\//,'');let file=path.resolve(distDir,relative||'index.html');if(!file.startsWith(path.resolve(distDir)+path.sep))fail('PATH_DENIED','Недопустимый путь.',403);
-  try{if(!(await fs.stat(file)).isFile())throw Error()}catch{if(!['/','/generate','/edit','/models','/gallery','/engine','/settings'].includes(route))fail('NOT_FOUND','Файл не найден.',404);file=path.join(distDir,'index.html')}
+  try{if(!(await fs.stat(file)).isFile())throw Error()}catch{if(!APP_PAGES.includes(route))fail('NOT_FOUND','Файл не найден.',404);file=path.join(distDir,'index.html')}
   const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.webp':'image/webp','.woff2':'font/woff2','.txt':'text/plain; charset=utf-8','.webmanifest':'application/manifest+json; charset=utf-8','.ico':'image/x-icon'}[path.extname(file)]||'application/octet-stream';const bytes=await fs.readFile(file);res.writeHead(200,{'Content-Type':mime,'Cache-Control':'no-cache','Content-Length':bytes.length});res.end(method==='HEAD'?undefined:bytes);
  }catch(e){note(e.code||'LOCAL_ERROR');if(!res.headersSent)send(res,publicError(e),e.status||500);else res.destroy()}
  });

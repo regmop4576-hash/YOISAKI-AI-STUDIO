@@ -11,6 +11,14 @@
 - `tests/installer/run.sh`: 35 проверок установщика в чистой имитации Termux.
 - Документация: `docs/ru/INSTALL_TERMUX.md`, `docs/en/INSTALL_TERMUX.md`, `docs/RELEASING.md`, README.
 
+## v1.9.2 hotfix — ORIGIN_DENIED · 2026-11-01
+
+- **Исправлено:** открытие `http://127.0.0.1:3000` по ссылке из GitHub, через `yoisaki open` / `termux-open-url` или
+  с ярлыка Android давало `{"code":"ORIGIN_DENIED"}`. Со стороннего сайта теперь разрешён только переход верхнего
+  уровня (`GET`, `Sec-Fetch-Mode: navigate`, `Sec-Fetch-Dest: document`) на страницы приложения без параметров
+  OAuth. Проверки `Host`, `Origin`, `X-Yoisaki-Local` и локальной сессии API не изменены.
+- Тесты: `tests/origin-navigation.test.mjs`. Номер версии сайта остался 1.9.2; движок, Colab и Pixel Fantasy не изменены.
+
 ## v1.9.2 — Android Input Fix · 2026-10-31
 
 Сайт 1.9.2, YOISAKI ENGINE 1.8.1 (без изменений), API 1.7.0. Отчёт: `YOISAKI_V1.9.2_INPUT_FIX_REPORT.md`.
