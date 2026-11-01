@@ -1,0 +1,2 @@
+requirements-lock.txt согласован с requirements-cloud.txt и engine/requirements.txt
+PASS Python AST, server JS syntax, shell syntax, ShellCheck(errors), Dockerfile parser, labels, CMD, ENTRYPOINT, pinned dependency lock

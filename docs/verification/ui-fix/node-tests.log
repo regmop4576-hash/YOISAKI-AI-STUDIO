@@ -1,0 +1,60 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> yoisaki-ai-studio-local@1.7.1 test
+> node --test tests/*.test.mjs
+
+✔ URL parser rejects missing token, unsafe host, path, credentials, query, IP and duplicate token (2.296243ms)
+✔ IP policy rejects private, loopback, metadata, mapped IPv6 and reserved ranges (5.259451ms)
+✔ proxy blocks arbitrary paths and DNS rebinding into a private network (1.189808ms)
+✔ strict health/model contracts distinguish worker readiness from response format (0.71731ms)
+✔ atomic persistence serializes writes and recovers damaged main file from backup (114.556834ms)
+✔ loopback app rejects cross-site access, wrong Host, missing session and unrestricted proxy (69.712581ms)
+✔ connection, authenticated contract, generation transport, file saving, gallery and restart (SYNTHETIC INFERENCE) (110.154785ms)
+✔ expired token, outage and timeout report distinct failures; reconnect works (36.33812ms)
+✔ three ControlNet modes transport exact isolated settings and preserve batch/LoRA (1.945655ms)
+✔ missing map, stale type, invalid intervals, formats and combined modes rejected (1.506926ms)
+✔ only v1.7.0 with ControlNet + SDPose + Img2Img capability is accepted (0.412229ms)
+✔ individual terminal deletion persists through reload/restart/reconnect; Gallery and all user data preserved (193.137587ms)
+✔ bulk scopes remove only confirmed selected records; queued/running/unknown are protected (86.987525ms)
+✔ connection-lost cannot be silently forgotten; terminal remote reconciliation allows deletion (81.020649ms)
+✔ unconfirmed completed result is saved to Gallery before history removal (68.145866ms)
+✔ retention persists at 50 terminal jobs and keeps every nonterminal, ordered by timestamps (27.54013ms)
+✔ serialized cleanup and concurrent completion do not lose unrelated changes; failure does not delete (30.322528ms)
+✔ website and engine have independent versions and compatibility metadata (17.669101ms)
+✔ deletion is atomic when a selected job becomes active before cleanup commits (13.002576ms)
+✔ actual HTTPS carries Bearer, refuses redirects, classifies 401/malformed response/timeout (372.667615ms)
+✔ full long positive/negative and exact multi-LoRA settings survive Termux validation (2.17621ms)
+✔ both providers: separate endpoints, explicit reconnect, no secrets on disk/export/status, persistent selection (205.905923ms)
+✔ late health from a disconnected provider cannot revive a session (31.618797ms)
+✔ CloudCompute public HTTPS policy keeps DNS pinning and rejects private hosts / credentials / redirects (1.686091ms)
+✔ API metadata is independent; legacy health and missing hardware supported without fabricated values (0.216129ms)
+✔ late refresh cannot adopt a different provider session (44.893882ms)
+✔ history cancellation never forwards an old-provider job to the new engine (70.560759ms)
+✔ legacy versions and explicit capabilities are evaluated conservatively (1.305068ms)
+✔ health/status preserve capabilities, regional requests reach upstream only when supported, plain Text2Img unchanged (134.684327ms)
+✔ queue: three intentional submissions, idempotent retry, recovery and targeted cancel (272.303227ms)
+✔ regional contract transports masks and rejects duplicate global character adapter and T4 over-limit (1.117511ms)
+✔ ACK only after durable gallery, retries without losing result or resubmitting (115.647921ms)
+state.json=21097 B, .bak=21058 B, /api/history=10270 B, /api/gallery=10883 B (v1.6.0 audit: 58.8 MB / 58.8 MB / 33.6 MB / 25.2 MB)
+✔ AUD-002: 12 ControlNet jobs with ~2 MB maps do not grow state/history/gallery with base64 copies (646.480377ms)
+✔ AUD-002: idempotent retry with the same request ID is not a conflict after compact storage (83.054133ms)
+✔ AUD-002: existing v1.6.0 state.json migrates without data loss; original kept as backup (325.188439ms)
+✔ storage: an unchanged change() does not rewrite state.json or .bak (29.38785ms)
+✔ AUD-006: PENDING preprocessing is passed through with a sub-100 s hop and resumed with the identical body (13.116274ms)
+✔ AUD-009: engine rejection reasons for /generate reach the user, sanitised (2.417512ms)
+✔ preprocess validation: pose preprocessor only for OpenPose, classic is the default (2.901557ms)
+✔ generation validation and history keep the preprocessor, never the map (0.829316ms)
+✔ only an engine declaring SDPose is compatible (0.386471ms)
+✔ route: SDPose request reaches the engine, the echo is checked, failures are explained, Canny/Depth unchanged (95.429193ms)
+✔ validation: Img2Img fields are required and bounded; Text2Img requests stay byte-identical (3.265454ms)
+✔ only an engine 1.7.0 declaring Img2Img is compatible (0.295977ms)
+✔ history and gallery keep a digest of the source, never the base64 image (0.469003ms)
+✔ route: Img2Img reaches the engine with all parameters, result lands in the gallery and is acknowledged (123.445447ms)
+ℹ tests 46
+ℹ suites 0
+ℹ pass 46
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1494.904377

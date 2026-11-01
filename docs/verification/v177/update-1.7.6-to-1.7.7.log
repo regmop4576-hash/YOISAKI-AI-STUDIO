@@ -1,0 +1,5 @@
+baseline: YOISAKI_AI_STUDIO_V1.7.6_COLAB_COMPATIBILITY_FIX.zip (uploaded) -> YOISAKI_AI_STUDIO_V1.7.7_CLOUDCOMPUTE_STABILITY.zip
+Остановка: ./stop.sh
+Не закрывайте принудительно Termux во время генерации.
+PASS manual rollback to old 1.7.6, user data unchanged; Linux simulation, not Android hardware
+Приложение остановлено. Данные сохранены.

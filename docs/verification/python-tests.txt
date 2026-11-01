@@ -1,0 +1,55 @@
+.............................................                            [100%]
+=============================== warnings summary ===============================
+../../../root/.local/lib/python3.12/site-packages/diffusers/models/transformers/transformer_kandinsky.py:168
+  /root/.local/lib/python3.12/site-packages/diffusers/models/transformers/transformer_kandinsky.py:168: UserWarning: CUDA is not available or torch_xla is imported. Disabling autocast.
+    @torch.autocast(device_type="cuda", dtype=torch.float32)
+
+../../../root/.local/lib/python3.12/site-packages/diffusers/models/transformers/transformer_kandinsky.py:272
+  /root/.local/lib/python3.12/site-packages/diffusers/models/transformers/transformer_kandinsky.py:272: UserWarning: CUDA is not available or torch_xla is imported. Disabling autocast.
+    @torch.autocast(device_type="cuda", dtype=torch.float32)
+
+../../../root/.local/lib/python3.12/site-packages/starlette/testclient.py:37
+  /root/.local/lib/python3.12/site-packages/starlette/testclient.py:37: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = typing.Callable[[], typing.ContextManager[anyio.abc.BlockingPortal]]
+
+work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_diffusers_cpu.py::RealFrameworkTest::test_sdxl_peft_routing_all_samplers_and_cleanup
+work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_prompt_fidelity.py::test_short_native_parity
+work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_prompt_fidelity.py::test_long_tail_both_encoders_and_negative
+work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_prompt_fidelity.py::test_A_B_C_D_E_real_cpu_inference
+work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_prompt_fidelity.py::test_limit_rejects_without_truncating
+work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_prompt_fidelity.py::test_different_tokenizer_lengths
+work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_prompt_fidelity.py::test_generate_entrypoint_scheduler_reset_trace_and_profiler
+work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_prompt_fidelity.py::test_regional_long_prompt_real_pipeline
+work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_prompt_fidelity.py::test_native_truncation_with_real_sdxl_tokenizers
+  /root/.local/lib/python3.12/site-packages/peft/tuners/tuners_utils.py:282: UserWarning: Already found a `peft_config` attribute in the model. This will lead to having multiple adapters in the model. Make sure to know what you are doing!
+    warnings.warn(
+
+work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_diffusers_cpu.py::RealFrameworkTest::test_sdxl_peft_routing_all_samplers_and_cleanup
+work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_prompt_fidelity.py::test_A_B_C_D_E_real_cpu_inference
+work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_prompt_fidelity.py::test_A_B_C_D_E_real_cpu_inference
+work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_prompt_fidelity.py::test_A_B_C_D_E_real_cpu_inference
+work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_prompt_fidelity.py::test_A_B_C_D_E_real_cpu_inference
+work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_prompt_fidelity.py::test_A_B_C_D_E_real_cpu_inference
+work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_prompt_fidelity.py::test_A_B_C_D_E_real_cpu_inference
+work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_prompt_fidelity.py::test_generate_entrypoint_scheduler_reset_trace_and_profiler
+work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_prompt_fidelity.py::test_regional_long_prompt_real_pipeline
+  /root/.local/lib/python3.12/site-packages/diffusers/schedulers/scheduling_euler_discrete.py:429: DeprecationWarning: __array__ implementation doesn't accept a copy keyword, so passing copy=False failed. __array__ must implement 'dtype' and 'copy' keyword arguments. To learn more, see the migration guide https://numpy.org/devdocs/numpy_2_0_migration_guide.html#adapting-to-changes-in-the-copy-keyword
+    sigmas = np.array(((1 - self.alphas_cumprod) / self.alphas_cumprod) ** 0.5)
+
+work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_diffusers_cpu.py::RealFrameworkTest::test_sdxl_peft_routing_all_samplers_and_cleanup
+work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_prompt_fidelity.py::test_generate_entrypoint_scheduler_reset_trace_and_profiler
+work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_prompt_fidelity.py::test_generate_entrypoint_scheduler_reset_trace_and_profiler
+  /root/.local/lib/python3.12/site-packages/diffusers/schedulers/scheduling_dpmsolver_multistep.py:408: DeprecationWarning: __array__ implementation doesn't accept a copy keyword, so passing copy=False failed. __array__ must implement 'dtype' and 'copy' keyword arguments. To learn more, see the migration guide https://numpy.org/devdocs/numpy_2_0_migration_guide.html#adapting-to-changes-in-the-copy-keyword
+    sigmas = np.array(((1 - self.alphas_cumprod) / self.alphas_cumprod) ** 0.5)
+
+work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_diffusers_cpu.py::RealFrameworkTest::test_sdxl_peft_routing_all_samplers_and_cleanup
+  /root/.local/lib/python3.12/site-packages/diffusers/schedulers/scheduling_euler_ancestral_discrete.py:207: DeprecationWarning: __array__ implementation doesn't accept a copy keyword, so passing copy=False failed. __array__ must implement 'dtype' and 'copy' keyword arguments. To learn more, see the migration guide https://numpy.org/devdocs/numpy_2_0_migration_guide.html#adapting-to-changes-in-the-copy-keyword
+    sigmas = np.array(((1 - self.alphas_cumprod) / self.alphas_cumprod) ** 0.5)
+
+work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_diffusers_cpu.py::RealFrameworkTest::test_sdxl_peft_routing_all_samplers_and_cleanup
+work/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/test_diffusers_cpu.py::RealFrameworkTest::test_sdxl_peft_routing_all_samplers_and_cleanup
+  /root/.local/lib/python3.12/site-packages/diffusers/schedulers/scheduling_euler_ancestral_discrete.py:312: DeprecationWarning: __array__ implementation doesn't accept a copy keyword, so passing copy=False failed. __array__ must implement 'dtype' and 'copy' keyword arguments. To learn more, see the migration guide https://numpy.org/devdocs/numpy_2_0_migration_guide.html#adapting-to-changes-in-the-copy-keyword
+    sigmas = np.array(((1 - self.alphas_cumprod) / self.alphas_cumprod) ** 0.5)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+45 passed, 27 warnings in 32.40s

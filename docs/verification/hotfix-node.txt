@@ -1,0 +1,23 @@
+✔ URL parser rejects missing token, unsafe host, path, credentials, query, IP and duplicate token (1.813678ms)
+✔ IP policy rejects private, loopback, metadata, mapped IPv6 and reserved ranges (5.152779ms)
+✔ proxy blocks arbitrary paths and DNS rebinding into a private network (1.171486ms)
+✔ strict health/model contracts distinguish worker readiness from response format (0.804153ms)
+✔ atomic persistence serializes writes and recovers damaged main file from backup (88.073669ms)
+✔ loopback app rejects cross-site access, wrong Host, missing session and unrestricted proxy (57.247425ms)
+✔ connection, authenticated contract, generation transport, file saving, gallery and restart (SYNTHETIC INFERENCE) (132.245907ms)
+✔ expired token, outage and timeout report distinct failures; reconnect works (30.866194ms)
+✔ actual HTTPS carries Bearer, refuses redirects, classifies 401/malformed response/timeout (557.413474ms)
+✔ full long positive/negative and exact multi-LoRA settings survive Termux validation (1.657027ms)
+✔ legacy versions and explicit capabilities are evaluated conservatively (1.157629ms)
+✔ health/status preserve capabilities, regional requests reach upstream only when supported, plain Text2Img unchanged (218.409425ms)
+✔ queue: three intentional submissions, idempotent retry, recovery and targeted cancel (299.999068ms)
+✔ regional contract transports masks and rejects duplicate global character adapter and T4 over-limit (1.579273ms)
+✔ ACK only after durable gallery, retries without losing result or resubmitting (147.052349ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2148.248154

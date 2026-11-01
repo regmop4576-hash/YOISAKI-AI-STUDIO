@@ -1,0 +1,1 @@
+PASS v1.7.5 UI (1.7.7 flow): 6 steps, filters, GPU offers with verified price/estimate/storage note, billing acknowledgement + confirm, one paid POST, signed stages → automatic connection → GPU ready, mobile 360/390/430 without overflow, no secrets in DOM/storage, Advanced form preserved. CloudCompute/GPU mocked; live deployment NOT verified.

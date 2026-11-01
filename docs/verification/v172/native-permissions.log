@@ -1,0 +1,12 @@
+711 root <T>/data/config
+700 ubuntu <T>/data/config/rclone
+700 ubuntu <T>/data/runtime/sync
+700 ubuntu <T>/data/models/.yoisaki-sync
+755 ubuntu <T>/data/models/checkpoints
+uid 1000
+rclone.conf mode 0o600
+sync COMPLETED {'files_total': 3, 'files_done': 3, 'files_failed': 0, 'bytes_total': 318767656, 'bytes_done': 318767656}
+OK: engine user cannot read config/yoisaki.env
+OK: config/ is traverse-only
+total 307204
+-rw-r--r-- 1 ubuntu ubuntu 314573026 Oct 26 08:56 Illustrious XL.safetensors

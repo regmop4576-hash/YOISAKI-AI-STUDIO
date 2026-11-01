@@ -1,0 +1,28 @@
+YOISAKI AI STUDIO
+Copyright 2026 YOISAKI (github.com/regmop4576-hash)
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+The Apache License does not grant permission to use the YOISAKI name, logo or
+the Yoisaki character artwork as trademarks (License section 6).
+
+This product bundles third-party components under their own licenses:
+
+- Tiny5 font — SIL Open Font License 1.1 — public/licenses/TINY5_OFL.txt
+- Press Start 2P font — SIL Open Font License 1.1 — public/licenses/PRESS_START_2P_OFL.txt
+- Onest font — SIL Open Font License 1.1 — public/licenses/ONEST_OFL.txt
+- Pixelarticons (Gerrit Halfmann) — MIT — public/licenses/PIXELARTICONS_MIT.txt
+- lbpcascade_animeface (nagadomi) — MIT — engine/inference/face_models/LICENSES.md
+- YuNet face detector (Shiqi Yu, OpenCV Zoo) — MIT — engine/inference/face_models/LICENSES.md
+
+npm dependencies (installed at build time, see package.json / package-lock.json):
+react, react-dom, react-konva, konva, zustand (MIT); esbuild, tailwindcss (MIT);
+typescript (Apache-2.0); @playwright/test (Apache-2.0).
+
+Python engine dependencies (installed in Colab, see engine/requirements.txt):
+diffusers, transformers, accelerate, peft, huggingface-hub, safetensors (Apache-2.0);
+fastapi, uvicorn, pydantic (MIT / BSD); opencv-python-headless (Apache-2.0);
+controlnet-aux, timm and others under their respective licenses.
+
+Models downloaded at runtime (ControlNet, SDPose-OOD) and any checkpoints/LoRA
+supplied by the user are NOT distributed with this project and are governed by
+their authors' licenses.

@@ -1,0 +1,21 @@
+{
+  "id": "/",
+  "name": "YOISAKI AI STUDIO",
+  "short_name": "YOISAKI",
+  "description": "YOISAKI AI STUDIO — генерация и редактирование изображений на вашем GPU. Pixel Fantasy.",
+  "lang": "ru",
+  "dir": "ltr",
+  "start_url": "/generate",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#070a18",
+  "theme_color": "#070a18",
+  "categories": ["graphics", "photo", "productivity"],
+  "icons": [
+    {"src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "/icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable"},
+    {"src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}

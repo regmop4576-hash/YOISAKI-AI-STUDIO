@@ -1,0 +1,19 @@
+# shellcheck 0.11.0 -x -s bash (all shipped shell scripts)
+$ shellcheck -x -s bash start-cloudcompute.sh stop-cloudcompute.sh check-cloudcompute.sh fetch-models-cloudcompute.sh cloudcompute/install-native.sh cloudcompute/lib.sh
+PASS: no findings
+
+$ bash -n (syntax)
+OK check-cloudcompute.sh
+OK diagnostics.sh
+OK fetch-models-cloudcompute.sh
+OK install.sh
+OK start-cloudcompute.sh
+OK start.sh
+OK stop-cloudcompute.sh
+OK stop.sh
+OK update.sh
+OK cloudcompute/install-native.sh
+OK cloudcompute/lib.sh
+
+$ python3 -m py_compile cloudcompute/*.py
+OK

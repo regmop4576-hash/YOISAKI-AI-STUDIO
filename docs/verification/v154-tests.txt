@@ -1,0 +1,31 @@
+✔ URL parser rejects missing token, unsafe host, path, credentials, query, IP and duplicate token (1.288361ms)
+✔ IP policy rejects private, loopback, metadata, mapped IPv6 and reserved ranges (3.844273ms)
+✔ proxy blocks arbitrary paths and DNS rebinding into a private network (0.87381ms)
+✔ strict health/model contracts distinguish worker readiness from response format (1.117105ms)
+✔ atomic persistence serializes writes and recovers damaged main file from backup (47.843433ms)
+✔ loopback app rejects cross-site access, wrong Host, missing session and unrestricted proxy (32.865061ms)
+✔ connection, authenticated contract, generation transport, file saving, gallery and restart (SYNTHETIC INFERENCE) (73.745188ms)
+✔ expired token, outage and timeout report distinct failures; reconnect works (22.58968ms)
+✔ individual terminal deletion persists through reload/restart/reconnect; Gallery and all user data preserved (93.818391ms)
+✔ bulk scopes remove only confirmed selected records; queued/running/unknown are protected (31.044678ms)
+✔ connection-lost cannot be silently forgotten; terminal remote reconciliation allows deletion (37.655007ms)
+✔ unconfirmed completed result is saved to Gallery before history removal (40.548017ms)
+✔ retention persists at 50 terminal jobs and keeps every nonterminal, ordered by timestamps (11.551039ms)
+✔ serialized cleanup and concurrent completion do not lose unrelated changes; failure does not delete (15.780099ms)
+✔ website and engine have truthful independent versions and compatibility metadata (17.724422ms)
+✔ deletion is atomic when a selected job becomes active before cleanup commits (15.188356ms)
+✔ actual HTTPS carries Bearer, refuses redirects, classifies 401/malformed response/timeout (244.75587ms)
+✔ full long positive/negative and exact multi-LoRA settings survive Termux validation (1.197255ms)
+✔ legacy versions and explicit capabilities are evaluated conservatively (1.004175ms)
+✔ health/status preserve capabilities, regional requests reach upstream only when supported, plain Text2Img unchanged (173.356452ms)
+✔ queue: three intentional submissions, idempotent retry, recovery and targeted cancel (178.297302ms)
+✔ regional contract transports masks and rejects duplicate global character adapter and T4 over-limit (1.129914ms)
+✔ ACK only after durable gallery, retries without losing result or resubmitting (82.788158ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1692.175995

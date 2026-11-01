@@ -1,0 +1,2 @@
+$ node rollback.mjs (v1.7.3 writes data, then unmodified v1.7.2 opens it; synthetic upstream)
+PASS rollback: v1.7.2 opens data written by v1.7.3 (remembered secrets ignored, compact models usable, incompatible LoRA still refused). Synthetic upstream.

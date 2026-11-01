@@ -1,0 +1,46 @@
+YOISAKI AI STUDIO v1.7.4 ONE-CLICK CONNECT EDITION
+Откройте: http://127.0.0.1:3000
+Остановка: ./stop.sh
+Не закрывайте принудительно Termux во время генерации.
+PASS baseline old server 1.7.4 on port 3000
+Проверка целостности файлов: OK
+Проверка целостности файлов: OK
+Установлено. Локальная production-сборка готова.
+Запуск: ./start.sh
+{"version":"1.7.5","source_sha256":"03105e5d5ccbb2f657b154dd7095e131d5701bf6c313d0174d4af22ad5396f7c"}
+Приложение остановлено. Данные сохранены.
+YOISAKI AI STUDIO v1.7.5 ZERO-TERMINAL CLOUDCOMPUTE EDITION
+Откройте: http://127.0.0.1:3000
+Остановка: ./stop.sh
+Не закрывайте принудительно Termux во время генерации.
+Обновлено. Резервная копия кода: /tmp/yoisaki-update-fmgzc8k6/installed.backup-20261027-125104-2474
+Резервная копия данных (если существовали): /tmp/yoisaki-update-fmgzc8k6/user-data.backup-20261027-125104-2474
+Откройте http://127.0.0.1:3000/engine и проверьте версию 1.7.5 (AMBER CORE · v1.7.5 ZERO-TERMINAL CLOUDCOMPUTE EDITION).
+PASS update preserved gallery bytes, favorites, history, presets, settings, models, tags and custom content; code/data backups exist
+{"version":"1.7.5","source_sha256":"03105e5d5ccbb2f657b154dd7095e131d5701bf6c313d0174d4af22ad5396f7c"}
+YOISAKI 1.7.5
+Node: v22.22.0
+Платформа: linux/x64
+Termux: false
+Сервер: работает
+Сборка соответствует исходникам: 03105e5d5ccbb2f657b154dd7095e131d5701bf6c313d0174d4af22ad5396f7c
+Версия запущенного сервера: 1.7.5
+Папка запущенного сервера: /tmp/yoisaki-update-fmgzc8k6/installed
+Хранилище: 695 байт
+YOISAKI AI STUDIO v1.7.4 ONE-CLICK CONNECT EDITION
+Откройте http://127.0.0.1:3000
+Для остановки: ./stop.sh
+YOISAKI AI STUDIO v1.7.5 ZERO-TERMINAL CLOUDCOMPUTE EDITION
+Откройте http://127.0.0.1:3000
+Для остановки: ./stop.sh
+Приложение остановлено. Данные сохранены.
+Production build does not match installed sources. Run bash install.sh.
+Production assets differ. Run bash install.sh.
+PASS stale source and stale build rejected
+YOISAKI AI STUDIO v1.7.4 ONE-CLICK CONNECT EDITION
+Откройте: http://127.0.0.1:3000
+Остановка: ./stop.sh
+Не закрывайте принудительно Termux во время генерации.
+PASS manual rollback to old 1.7.4, user data unchanged; Linux simulation, not Android hardware
+Приложение остановлено. Данные сохранены.
+EXIT=0

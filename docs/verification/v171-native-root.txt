@@ -1,0 +1,52 @@
+# running as root; user yoisaki exists before: no
+
+# 1) data root under /root (mode 700) -> the engine user cannot read the venv -> clear refusal
+
+$ ./start-cloudcompute.sh --mode native
+YOISAKI ENGINE · CloudCompute · режим: native · данные: /root/yoisaki-stub-data
+✔ Зависимости уже установлены (/root/yoisaki-stub-data/runtime/venv) — переустановка не нужна.
+✔ cloudflared 2026.9.3 уже установлен.
+✖ Пользователь yoisaki не может прочитать /opt/yoisaki-native-app/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION или /root/yoisaki-stub-data. Разместите их вне /root (например, в /workspace).
+[exit 1]
+
+# 2) data root outside /root (/srv): privilege drop, detached launcher as yoisaki, failure reported (no fastapi in the stub)
+
+$ ./start-cloudcompute.sh --mode native
+YOISAKI ENGINE · CloudCompute · режим: native · данные: /srv/yoisaki-stub-data
+✔ Зависимости уже установлены (/srv/yoisaki-stub-data/runtime/venv) — переустановка не нужна.
+✔ cloudflared 2026.9.3 уже установлен.
+Жду готовности: проверка GPU → сервер → (прогрев) → туннель Cloudflare…
+2026-10-26 00:23:35 YOISAKI ENGINE · CloudCompute deployment 1.7.1 · данные: /srv/yoisaki-stub-data
+2026-10-26 00:23:35 Проверка GPU пропущена (YOISAKI_GPU_PREFLIGHT=0).
+2026-10-26 00:23:36 ОШИБКА: Сервер движка завершился при запуске. См. ./check-cloudcompute.sh logs
+✖ Движок не запустился. Подробности: ./check-cloudcompute.sh logs
+[exit 1]
+$ id yoisaki
+uid=996(yoisaki) gid=995(yoisaki) groups=995(yoisaki)
+$ owners of writable folders
+yoisaki 700 /srv/yoisaki-stub-data/runtime/state
+yoisaki 755 /srv/yoisaki-stub-data/logs
+yoisaki 755 /srv/yoisaki-stub-data/outputs
+yoisaki 755 /srv/yoisaki-stub-data/huggingface-cache
+yoisaki 755 /srv/yoisaki-stub-data/diagnostics
+yoisaki 755 /srv/yoisaki-stub-data/models/checkpoints
+$ owner of files written by the launcher (= the user it ran as)
+yoisaki 600 /srv/yoisaki-stub-data/runtime/state/launcher.json
+stat: cannot statx '/srv/yoisaki-stub-data/diagnostics/*': No such file or directory
+$ launcher.out
+2026-10-26 00:23:35 YOISAKI ENGINE · CloudCompute deployment 1.7.1 · данные: /srv/yoisaki-stub-data
+2026-10-26 00:23:35 Проверка GPU пропущена (YOISAKI_GPU_PREFLIGHT=0).
+2026-10-26 00:23:36 ОШИБКА: Сервер движка завершился при запуске. См. ./check-cloudcompute.sh logs
+$ server.log (last lines)
+  File "/opt/yoisaki-native-app/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/engine/worker/serve.py", line 3, in <module>
+    import uvicorn
+ModuleNotFoundError: No module named 'uvicorn'
+
+$ ./stop-cloudcompute.sh
+Движок не был запущен.
+
+💰 Остановка движка НЕ останавливает оплату GPU-инстанса.
+   Остановите или удалите инстанс в панели CloudCompute. Остановленный инстанс продолжает
+   оплачивать хранение диска; удаление инстанса может безвозвратно удалить модели на его диске.
+[exit 0]
+remaining launcher/server processes: 0
