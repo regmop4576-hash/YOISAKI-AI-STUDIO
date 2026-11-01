@@ -1,0 +1,52 @@
+FAIL first paint does not wait for a delayed GPU health request: locator.waitFor: Timeout 2000ms exceeded.
+Call log:
+[2m  - waiting for locator('.app-header') to be visible[22m
+
+PASS Regional OFF + ControlNet OFF sends regions [] and exact prompt
+FAIL Regional ON + ControlNet OFF sends both masks and regional prompt: Expected values to be strictly equal:
+
+3 !== 2
+
+PASS real simultaneous enablement warns and prevents submission
+FAIL disabling Regional immediately clears the obsolete compatibility warning: locator.waitFor: Timeout 8000ms exceeded.
+Call log:
+[2m  - waiting for getByText('Одновременная работа Regional Control и ControlNet пока не поддерживается.', { exact: true }) to be hidden[22m
+[2m    21 × locator resolved to visible <div role="status" class="notice ">Одновременная работа Regional Control и ControlNe…</div>[22m
+
+FAIL OFF → ON preserves region IDs, prompts, trigger and mask: Expected values to be strictly equal:
++ actual - expected
+
++ ''
+- 'amber_character'
+
+FAIL Regional OFF + Depth ON uses ControlNet independently: The expression evaluated to a falsy value:
+
+  assert(fn())
+
+FAIL Regional OFF + Canny ON uses ControlNet independently: The expression evaluated to a falsy value:
+
+  assert(fn())
+
+FAIL Regional OFF + OpenPose ON uses ControlNet independently: The expression evaluated to a falsy value:
+
+  assert(fn())
+
+FAIL reload preserves Regional OFF, regions and ControlNet settings without false warning: Expected values to be strictly equal:
+
+'ВЫКЛ' !== 'OFF'
+
+PASS long Cyrillic prompt keeps focus and survives navigation / reload unchanged
+FAIL outage invalidates BUSY and shows last confirmed progress; local remove sends no cancellation: locator.waitFor: Timeout 8000ms exceeded.
+Call log:
+[2m  - waiting for locator('.gpu-chip[aria-label*="Связь потеряна"]') to be visible[22m
+
+FAIL recovery completes remaining jobs and saves gallery exactly once: The expression evaluated to a falsy value:
+
+  assert(fn())
+
+FAIL old saved ВЫКЛ mode is migrated on reload, preserving region data: Expected values to be strictly equal:
+
+'ВЫКЛ' !== 'OFF'
+
+PASS no browser runtime errors
+Failures: 11; SYNTHETIC engine, Chromium mobile emulation, not Android/T4.

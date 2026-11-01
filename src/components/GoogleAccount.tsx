@@ -17,6 +17,7 @@ export function GoogleAccount(){
  async function choose(id:string){await localApi('/api/drive/folder',{method:'PUT',body:JSON.stringify({id})});await load();setBrowsing(false);setMessage(t('Папка сохранена на телефоне.','Folder saved on this device.'))}
  return <section className="panel stack" data-localized="true" aria-label="Google account">
   <h2>GOOGLE DRIVE · {t('АККАУНТ И ПАПКА','ACCOUNT & FOLDER')}</h2>
+  <p className="notice tiny">{t('Для генерации через Colab подключите Google Drive внутри блокнота. OAuth на этом сайте — отдельная необязательная интеграция; Client ID и Client Secret для обычного запуска Colab не нужны.','For Colab generation, mount Google Drive inside the notebook. Website OAuth is optional; a Client ID and Client Secret are not required for the normal Colab workflow.')}</p>
   <p className="tiny muted">{t('Вход и выбор папки работают без GPU. У каждого пользователя — свой Google-аккаунт.','Sign in and choose a folder without a GPU. Each user connects their own Google account.')}</p>
   {view?.connected&&<div className="notice">{view.account?.email}<br/>{t('Папка моделей: ','Model folder: ')}<b>{view.folder?.name||t('не выбрана','not selected')}</b></div>}
   <div className="row">

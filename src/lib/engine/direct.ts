@@ -13,7 +13,7 @@ export type RejectedModel={name:string;kind:string|null;reason:string};
 type Snapshot={code?:string;provider:Provider;endpoints:Record<Provider,string>;website_version?:string;compatible_engine_family?:string;compatibility?:string;url:string;state:DirectStatus;info:EngineInfo|null;models:LiveModel[];error:string;
  phase?:Phase;phase_message?:string;components?:Record<'frontend'|'tunnel'|'auth'|'engine'|'gpu'|'models',ComponentState>;
  models_updated_at?:number|null;models_origin?:string|null;models_rejected?:RejectedModel[];models_error?:string;models_code?:string;models_stale?:boolean;
- connected_at?:number|null;remembered?:Record<Provider,Remembered>;autoconnect?:{attempt:number;started_at:number;deadline:number;origin:string}|null;rendezvous_host?:string;secrets_warning?:string};
+ last_seen_at?:number|null;connected_at?:number|null;remembered?:Record<Provider,Remembered>;autoconnect?:{attempt:number;started_at:number;deadline:number;origin:string}|null;rendezvous_host?:string;secrets_warning?:string};
 type State=Snapshot&{token:string;changing:boolean;set:(x:Partial<Snapshot>)=>void;connect:(raw:string,options?:{remember?:boolean;discover?:boolean})=>Promise<void>;selectProvider:(provider:Provider,endpoint:string)=>Promise<void>;disconnect:()=>Promise<void>;refresh:(models?:boolean)=>Promise<void>;
  connectSaved:()=>Promise<void>;poll:()=>Promise<void>;updateSaved:(change:{forget?:boolean;discover?:boolean})=>Promise<void>};
 let revision=0;
@@ -24,7 +24,7 @@ export const useDirect=create<State>((set,get)=>({provider:'colab',endpoints:{co
  refresh:async(models=false)=>{const rev=revision;if(get().changing||get().state==='CONNECTING')return;try{const snap=await localApi<Snapshot>('/api/gpu/status'+(models?'?models=1':''));if(rev===revision)set(snap)}catch(e){if(rev===revision)set({state:'ERROR',info:null,error:(e as Error).message})}},
  // One click with a remembered server: the local server keeps trying while the GPU boots; poll() follows its phases.
  connectSaved:async()=>{const rev=++revision;set({state:'CONNECTING',phase:'CONNECTING',phase_message:'Подключаюсь к сохранённому серверу…',error:'',code:undefined});try{const snap=await localApi<Snapshot>('/api/gpu/autoconnect',{method:'POST',body:JSON.stringify({provider:get().provider})});if(rev===revision)set(snap)}catch(e){if(rev===revision)set({state:'ERROR',phase:'ERROR',error:(e as Error).message,code:(e as Error & {code?:string}).code});throw e}},
- poll:async()=>{const rev=revision;try{const snap=await localApi<Snapshot>('/api/gpu/status');if(rev===revision)set(snap)}catch{}},
+ poll:async()=>{const rev=revision;try{const snap=await localApi<Snapshot>('/api/gpu/status?live=0');if(rev===revision&&!get().changing)set(snap)}catch(e){if(rev===revision)set({state:'ERROR',info:null,error:(e as Error).message,code:'LOCAL_UNAVAILABLE'})}},
  updateSaved:async change=>{const snap=await localApi<Snapshot>('/api/gpu/remembered',{method:'POST',body:JSON.stringify({provider:get().provider,...change})});set(snap)}
 }));
 // Compatibility signature: the browser never holds an active session credential.

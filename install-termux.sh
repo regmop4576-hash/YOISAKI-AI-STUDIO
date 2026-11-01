@@ -134,8 +134,6 @@ ACTION=install
 if [[ "$app_state" == ok ]]; then
   if [[ "$installed_sha" == "$EXPECTED" && $FORCE -eq 0 ]]; then
     ACTION=none
-  elif [[ -z "$installed_sha" && "$installed_version" == "$REL_VERSION" && $FORCE -eq 0 ]]; then
-    ACTION=none   # installed manually from this release earlier; nothing to download
   else
     newer=$(node -e 'const p=v=>v.split(".").map(Number);const [a,b]=[p(process.argv[1]),p(process.argv[2])];for(let i=0;i<Math.max(a.length,b.length);i++){const d=(a[i]||0)-(b[i]||0);if(d){console.log(d>0?"newer":"older");process.exit()}}console.log("same")' "$REL_VERSION" "$installed_version" </dev/null)
     [[ "$newer" == older && $FORCE -eq 0 ]] && die "Установлена версия $installed_version, а последний релиз — $REL_VERSION (старее). Ничего не меняю. Для отката используйте --force."
@@ -303,7 +301,7 @@ fi
 printf '\n\033[1;32m  Готово! Откройте в браузере телефона:  %s\033[0m\n\n' "$URL"
 cat <<EOF
   yoisaki start | stop | restart | status | update | open
-  Галерея хранится в браузере для адреса $URL, настройки — в ~/.local/share/yoisaki-ai-studio;
+  Галерея и настройки — в ~/.local/share/yoisaki-ai-studio, черновики редактора — в браузере для $URL;
   обновление их не удаляет. Дальше: подключите Google Colab (раздел GPU на сайте).
   Инструкция: https://github.com/$REPO/blob/main/docs/ru/GOOGLE_COLAB.md
 
@@ -311,3 +309,4 @@ EOF
 }
 
 main "$@"
+

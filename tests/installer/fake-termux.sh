@@ -15,3 +15,4 @@ exit 0
 P
 chmod +x "$P/bin/pkg"
 echo "PREFIX=$P HOME=$H"
+

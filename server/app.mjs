@@ -32,6 +32,15 @@ const terminal=TERMINAL_STATUSES;
 async function readBody(req,max=12582912){const chunks=[];let n=0;for await(const b of req){n+=b.length;if(n>max)fail('BODY_TOO_LARGE','Слишком большой запрос.',413);chunks.push(b)}return Buffer.concat(chunks)}
 async function jsonBody(req,max){try{return JSON.parse((await readBody(req,max)).toString())}catch(e){if(e instanceof AppError)throw e;fail('INVALID_JSON','Неверный JSON запроса.')}}
 function send(res,value,status=200){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(value))}
+// Client-side routes that are served as the app shell (dist/index.html).
+export const APP_PAGES=['/','/generate','/edit','/models','/gallery','/engine','/settings'];
+// v1.9.2 hotfix (ORIGIN_DENIED on open from GitHub / Termux / Android shortcut): a browser marks a top-level page
+// load with Sec-Fetch-Mode: navigate and Sec-Fetch-Dest: document (iframes say "iframe", fetch/XHR say "cors"/"empty").
+// Only such a GET of an app page, without OAuth parameters, may come from another site.
+export function isAppNavigation(req,method,route,url){
+ return method==='GET'&&req.headers['sec-fetch-mode']==='navigate'&&req.headers['sec-fetch-dest']==='document'
+  &&APP_PAGES.includes(route)&&!url.searchParams.has('state')&&!url.searchParams.has('code');
+}
 export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,serviceKey='',discoverAddress=discover,discoverProgress=rendezvousProgress,exchange=exchangeCode,providerRequest=providerHttp,providerBytesRequest=providerBytes,defaultGoogle=null,sleep=ms=>new Promise(r=>setTimeout(r,ms).unref?.()),deployInterval=10000,driveInterval=3000,autoResume=true,terminalInitialize=initializeTerminal,monitorMinGap=MONITOR_LIMITS.min_gap_ms,monitorTimers}={}){
  const store=await new Store(dataDir).init();
  // v1.7.3: remembered connections and the Google OAuth client live in secrets.json (0600), never in state.json.
@@ -44,33 +53,43 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
  const library=await new DriveLibrary({drive,dir:dataDir}).init(),monitor=await new SyncMonitor({dir:dataDir}).init();
  const googleClient=()=>secrets.google()||defaultGoogle;
  if(store.data.history.some(j=>['RUNNING','QUEUED'].includes(j.status)))await store.change(d=>{for(const j of d.history)if(['RUNNING','QUEUED'].includes(j.status)){j.status='CONNECTION_LOST';j.connection_error='Состояние сохранено. Подключитесь к прежней сессии GPU для проверки.'}});
+ let lastSeenAt=0;
  let connection=null,info=null,state='OFFLINE',lastError='',lastCode='',epoch=0,refreshing=null,closed=false,polling=false,submissionChain=Promise.resolve();
  // v1.7.3 connection phase (OFFLINE…READY/ERROR) shown to the user, the running auto-connect and the model-list health.
  let refreshingForced=false,phase='OFFLINE',phaseMessage='',auto=null,connectedAt=0;const modelsState={error:'',code:''};
  const setPhase=(p,message='')=>{phase=p;phaseMessage=message};
- const jobs=new Map();const acknowledgements=new Map();const session=randomBytes(32).toString('hex');
+ const submissions=new Set();const jobs=new Map();const acknowledgements=new Map();const session=randomBytes(32).toString('hex');
  const diagnostics=[];
  const note=(code)=>{diagnostics.push({at:new Date().toISOString(),code});if(diagnostics.length>30)diagnostics.shift()};
  // No credentials are ever stored in state.json. Unfinished histories can resume on explicit reconnect.
- const historySnapshot=()=>({items:store.data.history.map(j=>({...j,terminal:isTerminal(j),can_delete:isTerminal(j)&&!jobs.has(j.id)})),limit:HISTORY_LIMIT});
+ const historySnapshot=()=>({items:store.data.history.map(j=>({...j,terminal:isTerminal(j),can_delete:isTerminal(j)&&!jobs.has(j.id),can_forget:j.status==='CONNECTION_LOST'&&!submissions.has(j.id)})),limit:HISTORY_LIMIT});
  let providers=providerConfig(store.data.preferences);
  const currentPhase=()=>connection?(state==='ERROR'?'ERROR':state==='LOADING'?'LOADING':'READY'):phase;
  const status=()=>{
-  const inv=store.data.inventory||null,p=currentPhase();
-  return {provider:providers.selected,endpoints:{...providers.endpoints},url:connection?.origin||'',state,info,models:store.data.models,error:lastError,code:lastCode,storage_warning:store.warning,website_version:WEBSITE_VERSION,compatible_engine_family:COMPATIBLE_ENGINE_FAMILY,compatibility:engineCompatibility(info),
+  const stale=!!connection&&!!lastSeenAt&&Date.now()-lastSeenAt>45000;
+  const inv=store.data.inventory||null,p=stale?'ERROR':currentPhase(),visibleInfo=stale||state==='ERROR'?null:info;
+  return {provider:providers.selected,endpoints:{...providers.endpoints},url:connection?.origin||'',state:stale?'ERROR':state,info:visibleInfo,models:store.data.models,error:stale?'Нет свежего ответа GPU. Состояние задания проверяется.':lastError,code:stale?'CONNECTION_STALE':lastCode,last_seen_at:lastSeenAt||null,storage_warning:store.warning,website_version:WEBSITE_VERSION,compatible_engine_family:COMPATIBLE_ENGINE_FAMILY,compatibility:engineCompatibility(info),
    // v1.7.3: the list is never presented as current when it is not (models_stale) and rejected entries are listed.
    phase:p,phase_message:connection&&p!=='ERROR'?'':phaseMessage,
-   components:components({phase:p,info:connection?info:null,code:lastCode,modelsCount:store.data.models.length,modelsError:modelsState.error,usableCheckpoints:store.data.models.some(m=>m.kind==='checkpoint'&&m.compatible!==false)}),
+   components:components({phase:p,info:connection?visibleInfo:null,code:stale?'CONNECTION_TIMEOUT':lastCode,modelsCount:store.data.models.length,modelsError:modelsState.error,usableCheckpoints:store.data.models.some(m=>m.kind==='checkpoint'&&m.compatible!==false)}),
    models_updated_at:inv?.updated_at||null,models_origin:inv?.origin||null,models_rejected:inv?.rejected||[],models_error:modelsState.error,models_code:modelsState.code,
-   models_stale:!connection||state==='ERROR'||!inv||Date.now()-inv.updated_at>60000||!!modelsState.error||!!inv?.origin&&inv.origin!==connection.origin,
+   models_stale:stale||!connection||state==='ERROR'||!inv||Date.now()-inv.updated_at>60000||!!modelsState.error||!!inv?.origin&&inv.origin!==connection.origin,
    connected_at:connection?connectedAt:null,remembered:secrets.publicView(),secrets_warning:secrets.warning,rendezvous_host:RENDEZVOUS_HOST,
    autoconnect:auto?{attempt:auto.attempt,started_at:auto.started_at,deadline:auto.deadline,origin:auto.origin}:null};
  };
  async function disconnectSession(){
-  const version=++epoch;refreshing=null;connection=null;info=null;state='OFFLINE';lastError='';lastCode='';jobs.clear();acknowledgements.clear();auto=null;connectedAt=0;setPhase('OFFLINE');modelsState.error='';modelsState.code='';
+  const version=++epoch;refreshing=null;connection=null;info=null;state='OFFLINE';lastError='';lastCode='';jobs.clear();acknowledgements.clear();auto=null;connectedAt=0;lastSeenAt=0;setPhase('OFFLINE');modelsState.error='';modelsState.code='';
   // Disconnect does not cancel GPU work. Preserve unresolved records for explicit reconnect.
   await store.change(d=>{for(const j of d.history)if(!terminal.includes(j.status)){j.status='CONNECTION_LOST';j.connection_error='GPU отключён. Подключитесь к прежнему провайдеру и адресу для проверки.'}});
   return version;
+ }
+ const transportFailure=e=>['CONNECTION_TIMEOUT','DNS_TIMEOUT','DNS_ERROR','TUNNEL_UNAVAILABLE','TUNNEL_OFFLINE','UPSTREAM_INTERRUPTED','UPSTREAM_HTTP','TLS_ERROR','AUTH_REJECTED'].includes(e.code);
+ async function loseConnection(c,e){
+  if(connection!==c)return;
+  state='ERROR';lastError=publicError(e).error;lastCode=e.code||'LOCAL_ERROR';
+  await store.change(d=>{for(const j of d.history)if(jobs.get(j.id)===c&&!isTerminal(j)){
+   j.status='CONNECTION_LOST';j.connection_error=lastError;
+  }});
  }
  const sameProvider=(job,c)=>job.origin===c.origin&&(job.provider||'colab')===c.provider;
  // v1.7.3: stores the compact inventory (no safetensors metadata) and where/when it was read.
@@ -96,9 +115,9 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
  // v1.7.3: a forced model refresh is never swallowed by a plain status refresh that is already running.
  if(refreshing){if(!forceModels||refreshingForced)return refreshing;return refreshing.then(()=>refresh(true))}
  const current=connection,version=epoch;refreshingForced=forceModels;
- refreshing=(async()=>{try{const health=validateHealth(await upstream(current,'/health',{timeout:20000}));if(epoch!==version)return status();info=health;state=health.state;lastError='';lastCode='';
+ refreshing=(async()=>{try{const health=validateHealth(await upstream(current,'/health',{timeout:20000}));if(epoch!==version)return status();info=health;state=health.state;lastSeenAt=Date.now();lastError='';lastCode='';
   if(forceModels||await inventoryChanged(current))await syncModels(current,version);
- }catch(e){if(epoch===version){state='ERROR';info=null;lastError=publicError(e).error;lastCode=e.code||'LOCAL_ERROR';note(lastCode)}}return status()})().finally(()=>{refreshing=null;refreshingForced=false});return refreshing;
+ }catch(e){if(epoch===version){await loseConnection(current,e);info=null;note(lastCode)}}return status()})().finally(()=>{refreshing=null;refreshingForced=false});return refreshing;
  }
  // Shared by the manual link connect and the one-click auto-connect: health → models → activate.
  async function establish(c,version){
@@ -108,11 +127,11 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
   let inv=null,modelsError=null;try{inv=await loadModels(c)}catch(e){if(e.code==='AUTH_REJECTED')throw e;modelsError=e}
   if(version!==epoch)fail('SUPERSEDED','Подключение отменено.',409);
   await store.change(d=>{for(const j of d.history)if(!['COMPLETED','FAILED','CANCELLED','INTERRUPTED'].includes(j.status)){j.status='CONNECTION_LOST';j.connection_error='Ожидается подтверждение GPU'}});
-  if(version!==epoch)fail('SUPERSEDED','Подключение отменено.',409);jobs.clear();acknowledgements.clear();connection=c;info=h;state=h.state;auto=null;connectedAt=Date.now();
+  if(version!==epoch)fail('SUPERSEDED','Подключение отменено.',409);jobs.clear();acknowledgements.clear();connection=c;c.resultAck=h.capabilities?.result_ack===true||/^1\.[5-8]\./.test(h.engine_version||'');info=h;state=h.state;auto=null;connectedAt=Date.now();lastSeenAt=connectedAt;
   if(inv){await mergeModels(inv,c);modelsState.error='';modelsState.code=''}else{modelsState.error=publicError(modelsError).error;modelsState.code=modelsError.code||'LOCAL_ERROR';note('MODELS_'+modelsState.code)}
   await store.change(d=>{d.preferences={...d.preferences,last_host:c.origin}});
   if(version!==epoch)fail('SUPERSEDED','Подключение отменено.',409);
-  for(const j of store.data.history){if(sameProvider(j,c)&&!['COMPLETED','FAILED','CANCELLED'].includes(j.status)){jobs.set(j.id,c);await setJob(j.id,{status:'CONNECTION_LOST',connection_error:'Проверяем прежнюю задачу…'})}}
+  for(const j of store.data.history){if(sameProvider(j,c)&&!isTerminal(j)){jobs.set(j.id,c);await setJob(j.id,{status:'CONNECTION_LOST',connection_error:'Проверяем прежнюю задачу…'})}}
   if(h.capabilities?.result_ack===true||/^1\.[5-8]\./.test(h.engine_version||''))for(const j of store.data.history.filter(j=>sameProvider(j,c)&&j.status==='COMPLETED'&&j.result?.image_keys?.every((_,i)=>store.data.gallery.some(g=>g.id===j.id+'_'+i))))acknowledgements.set(j.id,c);
   lastError='';lastCode='';setPhase('READY');note('CONNECTED');
  }
@@ -313,21 +332,25 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
   const image_keys=[];
   for(let i=0;i<remote.result.image_keys.length;i++){
    const id=job.id+'_'+i;const existing=store.data.gallery.find(x=>x.id===id);
-   if(!existing){const bytes=await upstream(c,`/results/${job.id}?index=${i}`,{binary:true,timeout:90000});if(collectEpoch!==epoch||connection!==c)return;const item={id,name:`yoisaki-${job.id}-${i}.png`,created:Date.now(),favorite:false,prompt:job.request.prompt,origin:'generated',type:'image/png',job_id:job.id,seed:remote.result.seed,parameters:job.request,url:'/api/gallery/'+id+'/file'};await store.saveImage(item,bytes)}
+   if(!existing){const bytes=await upstream(c,`/results/${job.id}?index=${i}`,{binary:true,timeout:90000});if(collectEpoch!==epoch||connection!==c||jobs.get(job.id)!==c)return;const item={id,name:`yoisaki-${job.id}-${i}.png`,created:Date.now(),favorite:false,prompt:job.request.prompt,origin:'generated',type:'image/png',job_id:job.id,seed:remote.result.seed,parameters:job.request,url:'/api/gallery/'+id+'/file'};await store.saveImage(item,bytes)}
    image_keys.push(String(i));
   }
-  if(collectEpoch!==epoch||connection!==c)return;
-  await setJob(job.id,{status:'COMPLETED',connection_error:undefined,progress:{...remote.progress,stage:'DONE'},result:{image_keys,seed:remote.result.seed},error:undefined});jobs.delete(job.id);
-  if(info?.capabilities?.result_ack===true||/^1\.[5-8]\./.test(info?.engine_version||''))acknowledgements.set(job.id,c);
+  if(collectEpoch!==epoch||connection!==c||jobs.get(job.id)!==c)return;
+  await setJob(job.id,{status:'COMPLETED',last_confirmed_at:Date.now(),connection_error:undefined,progress:{...remote.progress,stage:'DONE'},result:{image_keys,seed:remote.result.seed},error:undefined});jobs.delete(job.id);
+  if(c.resultAck)acknowledgements.set(job.id,c);
  }
- async function pollJobs(){if(closed||polling||(!jobs.size&&!acknowledgements.size))return;polling=true;
- try{for(const [id,c] of acknowledgements){try{await upstream(c,'/jobs/'+id+'/ack',{method:'POST',body:'{}'});acknowledgements.delete(id)}catch(e){if(e.code==='JOB_NOT_FOUND')acknowledgements.delete(id);else note('RESULT_ACK_PENDING')}break}
- for(const [id,c] of jobs){const job=store.data.history.find(x=>x.id===id);if(!job){jobs.delete(id);continue}
+ async function pollJobs(){if(closed||polling||(!jobs.size&&!acknowledgements.size))return;polling=true;const pendingAcks=[...acknowledgements];
+ try{for(const [id,c] of jobs){const job=store.data.history.find(x=>x.id===id);if(!job){jobs.delete(id);continue}
+ let completedResponse=false;
  try{const remote=await upstream(c,'/jobs/'+id,{timeout:20000});if(jobs.get(id)!==c||connection!==c)continue;if(remote.id!==id||!['QUEUED','RUNNING','COMPLETED','FAILED','CANCELLED'].includes(remote.status))fail('INVALID_RESPONSE','Неверный статус задания.',502);
- if(remote.status==='COMPLETED'){await setJob(id,{status:'RUNNING',connection_error:undefined,progress:{...remote.progress,stage:'SAVING'}});await collect(job,remote,c);}
- else{await setJob(id,{status:remote.status,connection_error:undefined,queue_position:remote.queue_position,pending_jobs:remote.pending_jobs,progress:remote.progress,error:remote.error?String(remote.error).replace(/[a-f0-9]{64}/g,'[СКРЫТО]').slice(0,600):undefined});if(terminal.includes(remote.status))jobs.delete(id)}
- }catch(e){if(jobs.get(id)!==c||connection!==c)continue;await setJob(id,{status:'CONNECTION_LOST',connection_error:publicError(e).error});note(e.code||'JOB_ERROR');if(e.code==='JOB_NOT_FOUND'){jobs.delete(id);await setJob(id,{status:'INTERRUPTED',error:'Задача отсутствует в текущей сессии GPU; повторная генерация не запускалась.'})}if(e.code==='AUTH_REJECTED'){jobs.delete(id);await setJob(id,{status:'INTERRUPTED',error:'Токен отклонён. Подключитесь заново.'})}}
- }}finally{polling=false}}
+ lastSeenAt=Date.now();if(state==='ERROR'&&!refreshing){const task=refresh().catch(()=>{}).finally(()=>background.delete(task));background.add(task);}
+ if(remote.status==='COMPLETED'){completedResponse=true;await setJob(id,{status:'RUNNING',last_confirmed_at:lastSeenAt,connection_error:undefined,progress:{...remote.progress,stage:'SAVING'}});await collect(job,remote,c);}
+ else{await setJob(id,{status:remote.status,last_confirmed_at:lastSeenAt,connection_error:undefined,queue_position:remote.queue_position,pending_jobs:remote.pending_jobs,progress:remote.progress,error:remote.error?String(remote.error).replace(/[a-f0-9]{64}/g,'[СКРЫТО]').slice(0,600):undefined});if(terminal.includes(remote.status))jobs.delete(id)}
+ }catch(e){if(jobs.get(id)!==c||connection!==c)continue;if(transportFailure(e))await loseConnection(c,e);
+ await setJob(id,{status:'CONNECTION_LOST',connection_error:publicError(e).error});note(e.code||'JOB_ERROR');if(e.code==='JOB_NOT_FOUND'&&!completedResponse){jobs.delete(id);await setJob(id,{status:'INTERRUPTED',error:'Задача отсутствует в текущей сессии GPU; повторная генерация не запускалась.'})}if(e.code==='AUTH_REJECTED'){jobs.delete(id);await setJob(id,{status:'INTERRUPTED',error:'Токен отклонён. Подключитесь заново.'})}if(transportFailure(e))break}
+ }
+ if(state!=='ERROR')for(const [id,c] of pendingAcks){if(connection!==c||acknowledgements.get(id)!==c)continue;try{await upstream(c,'/jobs/'+id+'/ack',{method:'POST',body:'{}',timeout:10000});acknowledgements.delete(id)}catch(e){if(e.code==='JOB_NOT_FOUND')acknowledgements.delete(id);else note('RESULT_ACK_PENDING')}break}
+ }finally{polling=false}}
  const pollTimer=setInterval(()=>{pollJobs().catch(()=>note('STORAGE_ERROR'))},3000);pollTimer.unref();
  const server=http.createServer(async(req,res)=>{
  try{
@@ -339,7 +362,10 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
   const u=new URL(req.url,'http://'+host);const route=u.pathname;const method=req.method;
   // v1.7.3: Google's OAuth redirect (cross-site navigation). Only a pending single-use state of this app is accepted.
   if(route==='/'&&method==='GET'&&oauth.has(u.searchParams.get('state')))return finishOAuth(u,res);
-  if(req.headers['sec-fetch-site']&& !['same-origin','none'].includes(req.headers['sec-fetch-site']))fail('ORIGIN_DENIED','Внешняя страница не имеет доступа.',403);
+  // v1.9.2 hotfix: a top-level GET navigation to an app page (link from GitHub, Termux, Android shortcut) only loads
+  // the static app shell; it carries no session and changes nothing. APIs, other methods, frames, subresources
+  // and the OAuth return URL stay same-origin only.
+  if(req.headers['sec-fetch-site']&& !['same-origin','none'].includes(req.headers['sec-fetch-site'])&&!isAppNavigation(req,method,route,u))fail('ORIGIN_DENIED','Внешняя страница не имеет доступа.',403);
   if(route==='/_yoisaki/service'){if(!serviceKey||req.headers['x-yoisaki-service']!==serviceKey)fail('LOCAL_ONLY','Нет доступа.',403);return send(res,{pid:process.pid,version:WEBSITE_VERSION})}
   if(route.startsWith('/api/')){
    const image=method==='GET'&&/^\/api\/gallery\/[a-f0-9_-]+\/file$/.test(route);
@@ -599,9 +625,9 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
     if(driveMatch[1]!=='status')note('DRIVE_'+driveMatch[1].toUpperCase());return send(res,observeSync(c,result));
    }
    if(route==='/api/gpu/disconnect'&&method==='POST'){await disconnectSession();return send(res,status())}
-   if(route==='/api/gpu/status'&&method==='GET')return send(res,await refresh(u.searchParams.get('models')==='1'));
+   if(route==='/api/gpu/status'&&method==='GET')return send(res,u.searchParams.get('live')==='0'?status():await refresh(u.searchParams.get('models')==='1'));
    if(route==='/api/gpu/controlnet/preprocess'&&method==='POST'){
-    if(!connection||!['READY','BUSY'].includes(state))fail('GPU_OFFLINE','GPU отключён. Подключитесь в разделе GPU.',409);
+    if(!connection||!['READY','BUSY'].includes(status().state))fail('GPU_OFFLINE','GPU отключён. Подключитесь в разделе GPU.',409);
     if(engineCompatibility(info)!=='COMPATIBLE')fail('ENGINE_UPGRADE_REQUIRED','Несовместимая версия движка. Требуется YOISAKI ENGINE v1.7.0, v1.7.6, v1.8.0 или v1.8.1 с API 1.7.0.',409);
     const request=validatePreprocess(await jsonBody(req));
     // AUD-006: each hop stays below the browser (95 s) and Cloudflare (~100 s) limits; the engine answers
@@ -612,14 +638,14 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
     validateControlImage(result.image);return send(res,result);
    }
    if(route==='/api/gpu/facefix/detect'&&method==='POST'){
-    if(!connection||!['READY','BUSY'].includes(state))fail('GPU_OFFLINE','GPU отключён. Подключитесь в разделе GPU.',409);
+    if(!connection||!['READY','BUSY'].includes(status().state))fail('GPU_OFFLINE','GPU отключён. Подключитесь в разделе GPU.',409);
     if(!supportsAutoFaceFix(info))fail('ENGINE_UPGRADE_REQUIRED','Автоматическое обнаружение лиц требует YOISAKI ENGINE v1.8.1 SMART FACE FIX. Ручная рамка доступна в расширенных настройках.',409);
     const request=validateDetectRequest(await jsonBody(req,20*1024*1024));
     // CPU detection on the GPU host; the image is not stored in history or logs.
     return send(res,validateDetectResponse(await upstream(connection,'/facefix/detect',{method:'POST',body:JSON.stringify(request),timeout:60000}),request));
    }
    if(route==='/api/gpu/generate'&&method==='POST'){
-    if(!connection||!['READY','BUSY'].includes(state))fail('GPU_OFFLINE','GPU отключён. Подключитесь в разделе GPU.',409);
+    if(!connection||!['READY','BUSY'].includes(status().state))fail('GPU_OFFLINE','GPU отключён. Подключитесь в разделе GPU.',409);
     const request=validateGeneration(await jsonBody(req,20*1024*1024),store.data.models);
     if(['inpaint','facefix'].includes(request.mode)&&info?.capabilities?.[request.mode]!==true)fail('ENGINE_UPGRADE_REQUIRED','Для Inpaint/Face Fix запустите YOISAKI ENGINE v1.8.0 или новее.',409);
     if((request.face_detection||request.face_options)&&!supportsAutoFaceFix(info))fail('ENGINE_UPGRADE_REQUIRED','Автоматический Face Fix требует YOISAKI ENGINE v1.8.1 SMART FACE FIX. Ручная рамка доступна в расширенных настройках.',409);
@@ -635,16 +661,24 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
       const job={id:request.client_request_id,status:'CONNECTION_LOST',created:Date.now(),updated:Date.now(),request:stored,origin:c.origin,provider:c.provider};
       // Write the known ID before sending. An ambiguous response is reconciled with
       // GET only, never automatically replayed after reload/reconnect.
-      await store.change(d=>{d.history.unshift(job)});
+      submissions.add(job.id);
+      await store.change(d=>{d.history.unshift(job)}).catch(e=>{submissions.delete(job.id);throw e});
       try{
        if(requestEpoch!==epoch||connection!==c)fail('SUPERSEDED','Провайдер изменён; задание не отправлено.',409);
        const response=await upstream(c,'/generate',{method:'POST',body:JSON.stringify(request),timeout:20000});
        if(!response||!/^[a-f0-9-]{36}$/.test(response.id)||response.status!=='QUEUED')fail('INVALID_RESPONSE','GPU вернул неверное подтверждение задания.',502);
-       await store.change(d=>{const j=d.history.find(x=>x.id===job.id);j.id=response.id;j.status='QUEUED'});
-       if(requestEpoch===epoch&&connection===c){jobs.set(response.id,c);state='BUSY';}return store.data.history.find(x=>x.id===response.id);
-      }catch(e){if(requestEpoch===epoch&&connection===c)jobs.set(job.id,c);await setJob(job.id,{connection_error:publicError(e).error});throw e}
+       await store.change(d=>{const j=d.history.find(x=>x.id===job.id);if(!j)return;d.history=d.history.filter(x=>x===j||x.id!==response.id);j.id=response.id;j.status='QUEUED';j.last_confirmed_at=Date.now()});
+       if(requestEpoch===epoch&&connection===c){jobs.set(response.id,c);lastSeenAt=Date.now();state='BUSY';lastError='';lastCode='';}return store.data.history.find(x=>x.id===response.id);
+      }catch(e){
+       if(['INVALID_PARAMETERS','GPU_BUSY','AUTH_REJECTED','SUPERSEDED'].includes(e.code)){
+        await setJob(job.id,{status:'FAILED',error:publicError(e).error});throw e;
+       }
+       // An unacknowledged POST may have reached the GPU. Track its original ID; never replay it.
+       if(requestEpoch===epoch&&connection===c){jobs.set(job.id,c);state='ERROR';lastError=publicError(e).error;lastCode=e.code||'LOCAL_ERROR'}
+       await setJob(job.id,{connection_error:publicError(e).error});return store.data.history.find(x=>x.id===job.id);
+      }finally{submissions.delete(job.id)}
     });
-    submissionChain=task;return send(res,await task,201);
+    submissionChain=task;const result=await task;return send(res,result,result.status==='CONNECTION_LOST'?202:201);
    }
    const jobMatch=route.match(/^\/api\/gpu\/jobs\/([a-f0-9-]{36})$/);
    if(jobMatch){const id=jobMatch[1];const job=store.data.history.find(x=>x.id===id);if(!job)fail('JOB_NOT_FOUND','Задание не найдено.',404);
@@ -655,6 +689,14 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
    if(historyMatch&&method==='DELETE'){
     const id=historyMatch[1];const existing=store.data.history.find(j=>j.id===id);
     if(!existing)fail('JOB_NOT_FOUND','Запись уже удалена.',404);
+    if(u.searchParams.get('local')==='1'){
+     // Explicitly forget an unresolved LOCAL record. Never call DELETE /jobs on the GPU.
+     await store.change(d=>{const j=d.history.find(x=>x.id===id);
+      if(submissions.has(id)||j&&j.status!=='CONNECTION_LOST'&&!isTerminal(j))fail('JOB_ACTIVE','Статус изменился. Обновите очередь; активную задачу можно отменить на GPU.',409);
+      d.history=d.history.filter(x=>x.id!==id);
+     });
+     jobs.delete(id);return send(res,historySnapshot());
+    }
     // CONNECTION_LOST is unresolved, not terminal. Reconcile before deletion;
     // a completed remote job must be collected into Gallery first.
     if(existing.status==='CONNECTION_LOST'){
@@ -699,7 +741,7 @@ export async function createLocalApp({dataDir,distDir,upstream=requestUpstream,s
   }
   if(!['GET','HEAD'].includes(method))fail('METHOD_DENIED','Метод не поддерживается.',405);
   const relative=decodeURIComponent(route).replace(/^\//,'');let file=path.resolve(distDir,relative||'index.html');if(!file.startsWith(path.resolve(distDir)+path.sep))fail('PATH_DENIED','Недопустимый путь.',403);
-  try{if(!(await fs.stat(file)).isFile())throw Error()}catch{if(!['/','/generate','/edit','/models','/gallery','/engine','/settings'].includes(route))fail('NOT_FOUND','Файл не найден.',404);file=path.join(distDir,'index.html')}
+  try{if(!(await fs.stat(file)).isFile())throw Error()}catch{if(!APP_PAGES.includes(route))fail('NOT_FOUND','Файл не найден.',404);file=path.join(distDir,'index.html')}
   const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.webp':'image/webp','.woff2':'font/woff2','.txt':'text/plain; charset=utf-8','.webmanifest':'application/manifest+json; charset=utf-8','.ico':'image/x-icon'}[path.extname(file)]||'application/octet-stream';const bytes=await fs.readFile(file);res.writeHead(200,{'Content-Type':mime,'Cache-Control':'no-cache','Content-Length':bytes.length});res.end(method==='HEAD'?undefined:bytes);
  }catch(e){note(e.code||'LOCAL_ERROR');if(!res.headersSent)send(res,publicError(e),e.status||500);else res.destroy()}
  });

@@ -12,6 +12,8 @@ export function JobProgress({job}:{job:LiveJob}){
    <span className="tiny muted">{t('job.elapsed')}: {p.elapsed_seconds===undefined?'—':Math.round(p.elapsed_seconds)+' '+t('job.sec')} · {t('job.eta')}: {stage==='GENERATING'&&p.eta_seconds!=null?Math.ceil(p.eta_seconds)+' '+t('job.sec'):'—'}</span></>}
   <span className="tiny muted">{t('job.position')}: {job.queue_position??'—'} · {t('job.pending')}: {job.pending_jobs??'—'}</span>
   {stage==='DECODING'||stage==='SAVING'?<span className="tiny">{t('job.postSteps')}</span>:null}
+  {job.last_confirmed_at&&<span className="tiny muted">{t('job.confirmed')}: {new Date(job.last_confirmed_at).toLocaleTimeString()}</span>}
+  {job.status==='CONNECTION_LOST'&&<span className="tiny">{t('job.recovering')}</span>}
   {job.connection_error&&<span className="notice">{job.connection_error}</span>}
   {job.error&&<span className="notice dangernotice">{job.error}</span>}
  </div>;

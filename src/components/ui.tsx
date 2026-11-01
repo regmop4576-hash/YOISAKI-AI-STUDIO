@@ -56,7 +56,7 @@ export function Modal({title,onClose,children,footer,wide=false,label}:{title:Re
 
 /* ---------- GPU status ---------- */
 export function gpuTone(state:DirectStatus):'ok'|'warn'|'bad'|'idle'{return state==='READY'?'ok':state==='BUSY'||state==='LOADING'||state==='CONNECTING'?'warn':state==='ERROR'?'bad':'idle'}
-export function useGpuLabel(){const {t}=useI18n();const state=useDirect(x=>x.state);const label=({READY:t('gpu.ready'),BUSY:t('gpu.busy'),LOADING:t('gpu.loading'),CONNECTING:t('gpu.connecting'),ERROR:t('gpu.error'),OFFLINE:t('gpu.offline')} as Record<DirectStatus,string>)[state];return {state,label,tone:gpuTone(state)}}
+export function useGpuLabel(){const {t}=useI18n();const state=useDirect(x=>x.state),url=useDirect(x=>x.url);const label=({READY:t('gpu.ready'),BUSY:t('gpu.busy'),LOADING:t('gpu.loading'),CONNECTING:t('gpu.connecting'),ERROR:url?t('queue.unconfirmed'):t('gpu.error'),OFFLINE:t('gpu.offline')} as Record<DirectStatus,string>)[state];return {state,label,tone:gpuTone(state)}}
 export function GpuStatus({label}:{label?:string}){const g=useGpuLabel();return <span className="status" data-tone={g.tone} role="status"><span className="dot"/>{label||g.label}</span>}
 
 /* ---------- page head ---------- */
