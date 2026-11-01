@@ -1,0 +1,19 @@
+PASS READY GPU: old-session job is not presented as the current generation
+PASS "2 ПЕРСОНАЖА" shows exactly Region A, Region B
+PASS 2 characters → request carries 2 regions
+PASS "3 ПЕРСОНАЖА" shows three regions; back to two shows two
+PASS selected tab is valid after the count shrinks (no empty editor)
+PASS CUSTOM keeps the real configured count
+PASS OFF hides region tabs and the regional hint
+PASS Regional OFF + ControlNet Depth: no warning, regions [] in request JSON
+PASS Regional OFF + ControlNet Canny: no warning, regions [] in request JSON
+PASS Regional OFF + ControlNet OpenPose: no warning, regions [] in request JSON
+PASS Regional ON + ControlNet ON is still blocked with the warning
+PASS reload: OFF persists, no false warning, saved regions intact (C kept)
+PASS legacy saved "2 ПЕРСОНАЖА" with 3 stored regions (old build) shows 2 after reload
+PASS "Проверить и удалить" removes an old-session record after confirmation, without GPU
+PASS remaining stale records are removed together; counters update
+PASS removed records do not reappear after reload and repeated polling
+PASS no GPU cancel / status call was sent for old jobs; no automatic re-generation
+PASS no browser runtime errors
+Failures: 0/18; root=<repo>; SYNTHETIC engine, Chromium mobile emulation (not Android/T4).

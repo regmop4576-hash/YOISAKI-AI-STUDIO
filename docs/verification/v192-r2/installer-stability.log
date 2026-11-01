@@ -1,0 +1,24 @@
+PASS initially no node/curl/unzip
+PASS fresh one-command install exits 0
+PASS SHA verified; integrity check executed
+PASS site and yoisaki version are 1.9.2
+PASS Termux interpreter installed
+PASS repeat install downloads no ZIP
+PASS update selects repaired asset alongside original
+PASS partial download resumes with Range
+PASS same version 1.9.2 kept after update
+PASS new source installed
+PASS code and data backups exist
+PASS settings and user marker preserved
+PASS repeat fixed update is idempotent
+PASS manual same-version install without archive digest is verified and updated
+PASS broken same-version update rejected and previous build restarted
+PASS rollback keeps data
+PASS checksum metadata mismatch refused before installation
+PASS missing release assets refused
+PASS damaged install repaired without data loss
+PASS yoisaki stop
+PASS yoisaki start after stop
+PASS repeated start is safe
+PASS yoisaki status
+RESULT: 23 passed, 0 failed; logs: /tmp/tmp.e4qCRS1QB6; simulated Termux only

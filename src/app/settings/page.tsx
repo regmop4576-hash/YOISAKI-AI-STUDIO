@@ -9,7 +9,7 @@ import {useDirect} from '@/lib/engine/direct';
 import {clearImages,getImages} from '@/lib/storage/gallery';
 import {clearAllDrafts,draftSummary} from '@/lib/storage/drafts';
 import {localApi} from '@/lib/local-api';
-import {STUDIO_VERSION,STUDIO_EDITION} from '@/lib/release';
+import {STUDIO_VERSION,STUDIO_EDITION,STUDIO_BUILD} from '@/lib/release';
 import {downloadJSON,NumberField} from '@/components/Common';
 import {PageHead,ActionButton,toast,Modal,Mascot} from '@/components/ui';
 import {Settings,Languages,Monitor,WandSparkles,Paintbrush,Boxes,Plug,Database,Images,Terminal,Download,Upload,Trash2,RotateCcw,ExternalLink,Warning} from '@/components/icons';
@@ -31,7 +31,7 @@ export default function Page(){
  const body:Record<Sec,ReactNode>={
   general:<>
    <div className="field"><label htmlFor="lang"><Languages size={16}/> {t('set.language')}</label><select id="lang" value={st.language} onChange={e=>{st.setLanguage(e.target.value);toast('ok',t('set.saved'))}}>{Object.values(LANGS).map(l=><option key={l.label} value={l.label}>{l.label}</option>)}</select></div>
-   <div className="notice infonotice stack" style={{gap:4}}><b className="gold">{t('set.version')}: {STUDIO_VERSION} · {STUDIO_EDITION}</b><span>{t('brand.storage')}</span></div>
+   <div className="notice infonotice stack" style={{gap:4}}><b className="gold">{t('set.version')}: {STUDIO_VERSION} · {STUDIO_EDITION}</b><span className="tiny" data-testid="build-id" title={t('set.buildHint')}>{t('set.build')}: <code>{STUDIO_BUILD}</code></span><span>{t('brand.storage')}</span></div>
    <Row title={t('set.export')} hint={t('set.exportHint')}><button type="button" onClick={()=>{downloadJSON({version:1,settings:st.settings,presets:st.presets},'yoisaki-settings.json');toast('ok',t('set.exported'))}}><Download size={16}/>{t('set.exportBtn')}</button></Row>
    <Row title={t('set.import')} hint={t('set.importHint')}><button type="button" onClick={()=>file.current?.click()}><Upload size={16}/>{t('set.importBtn')}</button></Row>
    <input ref={file} hidden type="file" accept="application/json,.json" onChange={async e=>{try{const f=e.target.files?.[0];if(!f)return;if(f.size>1024*1024)throw Error(t('set.fileTooLarge'));const obj=JSON.parse(await f.text());if(obj.version!==1||!obj.settings||typeof obj.settings.prompt!=='string'||!Number.isFinite(obj.settings.width))throw Error(t('set.invalidFile'));st.update({...defaults,...obj.settings});toast('ok',t('set.imported'))}catch(err){toast('bad',(err as Error).message)}e.target.value=''}}/>

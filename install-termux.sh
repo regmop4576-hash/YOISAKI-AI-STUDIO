@@ -134,8 +134,6 @@ ACTION=install
 if [[ "$app_state" == ok ]]; then
   if [[ "$installed_sha" == "$EXPECTED" && $FORCE -eq 0 ]]; then
     ACTION=none
-  elif [[ -z "$installed_sha" && "$installed_version" == "$REL_VERSION" && $FORCE -eq 0 ]]; then
-    ACTION=none   # installed manually from this release earlier; nothing to download
   else
     newer=$(node -e 'const p=v=>v.split(".").map(Number);const [a,b]=[p(process.argv[1]),p(process.argv[2])];for(let i=0;i<Math.max(a.length,b.length);i++){const d=(a[i]||0)-(b[i]||0);if(d){console.log(d>0?"newer":"older");process.exit()}}console.log("same")' "$REL_VERSION" "$installed_version" </dev/null)
     [[ "$newer" == older && $FORCE -eq 0 ]] && die "Установлена версия $installed_version, а последний релиз — $REL_VERSION (старее). Ничего не меняю. Для отката используйте --force."
@@ -262,7 +260,7 @@ case "${1:-help}" in
              echo 'GitHub недоступен для загрузки установщика — использую сохранённую копию.'; bash "$INSTALLER" --update "$@"
            else echo 'Установщик не найден. Выполните команду установки из README ещё раз.'; exit 1; fi ;;
   open)    command -v termux-open-url >/dev/null && termux-open-url "$url" || echo "Откройте в браузере: $url" ;;
-  version) need_app; node -e 'console.log(require(process.argv[1]).version)' "$APP/package.json" ;;
+  version) need_app; node -e 'const p=require("path"),a=process.argv[1];let b="";try{b=require(p.join(a,"dist/release.json")).source_sha256.slice(0,12)}catch{}console.log(require(p.join(a,"package.json")).version+(b&&process.argv[2]==="--build"?" "+b:""))' "$APP" "${2:-}" ;;
   dir)     echo "$APP" ;;
   help|-h|--help|*) cat <<HELP
 YOISAKI AI STUDIO — команды:
@@ -272,7 +270,7 @@ YOISAKI AI STUDIO — команды:
   yoisaki status    диагностика: версия, Node.js, сервер, журнал
   yoisaki update    обновить до последнего релиза (резервные копии, автоматический откат)
   yoisaki open      открыть сайт в браузере
-  yoisaki version   установленная версия
+  yoisaki version   установленная версия (yoisaki version --build — с идентификатором сборки)
 HELP
   ;;
 esac
@@ -295,7 +293,7 @@ else
 fi
 if [[ "$NO_START" == 0 ]]; then
   for _ in 1 2 3 4 5 6 7 8 9 10; do
-    if curl -fsS -m 2 -H 'X-Yoisaki-Local: 1' "$URL/api/session" </dev/null >/dev/null 2>&1; then ok "Сайт отвечает: версия $(curl -fsS -m 2 -H 'X-Yoisaki-Local: 1' "$URL/api/session" </dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.parse(s).version)}catch{console.log("?")}})')"; break; fi
+    if curl -fsS -m 2 -H 'X-Yoisaki-Local: 1' "$URL/api/session" </dev/null >/dev/null 2>&1; then ok "Сайт отвечает: версия $(curl -fsS -m 2 -H 'X-Yoisaki-Local: 1' "$URL/api/session" </dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s);console.log(j.version+(j.build?" · сборка "+j.build:""))}catch{console.log("?")}})')"; break; fi
     sleep 1
   done
 fi
@@ -303,7 +301,7 @@ fi
 printf '\n\033[1;32m  Готово! Откройте в браузере телефона:  %s\033[0m\n\n' "$URL"
 cat <<EOF
   yoisaki start | stop | restart | status | update | open
-  Галерея хранится в браузере для адреса $URL, настройки — в ~/.local/share/yoisaki-ai-studio;
+  Галерея и настройки — в ~/.local/share/yoisaki-ai-studio, черновики редактора — в браузере для $URL;
   обновление их не удаляет. Дальше: подключите Google Colab (раздел GPU на сайте).
   Инструкция: https://github.com/$REPO/blob/main/docs/ru/GOOGLE_COLAB.md
 
@@ -311,3 +309,4 @@ EOF
 }
 
 main "$@"
+

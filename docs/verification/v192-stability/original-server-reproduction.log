@@ -1,0 +1,89 @@
+✖ loss at 33/35 invalidates BUSY, retains progress, recovers result once without resubmitting (103.807906ms)
+✖ explicit local deletion works offline, is persistent and never sends remote cancellation (58.704063ms)
+✖ ambiguous submission returns tracked job; duplicate client ID is never posted again (35.793624ms)
+✔ waiting job cancellation is confirmed by GPU; interrupted result download resumes after restart (106.199254ms)
+✖ duplicate persisted IDs are consolidated without dropping distinct unresolved jobs (0.325571ms)
+✔ generation remains tracked for more than 20 seconds, then saves completion (synthetic) (21046.916323ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 2
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 21461.171116
+
+✖ failing tests:
+
+test at ../original/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/v192-stability.test.mjs:36:1
+✖ loss at 33/35 invalidates BUSY, retains progress, recovers result once without resubmitting (103.807906ms)
+  AssertionError [ERR_ASSERTION]: Expected "actual" to be strictly unequal to:
+  
+  'BUSY'
+      at TestContext.<anonymous> (file:///workspace/scratch/eb52c810d3f5/original/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/v192-stability.test.mjs:38:77)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'BUSY',
+    expected: 'BUSY',
+    operator: 'notStrictEqual',
+    diff: 'simple'
+  }
+
+test at ../original/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/v192-stability.test.mjs:44:1
+✖ explicit local deletion works offline, is persistent and never sends remote cancellation (58.704063ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  409 !== 200
+  
+      at TestContext.<anonymous> (file:///workspace/scratch/eb52c810d3f5/original/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/v192-stability.test.mjs:46:90)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 409,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at ../original/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/v192-stability.test.mjs:50:1
+✖ ambiguous submission returns tracked job; duplicate client ID is never posted again (35.793624ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  504 !== 202
+  
+      at TestContext.<anonymous> (file:///workspace/scratch/eb52c810d3f5/original/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/v192-stability.test.mjs:51:153)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 504,
+    expected: 202,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at ../original/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/v192-stability.test.mjs:61:1
+✖ duplicate persisted IDs are consolidated without dropping distinct unresolved jobs (0.325571ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  3 !== 2
+  
+      at TestContext.<anonymous> (file:///workspace/scratch/eb52c810d3f5/original/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION/tests/v192-stability.test.mjs:63:78)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 3,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

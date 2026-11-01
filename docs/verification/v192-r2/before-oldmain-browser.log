@@ -1,0 +1,19 @@
+FAIL READY GPU: old-session job is not presented as the current generation: Expected values to be strictly equal:
+FAIL "2 ПЕРСОНАЖА" shows exactly Region A, Region B: Expected values to be strictly deep-equal:
+FAIL 2 characters → request carries 2 regions: Expected values to be strictly equal:
+FAIL "3 ПЕРСОНАЖА" shows three regions; back to two shows two: Expected values to be strictly deep-equal:
+PASS selected tab is valid after the count shrinks (no empty editor)
+FAIL CUSTOM keeps the real configured count: Expected values to be strictly deep-equal:
+FAIL OFF hides region tabs and the regional hint: Expected values to be strictly deep-equal:
+FAIL Regional OFF + ControlNet Depth: no warning, regions [] in request JSON: timeout: request sent
+FAIL Regional OFF + ControlNet Canny: no warning, regions [] in request JSON: timeout: request sent
+FAIL Regional OFF + ControlNet OpenPose: no warning, regions [] in request JSON: timeout: request sent
+FAIL Regional ON + ControlNet ON is still blocked with the warning: locator.waitFor: Timeout 6000ms exceeded.
+FAIL reload: OFF persists, no false warning, saved regions intact (C kept): Expected values to be strictly equal:
+FAIL legacy saved "2 ПЕРСОНАЖА" with 3 stored regions (old build) shows 2 after reload: Expected values to be strictly deep-equal:
+FAIL "Проверить и удалить" removes an old-session record after confirmation, without GPU: timeout: record removed
+FAIL remaining stale records are removed together; counters update: locator.click: Timeout 6000ms exceeded.
+FAIL removed records do not reappear after reload and repeated polling: Expected values to be strictly equal:
+FAIL no GPU cancel / status call was sent for old jobs; no automatic re-generation: Expected values to be strictly equal:
+PASS no browser runtime errors
+Failures: 16/18; root=<scratch>/oldmain; SYNTHETIC engine, Chromium mobile emulation (not Android/T4).

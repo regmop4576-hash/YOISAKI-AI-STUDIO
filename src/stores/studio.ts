@@ -1,5 +1,5 @@
 'use client';
-import type {Regional} from '@/lib/regional';
+import {normalizeRegional,type Regional} from '@/lib/regional';
 import {localApi} from '@/lib/local-api';
 import {FACE_DEFAULTS,DEFAULT_STRENGTH,type FaceProfile} from '@/lib/facefix';
 import {create} from 'zustand';import {persist,createJSONStorage} from 'zustand/middleware';
@@ -36,7 +36,7 @@ function mergeUi(saved:unknown):UiPrefs{const s=(saved&&typeof saved==='object'?
 export const useStudio=create<Studio>()(persist((set,get)=>({settings:defaults,presets:[],language:'Русский',ui:uiDefaults,editor:editorDefaults,
  update:partial=>set(s=>({settings:{...s.settings,...partial}})),
  save:name=>set(s=>({presets:[...s.presets,{id:crypto.randomUUID(),name,version:1,settings:structuredClone(s.settings)}]})),
- load:id=>{const p=get().presets.find(x=>x.id===id);if(p)set({settings:{...structuredClone(p.settings),checkpoint:'',loras:[],vae:'auto'}})},
+ load:id=>{const p=get().presets.find(x=>x.id===id);if(p)set({settings:{...structuredClone(p.settings),regional:normalizeRegional(p.settings.regional),checkpoint:'',loras:[],vae:'auto'}})},
  remove:id=>set(s=>({presets:s.presets.filter(p=>p.id!==id)})),
  rename:(id,name)=>set(s=>({presets:s.presets.map(p=>p.id===id?{...p,name}:p)})),
  duplicate:id=>{const p=get().presets.find(x=>x.id===id);if(p)set(s=>({presets:[...s.presets,{...structuredClone(p),id:crypto.randomUUID(),name:p.name+' copy'}]}))},
@@ -51,4 +51,4 @@ export const useStudio=create<Studio>()(persist((set,get)=>({settings:defaults,p
  {name:'yoisaki-studio-v1',version:2,migrate:(saved:any,version)=>version<2?{...saved,language:'Русский'}:saved,skipHydration:true,
   storage:createJSONStorage(()=>({getItem:async()=>{const x=await localApi<{value:unknown}>('/api/settings');return x.value?JSON.stringify(x.value):null},setItem:async(_name:string,value:string)=>{await localApi('/api/settings',{method:'PUT',body:JSON.stringify({value:JSON.parse(value)})})},removeItem:async()=>{}})),
   partialize:s=>({settings:s.settings,presets:s.presets,language:s.language,ui:s.ui,editor:s.editor}),
-  merge:(persisted,current)=>{try{const p=persisted as Partial<Studio>;return {...current,settings:{...defaults,...(p.settings||{}),},presets:Array.isArray(p.presets)?p.presets.filter(x=>x?.version===1&&typeof x.name==='string'&&x.settings):[],language:typeof p.language==='string'?p.language:'Русский',ui:mergeUi(p.ui),editor:mergeEditor(p.editor)}}catch{return current}}}));
+  merge:(persisted,current)=>{try{const p=persisted as Partial<Studio>;return {...current,settings:{...defaults,...(p.settings||{}),regional:normalizeRegional(p.settings?.regional)},presets:Array.isArray(p.presets)?p.presets.filter(x=>x?.version===1&&typeof x.name==='string'&&x.settings):[],language:typeof p.language==='string'?p.language:'Русский',ui:mergeUi(p.ui),editor:mergeEditor(p.editor)}}catch{return current}}}));

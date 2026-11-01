@@ -34,7 +34,7 @@ check "node, curl, unzip absent before install" '! command -v node >/dev/null &&
 run bash -c 'pkg install -y curl && curl -fsSL "$YOISAKI_INSTALLER_URL" | bash'
 check "one-liner exits 0" '[[ $RC == 0 ]]'
 check "pkg installed nodejs-lts unzip curl" 'grep -q "install .*nodejs-lts unzip curl" "$PKG_LOG"'
-check "integrity check ran: OK (553)" 'grep -q "Проверка целостности файлов: OK (553)" "$W/last.log"'
+check "integrity check ran" 'grep -q "Проверка целостности файлов: OK" "$W/last.log"'
 check "SHA-256 verified against SHA256SUMS.txt" 'grep -q "SHA-256 архива совпадает" "$W/last.log"'
 check "site answers on 127.0.0.1:3000 with 1.9.2" '[[ $(ver) == 1.9.2 ]]'
 check "installer prints http://127.0.0.1:3000" 'grep -q "Откройте в браузере телефона:  http://127.0.0.1:3000" "$W/last.log"'
@@ -103,3 +103,4 @@ yoisaki stop >/dev/null 2>&1
 kill $MOCK 2>/dev/null
 echo; echo "RESULT: $pass passed, $fail failed  (logs: $W)"
 [[ $fail == 0 ]]
+

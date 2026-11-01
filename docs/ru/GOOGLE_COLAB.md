@@ -6,8 +6,7 @@ Google Drive.
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/regmop4576-hash/YOISAKI-AI-STUDIO/blob/main/colab/YOISAKI_ENGINE_V1.9.2_COLAB.ipynb)
 
-Блокнот: [`colab/YOISAKI_ENGINE_V1.9.2_COLAB.ipynb`](../../colab/YOISAKI_ENGINE_V1.9.2_COLAB.ipynb), также
-приложен к [релизу v1.9.2](https://github.com/regmop4576-hash/YOISAKI-AI-STUDIO/releases/latest).
+Блокнот: [`colab/YOISAKI_ENGINE_V1.9.2_COLAB.ipynb`](../../colab/YOISAKI_ENGINE_V1.9.2_COLAB.ipynb), проверяйте наличие файла среди Assets [релиза v1.9.2](https://github.com/regmop4576-hash/YOISAKI-AI-STUDIO/releases/latest).
 
 ## Версии и совместимость
 
@@ -39,7 +38,7 @@ GPU вы увидите «Версия движка **1.8.1** · API 1.7.0» и 
 
 Нажмите кнопку **Open in Colab** выше (или откройте ссылку в браузере телефона). Войдите в свой аккаунт Google.
 
-Можно и вручную: скачайте `YOISAKI_ENGINE_V1.9.2_COLAB.ipynb` из релиза, откройте
+Можно и вручную: скачайте `YOISAKI_ENGINE_V1.9.2_COLAB.ipynb` из репозитория (или из Assets, если он там опубликован), откройте
 <https://colab.research.google.com> → «Файл» → «Загрузить блокнот».
 
 **Что вы увидите:** блокнот с заголовком «YOISAKI ENGINE v1.9.2 COLAB — для YOISAKI AI STUDIO v1.9.2 PIXEL
@@ -85,6 +84,7 @@ Colab спросит разрешение на доступ к Google Диску
 MyDrive/YOISAKI_AI_STUDIO/models/checkpoints/   ← SDXL / Illustrious checkpoint (.safetensors)
 MyDrive/YOISAKI_AI_STUDIO/models/loras/         ← LoRA (.safetensors)
 MyDrive/YOISAKI_AI_STUDIO/models/vae/           ← VAE (.safetensors), необязательно
+MyDrive/YOISAKI_AI_STUDIO/models/controlnet/    ← модели ControlNet, при необходимости
 ```
 
 Создайте эти папки в приложении Google Диск и загрузите туда свои файлы. Подробнее о форматах —
@@ -167,3 +167,13 @@ MyDrive/YOISAKI_AI_STUDIO/models/vae/           ← VAE (.safetensors), необ
   сохраняется в `MyDrive/YOISAKI_AI_STUDIO/diagnostics/reports/`.
 - **🔎 4. Проверка токенов промпта** — показывает, как промпт разбит на окна CLIP (до 16 окон).
 - **📊 5. Скачать диагностику ресурсов** — краткие журналы ресурсов без изображений, промптов и токенов.
+
+## Исправленная сборка сайта 1.9.2 STABILITY
+
+Работающий блокнот и YOISAKI ENGINE 1.8.1 SMART FACE FIX обновлять не нужно.
+Подключение Drive внутри Colab и вход Google на сайте — две независимые возможности.
+Для генерации через Colab не нужны собственные OAuth Client ID / Client Secret: достаточно
+подключить Drive в блокноте и скопировать полную ссылку движка на сайт.
+OAuth на сайте нужен только для отдельного просмотра библиотеки Drive и остаётся необязательным.
+Проверьте четыре каталога выше и создайте отсутствующие вручную в Drive. Эта сборка сайта
+не создаёт папки через Colab и не меняет блокнот.

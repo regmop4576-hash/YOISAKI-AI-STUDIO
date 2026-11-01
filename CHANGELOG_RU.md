@@ -1,3 +1,11 @@
+# v1.9.2 HOTFIX · ORIGIN_DENIED
+
+Сайт 1.9.2 (номер версии не менялся), движок, Colab, Pixel Fantasy и формат данных не изменены.
+
+- **Исправлено:** при открытии `http://127.0.0.1:3000` по ссылке (GitHub, `termux-open-url`, ярлык Android) сервер отвечал `{"code":"ORIGIN_DENIED"}`: проверка `Sec-Fetch-Site` отклоняла любой запрос не с того же сайта, включая обычный переход на страницу. Теперь со стороннего сайта разрешён только переход верхнего уровня `GET` + `Sec-Fetch-Mode: navigate` + `Sec-Fetch-Dest: document` на страницы приложения (`/`, `/generate`, `/edit`, `/models`, `/gallery`, `/engine`, `/settings`) без параметров OAuth (`server/app.mjs`, `isAppNavigation`).
+- **Без изменений остаются:** проверка `Host`, проверка `Origin`, заголовок `X-Yoisaki-Local` и локальная сессия для API; API, `/_yoisaki/service`, POST/HEAD, iframe/embed, скрипты и прочие файлы со стороннего сайта по-прежнему получают 403.
+- **Тесты:** `tests/origin-navigation.test.mjs` (разрешённая навигация и запрещённые внешние запросы).
+
 # v1.9.2 ANDROID INPUT FIX
 
 Ввод с экранной клавиатуры Android. Движок, генерация, данные не изменены. Отчёт: `YOISAKI_V1.9.2_INPUT_FIX_REPORT.md`.

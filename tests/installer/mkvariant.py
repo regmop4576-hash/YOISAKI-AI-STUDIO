@@ -20,3 +20,4 @@ json.dump(dict(sorted(man.items())),open(app+'/package-manifest.json','w'),inden
 if os.path.exists(out_zip): os.remove(out_zip)
 subprocess.run(['zip','-qr','-X',os.path.abspath(out_zip),'YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION'],cwd=work,check=True)
 shutil.rmtree(work)
+

@@ -34,7 +34,7 @@ export default function Page(){
  const saved=gpu.remembered?.[gpu.provider]||null;
  const providerLabel=gpu.provider==='colab'?'Google Colab':'CloudCompute';
  const label=gpu.provider==='colab'?t('URL туннеля Colab','Colab tunnel URL'):t('URL сервера CloudCompute','CloudCompute server URL');
- const names:Record<string,string>={OFFLINE:t('ОТКЛЮЧЁН','OFFLINE'),CONNECTING:t('ПОДКЛЮЧЕНИЕ','CONNECTING'),READY:t('ПОДКЛЮЧЁН','CONNECTED'),BUSY:t('ЗАНЯТ','BUSY'),LOADING:t('ЗАГРУЗКА','LOADING'),ERROR:t('ОШИБКА','ERROR')};
+ const names:Record<string,string>={OFFLINE:t('ОТКЛЮЧЁН','OFFLINE'),CONNECTING:t('ПОДКЛЮЧЕНИЕ','CONNECTING'),READY:t('ПОДКЛЮЧЁН','CONNECTED'),BUSY:t('ЗАНЯТ','BUSY'),LOADING:t('ЗАГРУЗКА','LOADING'),ERROR:gpu.url?t('СВЯЗЬ ПОТЕРЯНА','CONNECTION LOST'):t('ОШИБКА','ERROR')};
  const phaseNames:Record<Phase,string>={OFFLINE:t('Не подключено','Offline'),STARTING:t('Ожидание запуска GPU','Waiting for the GPU'),CONNECTING:t('Подключение','Connecting'),AUTHENTICATING:t('Проверка доступа','Authenticating'),LOADING:t('Загрузка движка и моделей','Loading engine and models'),READY:t('Готово к генерации','Ready'),ERROR:t('Ошибка','Error')};
  const componentNames:Record<string,string>={frontend:t('Сайт (телефон)','Website (phone)'),tunnel:t('Туннель / адрес','Tunnel / address'),auth:t('Доступ (токен)','Access (token)'),engine:t('Движок и зависимости','Engine and dependencies'),gpu:'GPU / CUDA',models:t('Модели','Models')};
  const stateNames:Record<string,string>={READY:t('ГОТОВ','READY'),WAITING:t('ОЖИДАНИЕ','WAITING'),WARNING:t('ВНИМАНИЕ','WARNING'),ERROR:t('ОШИБКА','ERROR'),UNKNOWN:'—'};
@@ -74,6 +74,7 @@ export default function Page(){
   </div>
   {gpu.provider==='cloudcompute'&&<div className="notice dangernotice row" role="note"><Warning size={18}/><span className="grow">{tk('gpu.ccWarning')}</span></div>}
   <section className="panel stack">
+   {gpu.last_seen_at&&<p className="tiny muted">{t('Последний подтверждённый ответ GPU','Last confirmed GPU response')}: {new Date(gpu.last_seen_at).toLocaleTimeString()}</p>}
    <div className="gpu-card-head"><span className="logo" aria-hidden>{gpu.provider==='colab'?'CO':'CC'}</span><div className="grow" style={{minWidth:0}}><h2 style={{margin:0}}>{providerLabel}</h2><p className="tiny muted">{gpu.provider==='colab'?t('Бесплатный GPU через Google Colab','Free GPU through Google Colab'):t('Облачный GPU через CloudCompute.ru','Cloud GPU through CloudCompute.ru')}{info?.gpu_name?` · ${info.gpu_name}`:''}</p></div></div>
    <div className="row" style={{justifyContent:'space-between'}}><span className="gpu-state" data-tone={tone} role="status"><span className="dot"/>{names[gpu.state]}</span>
     <div className="row">{gpu.url&&<ActionButton className="pill" aria-label={t('Обновить','Refresh')} disabled={gpu.changing} onAction={async()=>{await gpu.refresh(true);const st=useDirect.getState();if(st.state==='ERROR'||st.models_error)throw Error(st.error||st.models_error||'GPU')}} successText={tk('gpu.refreshed')}><RefreshCw size={15}/>{t('Обновить','Refresh')}</ActionButton>}

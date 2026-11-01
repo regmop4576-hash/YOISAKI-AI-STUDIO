@@ -1,0 +1,16 @@
+PASS first paint does not wait for a delayed GPU health request
+PASS Regional OFF + ControlNet OFF sends regions [] and exact prompt
+PASS Regional ON + ControlNet OFF sends both masks and regional prompt
+PASS real simultaneous enablement warns and prevents submission
+PASS disabling Regional immediately clears the obsolete compatibility warning
+PASS OFF → ON preserves region IDs, prompts, trigger and mask
+PASS Regional OFF + Depth ON uses ControlNet independently
+PASS Regional OFF + Canny ON uses ControlNet independently
+PASS Regional OFF + OpenPose ON uses ControlNet independently
+PASS reload preserves Regional OFF, regions and ControlNet settings without false warning
+PASS long Cyrillic prompt keeps focus and survives navigation / reload unchanged
+PASS outage invalidates BUSY and shows last confirmed progress; local remove sends no cancellation
+PASS recovery completes remaining jobs and saves gallery exactly once
+PASS old saved ВЫКЛ mode is migrated on reload, preserving region data
+PASS no browser runtime errors
+Failures: 0; SYNTHETIC engine, Chromium mobile emulation, not Android/T4.

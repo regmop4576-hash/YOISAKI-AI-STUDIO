@@ -1,0 +1,82 @@
+TAP version 13
+# Subtest: GPU READY at a new address does not adopt or poll jobs of an earlier GPU session
+ok 1 - GPU READY at a new address does not adopt or poll jobs of an earlier GPU session
+  ---
+  duration_ms: 126.177388
+  type: 'test'
+  ...
+# Subtest: "check and delete" with GPU of another session: explicit local removal, no GPU cancel, gallery kept
+ok 2 - "check and delete" with GPU of another session: explicit local removal, no GPU cancel, gallery kept
+  ---
+  duration_ms: 56.066648
+  type: 'test'
+  ...
+# Subtest: several stale records are removed together without GPU, persist after restart and never reappear
+ok 3 - several stale records are removed together without GPU, persist after restart and never reappear
+  ---
+  duration_ms: 49.1239
+  type: 'test'
+  ...
+# Subtest: bulk removal never forgets a job confirmed RUNNING in the current session
+ok 4 - bulk removal never forgets a job confirmed RUNNING in the current session
+  ---
+  duration_ms: 68.371673
+  type: 'test'
+  ...
+# Subtest: a removal racing with an in-flight poll does not bring the record back
+ok 5 - a removal racing with an in-flight poll does not bring the record back
+  ---
+  duration_ms: 69.639097
+  type: 'test'
+  ...
+# Subtest: recovery: reconnecting to the same session collects the result once; nothing is generated again
+ok 6 - recovery: reconnecting to the same session collects the result once; nothing is generated again
+  ---
+  duration_ms: 64.454203
+  type: 'test'
+  ...
+# Subtest: a job unknown to the reconnected GPU becomes INTERRUPTED (closable), never re-sent
+ok 7 - a job unknown to the reconnected GPU becomes INTERRUPTED (closable), never re-sent
+  ---
+  duration_ms: 72.937282
+  type: 'test'
+  ...
+# Subtest: legacy saved "2 ПЕРСОНАЖА" with three stored regions shows and sends exactly two
+ok 8 - legacy saved "2 ПЕРСОНАЖА" with three stored regions shows and sends exactly two
+  ---
+  duration_ms: 1.23217
+  type: 'test'
+  ...
+# Subtest: OFF → 2 → 3 → 2 → OFF: tabs, masks and request regions agree; region C data survives
+ok 9 - OFF → 2 → 3 → 2 → OFF: tabs, masks and request regions agree; region C data survives
+  ---
+  duration_ms: 2.039417
+  type: 'test'
+  ...
+# Subtest: CUSTOM uses the configured number of regions
+ok 10 - CUSTOM uses the configured number of regions
+  ---
+  duration_ms: 0.96367
+  type: 'test'
+  ...
+# Subtest: disabled region is saved but not sent; OFF keeps all saved settings
+ok 11 - disabled region is saved but not sent; OFF keeps all saved settings
+  ---
+  duration_ms: 0.493046
+  type: 'test'
+  ...
+# Subtest: Regional OFF + ControlNet Depth/Canny/OpenPose allowed; Regional ON + ControlNet ON blocked
+ok 12 - Regional OFF + ControlNet Depth/Canny/OpenPose allowed; Regional ON + ControlNet ON blocked
+  ---
+  duration_ms: 1.024421
+  type: 'test'
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 12
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 753.133732
