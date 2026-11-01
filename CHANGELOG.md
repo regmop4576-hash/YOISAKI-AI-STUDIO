@@ -2,6 +2,15 @@
 
 Краткая история. Полные описания версий — в [CHANGELOG_RU.md](CHANGELOG_RU.md) и отчётах `YOISAKI_V*_REPORT*.md`.
 
+## Не выпущено — установка одной командой
+
+- `install-termux.sh`: установка в Termux одной командой — зависимости, последний стабильный GitHub Release,
+  проверка SHA-256 по `SHA256SUMS.txt`, штатная проверка целостности, команда `yoisaki`
+  (start / stop / restart / status / update / open), обновление с сохранением данных и откатом.
+  Сайт, Pixel Fantasy, Colab и движок не изменены.
+- `tests/installer/run.sh`: 35 проверок установщика в чистой имитации Termux.
+- Документация: `docs/ru/INSTALL_TERMUX.md`, `docs/en/INSTALL_TERMUX.md`, `docs/RELEASING.md`, README.
+
 ## v1.9.2 — Android Input Fix · 2026-10-31
 
 Сайт 1.9.2, YOISAKI ENGINE 1.8.1 (без изменений), API 1.7.0. Отчёт: `YOISAKI_V1.9.2_INPUT_FIX_REPORT.md`.

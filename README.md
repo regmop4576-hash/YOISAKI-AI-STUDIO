@@ -70,32 +70,30 @@
 - **Надёжная установка:** проверка целостности всех файлов (SHA-256), готовая production-сборка внутри ZIP,
   обновление с резервной копией кода и данных и автоматическим откатом.
 
-## ✦ Установка за 5 минут
+## ✦ Установка одной командой
 
-Нужно: Android 7+, [Termux](docs/ru/INSTALL_TERMUX.md#1-установите-termux-из-официального-источника) из F-Droid
-или GitHub, аккаунт Google.
-
-```bash
-pkg update -y && pkg upgrade -y
-pkg install -y nodejs-lts unzip
-termux-setup-storage
-```
-
-Скачайте `YOISAKI_AI_STUDIO_V1.9.2_PIXEL_FANTASY.zip` со страницы
-[Releases](https://github.com/regmop4576-hash/YOISAKI-AI-STUDIO/releases/latest) в «Загрузки», затем:
+Нужно: Android 7+ и [Termux](docs/ru/INSTALL_TERMUX.md#1-установите-termux) из **F-Droid или GitHub** (не из Google Play).
+Откройте Termux, вставьте команду и нажмите ввод:
 
 ```bash
-cd ~ && unzip -q ~/storage/downloads/YOISAKI_AI_STUDIO_V1.9.2_PIXEL_FANTASY.zip
-cd ~/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION && bash install.sh && ./start.sh
+pkg install -y curl && curl -fsSL https://raw.githubusercontent.com/regmop4576-hash/YOISAKI-AI-STUDIO/main/install-termux.sh | bash
 ```
 
-Откройте в браузере телефона **http://127.0.0.1:3000**.
+Установщик сам поставит Node.js LTS, unzip и curl, возьмёт последний стабильный релиз с GitHub, скачает архив,
+сверит SHA-256 с `SHA256SUMS.txt` релиза, запустит штатную проверку целостности всех файлов, установит и запустит
+сайт. В конце он покажет адрес:
 
-> Папка внутри архива называется `YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION` — это историческое имя, его ожидает
-> `update.sh`. **Не переименовывайте её.** Версию показывает сам сайт (раздел GPU → «Версия студии 1.9.2»).
+**http://127.0.0.1:3000** — откройте его в браузере телефона.
 
-Подробно, с пояснением каждого шага: **[docs/ru/INSTALL_TERMUX.md](docs/ru/INSTALL_TERMUX.md)**.
-Уже установлена старая версия? → [Обновление](docs/ru/INSTALL_TERMUX.md#10-обновление-до-новой-версии).
+| | |
+|---|---|
+| `yoisaki start` / `yoisaki stop` | запустить / остановить сайт |
+| `yoisaki update` | обновиться (настройки и галерея сохраняются, неудачное обновление откатывается) |
+| `yoisaki status` | диагностика |
+
+Ни ZIP вручную, ни `termux-setup-storage` не нужны. Повторный запуск команды безопасен: если стоит последняя
+версия, ничего не скачивается. Подробно, с тем, что вы увидите на каждом шаге:
+**[docs/ru/INSTALL_TERMUX.md](docs/ru/INSTALL_TERMUX.md)** · установщик: [`install-termux.sh`](install-termux.sh).
 
 ## ✦ Подключение Google Colab
 
@@ -149,8 +147,8 @@ cd ~/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION && bash install.sh && ./start.sh
 
 - Реальная генерация на Tesla T4 с полноразмерным Illustrious в среде разработки релиза **не проверялась**;
   автоматические тесты используют синтетический GPU и не подтверждают качество или стабильность на T4.
-- Установка в настоящем Termux на реальном Android-устройстве для этого релиза **не проверялась**; проверен
-  тот же сценарий (`install.sh` → `start.sh` → `update.sh` → `stop.sh`) в Linux.
+- Установщик и установка в настоящем Termux на реальном Android-устройстве **не проверялись**; установщик прошёл
+  35 автоматических проверок в чистой имитации Termux (`tests/installer/run.sh`).
 - Бесплатный Colab может отключить сессию, отказать в GPU или ограничить время работы.
 - CloudCompute и Docker-развёртывание есть в коде, но скрыты по умолчанию и на реальном GPU не испытаны.
 
