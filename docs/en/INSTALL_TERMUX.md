@@ -1,119 +1,76 @@
 # Installing YOISAKI AI STUDIO on Android with Termux
 
-For people who only have a phone. Long-press a code block → Copy, then long-press in Termux → Paste → Enter.
+Installation is **one command** — no manual ZIP download, no storage permission, no unzipping. The official
+installer is [`install-termux.sh`](../../install-termux.sh).
 
-> **What was verified.** Commands come from the real `install.sh`, `start.sh`, `stop.sh`, `update.sh` of release
-> 1.9.2. The full flow (unzip → `install.sh` → `start.sh` → `diagnostics.sh` → `update.sh` → `stop.sh`) was run on
-> Linux with Node.js 22. **It was not run in real Termux on a physical phone for this release.** Script messages
-> are in Russian; the expected output is quoted below with a translation.
+> **What was verified.** The installer passed 35 automated checks in a clean simulated Termux (own `HOME` and
+> `PREFIX`, no Node.js/curl/unzip beforehand, stub `pkg`, local mock of the GitHub Releases API): install,
+> re-run, update, resumed download, rollback, checksum mismatch, repair of a damaged install. **It has not been
+> run in real Termux on a physical phone.** Script messages are in Russian.
 
-## 1. Install Termux from an official source
+## 1. Install Termux
 
-- **F-Droid:** <https://f-droid.org/packages/com.termux/>
-- **GitHub Releases:** <https://github.com/termux/termux-app/releases> — on Android 7+ pick the `apt-android-7`
-  build for your architecture (usually `arm64-v8a`, or `universal` if unsure).
+From **F-Droid** (<https://f-droid.org/packages/com.termux/>) or **GitHub Releases**
+(<https://github.com/termux/termux-app/releases>, `apt-android-7` build). The Google Play build is experimental.
+Android 7+ is required. Do not mix sources.
 
-The Google Play build is experimental (missing features and bugs, per the Termux developers). Android 7 or newer
-is required. Do not mix sources: builds are signed with different keys; uninstall Termux and all its plugins
-before switching.
-
-## 2. Prepare Termux
+## 2. Paste one command
 
 ```bash
-pkg update -y && pkg upgrade -y
-pkg install -y nodejs-lts unzip
-node -v
+pkg install -y curl && curl -fsSL https://raw.githubusercontent.com/regmop4576-hash/YOISAKI-AI-STUDIO/main/install-termux.sh | bash
 ```
 
-`node -v` must print **v22–v26** (24 LTS recommended); `install.sh` refuses other versions. Then grant storage
-access (Android will ask — tap Allow) so that Downloads is available as `~/storage/downloads`:
+What happens:
 
-```bash
-termux-setup-storage
-```
+1. Missing dependencies are installed with `pkg` (`nodejs-lts` 22–26, `unzip`, `curl`); config-file questions are
+   answered automatically (your current files are kept).
+2. The latest **stable** GitHub Release is read (drafts and pre-releases are ignored).
+3. The ZIP is downloaded into `~/.cache/yoisaki-ai-studio`; interrupted downloads resume, also on the next run.
+4. SHA-256 is checked against the release's `SHA256SUMS.txt` (and GitHub's own asset digest when present). On
+   mismatch the file is deleted and nothing is installed.
+5. The archive is checked for absolute paths, `../`, symlinks and unexpected folders.
+6. It is unpacked into a staging folder and the project's own `install.sh` runs, including the per-file SHA-256
+   check of all 553 files (`scripts/verify-package.mjs`). The check is never skipped.
+7. The folder is moved to `~/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION` (historical name required by `update.sh`).
+8. The `yoisaki` command is created, the site is started and checked.
 
-## 3. Download the ZIP
+At the end: `Готово! Откройте в браузере телефона:  http://127.0.0.1:3000` — open **http://127.0.0.1:3000**.
 
-On <https://github.com/regmop4576-hash/YOISAKI-AI-STUDIO/releases/latest> tap
-**`YOISAKI_AI_STUDIO_V1.9.2_PIXEL_FANTASY.zip`** under *Assets* (not "Source code"). Optional check:
+## 3. Commands
 
-```bash
-sha256sum ~/storage/downloads/YOISAKI_AI_STUDIO_V1.9.2_PIXEL_FANTASY.zip
-```
+| Command | Action |
+|---|---|
+| `yoisaki start` | start the site (after a phone reboot, just open Termux and run it) |
+| `yoisaki stop` | stop; data is kept |
+| `yoisaki restart` | restart |
+| `yoisaki status` | diagnostics |
+| `yoisaki update` | update to the latest release |
+| `yoisaki open` | open the site in the browser |
+| `yoisaki version` | installed version |
 
-Compare with `SHA256SUMS.txt` in the same release.
+## 4. Updating
 
-## 4. Unzip
+`yoisaki update` (or the install command again). If the latest version is installed nothing is downloaded. A new
+release is downloaded once (verified cached copies are reused) and installed by the **new release's** `update.sh`:
+the new copy is verified while the old one runs, code and data are backed up, and if the new version fails to
+start the previous one is restored and started again. Older releases are never installed over newer ones unless
+`--force` is given. Settings live in `~/.local/share/yoisaki-ai-studio` (untouched by the installer); the gallery
+lives in the browser for `http://127.0.0.1:3000`.
 
-If you already have an installation, **skip to step 10 (update)** instead.
+## 5. Safe re-runs
 
-```bash
-cd ~ && unzip -q ~/storage/downloads/YOISAKI_AI_STUDIO_V1.9.2_PIXEL_FANTASY.zip
-```
+Concurrent runs are refused (stale locks are cleared), damaged installs are moved to `…LOCAL_EDITION.broken-DATE`
+and reinstalled without touching data, partial downloads are never installed. Options:
+`… | bash -s -- --no-start` or `--force`.
 
-This creates `~/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION`. Keep it in the Termux home folder (Android forbids
-running programs from shared storage) and **do not rename it** — `update.sh` expects this historical name.
+## 6. If it fails
 
-## 5. Install
+| Message | Fix |
+|---|---|
+| `curl: (6)` / `(7)` | No internet or GitHub unreachable; retry. |
+| `pkg update не удался` | `termux-change-repo`, then retry. |
+| `CANNOT LINK EXECUTABLE` | `pkg upgrade -y`, then retry. |
+| `Последний релиз нельзя установить … нет нужных файлов` | The latest release lacks `YOISAKI_AI_STUDIO_V…zip` and `SHA256SUMS.txt` — see [RELEASING.md](../RELEASING.md). |
+| `SHA-256 архива не совпадает` | Corrupted or tampered download; retry, report if it persists. |
 
-```bash
-cd ~/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION && bash install.sh
-```
-
-The script checks Node.js, verifies the SHA-256 of all 553 files against `package-manifest.json`, fixes the
-script interpreter line for Termux, creates the data folder `~/.local/share/yoisaki-ai-studio`, and checks that
-the bundled production build matches the sources (so no npm download is needed).
-
-Expected output:
-
-```text
-Обнаружен Android Termux.                              (Android Termux detected)
-Проверка целостности файлов: OK (553)                  (File integrity check: OK)
-Установлено. Локальная production-сборка готова.       (Installed. Production build ready.)
-Запуск: ./start.sh
-```
-
-If you see `Файлы приложения отсутствуют или повреждены…` (files missing or damaged), **do not disable the
-check** — delete the folder, re-download the ZIP and repeat steps 3–5.
-
-## 6. Start
-
-```bash
-./start.sh
-```
-
-Prints `YOISAKI AI STUDIO v1.9.2 PIXEL FANTASY` and `Откройте: http://127.0.0.1:3000`. Port taken? Use
-`PORT=3001 ./start.sh`. Allow Termux to run in the background (battery: unrestricted) or run `termux-wake-lock`.
-
-## 7. Open the site
-
-Open **http://127.0.0.1:3000** in the phone browser. You will see the pixel YOISAKI header and "GPU отключён"
-(GPU disconnected) — expected until you connect Colab. The GPU page shows the studio version 1.9.2.
-
-## 8. Stop
-
-```bash
-cd ~/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION && ./stop.sh
-```
-
-Prints `Приложение остановлено. Данные сохранены.` (stopped, data kept).
-
-## 9. Start again after a reboot
-
-```bash
-cd ~/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION && ./start.sh
-```
-
-`./diagnostics.sh` shows the version, Node.js, whether the server runs and from which folder, and a redacted log
-tail.
-
-## 10. Update
-
-```bash
-cd ~/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION && bash update.sh ~/storage/downloads/YOISAKI_AI_STUDIO_V1.9.2_PIXEL_FANTASY.zip
-```
-
-`update.sh` validates the archive, prepares and verifies the new copy while the old one keeps running, stops the
-old version, backs up code (`…LOCAL_EDITION.backup-DATE`) and data, swaps folders and starts the new version —
-rolling back automatically if the start fails. Do not unzip a new version on top of an old one. After updating,
-pull-to-refresh the browser page.
+A manual fallback (download the release ZIP, `unzip`, `bash install.sh`) is described in the Russian guide.

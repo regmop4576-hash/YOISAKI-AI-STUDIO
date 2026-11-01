@@ -49,30 +49,20 @@ checkpoints, LoRA, VAE).
 - **Robust install:** SHA-256 integrity check for every file, prebuilt production bundle inside the ZIP, updates
   with code and data backups and automatic rollback.
 
-## Install in 5 minutes
+## One-command install
 
-Requirements: Android 7+, Termux from **F-Droid or GitHub** (not Google Play), a Google account.
-
-```bash
-pkg update -y && pkg upgrade -y
-pkg install -y nodejs-lts unzip
-termux-setup-storage
-```
-
-Download `YOISAKI_AI_STUDIO_V1.9.2_PIXEL_FANTASY.zip` from
-[Releases](https://github.com/regmop4576-hash/YOISAKI-AI-STUDIO/releases/latest) to Downloads, then:
+Requirements: Android 7+ and Termux from **F-Droid or GitHub** (not Google Play). In Termux, paste:
 
 ```bash
-cd ~ && unzip -q ~/storage/downloads/YOISAKI_AI_STUDIO_V1.9.2_PIXEL_FANTASY.zip
-cd ~/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION && bash install.sh && ./start.sh
+pkg install -y curl && curl -fsSL https://raw.githubusercontent.com/regmop4576-hash/YOISAKI-AI-STUDIO/main/install-termux.sh | bash
 ```
 
-Open **http://127.0.0.1:3000** in the phone browser.
-
-> The folder inside the archive is named `YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION` for historical reasons;
-> `update.sh` relies on it. **Do not rename it.** The actual version is shown on the GPU page.
-
-Step-by-step guide: **[docs/en/INSTALL_TERMUX.md](docs/en/INSTALL_TERMUX.md)**.
+The installer sets up Node.js LTS, unzip and curl, takes the latest stable GitHub Release, downloads the ZIP,
+verifies its SHA-256 against the release's `SHA256SUMS.txt`, runs the project's per-file integrity check, installs
+and starts the site, and prints **http://127.0.0.1:3000**. Then use `yoisaki start | stop | restart | status |
+update | open`. Re-running is safe and downloads nothing when the latest version is installed; updates keep
+settings and the gallery and roll back automatically on failure.
+Details: **[docs/en/INSTALL_TERMUX.md](docs/en/INSTALL_TERMUX.md)** · installer: [`install-termux.sh`](install-termux.sh).
 
 ## Connect Google Colab
 
@@ -115,8 +105,8 @@ Details: **[docs/en/GOOGLE_COLAB.md](docs/en/GOOGLE_COLAB.md)**.
 
 - Real generation on a Tesla T4 with a full-size Illustrious model was **not** verified in the release
   environment; automated tests use a synthetic GPU.
-- Installation in real Termux on a physical Android device was **not** verified for this release; the same
-  scripted flow was exercised on Linux.
+- The installer and installation in real Termux on a physical Android device were **not** verified; the
+  installer passed 35 automated checks in a clean simulated Termux (`tests/installer/run.sh`).
 - Colab Free may disconnect, deny a GPU, or limit session time.
 - CloudCompute and Docker deployment exist in the code but are hidden by default and untested on real GPUs.
 

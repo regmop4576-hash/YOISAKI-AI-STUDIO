@@ -5,23 +5,14 @@
 ## 1. Сайт на телефоне (один раз)
 
 Termux берите из [F-Droid](https://f-droid.org/packages/com.termux/) или
-[GitHub](https://github.com/termux/termux-app/releases), не из Google Play.
+[GitHub](https://github.com/termux/termux-app/releases), не из Google Play. В Termux:
 
 ```bash
-pkg update -y && pkg upgrade -y
-pkg install -y nodejs-lts unzip
-termux-setup-storage
+pkg install -y curl && curl -fsSL https://raw.githubusercontent.com/regmop4576-hash/YOISAKI-AI-STUDIO/main/install-termux.sh | bash
 ```
 
-Скачайте `YOISAKI_AI_STUDIO_V1.9.2_PIXEL_FANTASY.zip` из
-[Releases](https://github.com/regmop4576-hash/YOISAKI-AI-STUDIO/releases/latest) в «Загрузки».
-
-```bash
-cd ~ && unzip -q ~/storage/downloads/YOISAKI_AI_STUDIO_V1.9.2_PIXEL_FANTASY.zip
-cd ~/YOISAKI_AI_STUDIO_V1.4.0_LOCAL_EDITION && bash install.sh && ./start.sh
-```
-
-Браузер → **http://127.0.0.1:3000**. Подробно — [INSTALL_TERMUX.md](INSTALL_TERMUX.md).
+Браузер → **http://127.0.0.1:3000**. Команды: `yoisaki start`, `yoisaki stop`, `yoisaki update`.
+Подробно — [INSTALL_TERMUX.md](INSTALL_TERMUX.md).
 
 ## 2. Модели на Google Drive (один раз)
 
@@ -52,6 +43,6 @@ MyDrive/YOISAKI_AI_STUDIO/models/loras/         ← ваши LoRA (по жела
 ## 5. Завершение
 
 Сайт: GPU → «Отключиться». Colab: «🛑 ОСТАНОВИТЬ», затем «Среда выполнения» → «Отключиться от среды выполнения
-и удалить её». Termux: `./stop.sh`.
+и удалить её». Termux: `yoisaki stop`.
 
 Видео со всеми шагами: [видеоинструкция v1.9.2](https://github.com/regmop4576-hash/YOISAKI-AI-STUDIO/releases/download/v1.9.2/YOISAKI_PIXEL_FANTASY_FULL_TUTORIAL.mp4).
